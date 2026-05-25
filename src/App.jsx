@@ -3,11 +3,11 @@ import CoinCard from './components/CoinCard';
 import TimeframeToggle from './components/TimeframeToggle';
 
 const COINS = [
-  { symbol: 'BTC',  binanceSymbol: 'BTCUSDT',  name: 'Bitcoin',  color: '#F7931A' },
-  { symbol: 'ETH',  binanceSymbol: 'ETHUSDT',  name: 'Ethereum', color: '#627EEA' },
-  { symbol: 'SOL',  binanceSymbol: 'SOLUSDT',  name: 'Solana',   color: '#9945FF' },
-  { symbol: 'XRP',  binanceSymbol: 'XRPUSDT',  name: 'XRP',      color: '#00AAE4' },
-  { symbol: 'DOGE', binanceSymbol: 'DOGEUSDT', name: 'Dogecoin', color: '#C3A634' },
+  { symbol: 'BTC',  name: 'Bitcoin',  color: '#F7931A' },
+  { symbol: 'ETH',  name: 'Ethereum', color: '#627EEA' },
+  { symbol: 'SOL',  name: 'Solana',   color: '#9945FF' },
+  { symbol: 'XRP',  name: 'XRP',      color: '#00AAE4' },
+  { symbol: 'DOGE', name: 'Dogecoin', color: '#C3A634' },
 ];
 
 export default function App() {
@@ -24,7 +24,7 @@ export default function App() {
               Crypto Volatility & Entry Tracker
             </h1>
             <p className="text-xs text-[#8b949e] mt-0.5">
-              BTC · ETH · SOL · XRP · DOGE — live data via Binance, refreshes every 60 s
+              BTC · ETH · SOL · XRP · DOGE — live data via CryptoCompare, refreshes every 60 s
             </p>
           </div>
           <TimeframeToggle value={timeframe} onChange={setTimeframe} />
@@ -70,7 +70,7 @@ export default function App() {
               <div className="pt-1 text-[#484f58]">
                 BB Width ⚠ = volatility compression, breakout likely
               </div>
-              <div className="text-[#484f58]">Data: Binance public REST API</div>
+              <div className="text-[#484f58]">Data: CryptoCompare public API</div>
             </div>
 
           </div>

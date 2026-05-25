@@ -57,8 +57,8 @@ function SkeletonRow() {
 }
 
 // --- Main card ---
-export default function CoinCard({ symbol, binanceSymbol, name, color, timeframe }) {
-  const { data, loading, error, lastUpdated, refresh } = useCoinData(binanceSymbol, timeframe);
+export default function CoinCard({ symbol, name, color, timeframe }) {
+  const { data, loading, error, lastUpdated, refresh } = useCoinData(symbol, timeframe);
 
   const cardStyle = data ? (CARD_STYLE[data.volatility] ?? CARD_STYLE.medium) : 'bg-[#161b22] border-[#30363d]';
 

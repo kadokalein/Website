@@ -1,29 +1,44 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { analyzeCandles } from '../utils/indicators';
 
-const INTERVAL_MAP = { '1H': '1h', '4H': '4h', '1D': '1d', '1W': '1w' };
-const CANDLE_LIMIT  = 500;
-const REFRESH_MS    = 60_000;
+// CryptoCompare public API — no key required, full CORS support on all browsers/iOS
+const CC_BASE    = 'https://min-api.cryptocompare.com/data/v2';
+const LIMIT      = 500;
+const REFRESH_MS = 60_000;
 
-function parseKlines(raw) {
-  return raw.map((k) => ({
-    time:   k[0],
-    open:   parseFloat(k[1]),
-    high:   parseFloat(k[2]),
-    low:    parseFloat(k[3]),
-    close:  parseFloat(k[4]),
-    volume: parseFloat(k[5]),
-  }));
+// Map app timeframes → CryptoCompare endpoint + aggregate param
+const TF_CONFIG = {
+  '1H': { endpoint: 'histohour', aggregate: 1, interval: '1h' },
+  '4H': { endpoint: 'histohour', aggregate: 4, interval: '4h' },
+  '1D': { endpoint: 'histoday',  aggregate: 1, interval: '1d' },
+  '1W': { endpoint: 'histoday',  aggregate: 7, interval: '1w' },
+};
+
+function parseCC(raw) {
+  // Filter out future/empty candles CryptoCompare sometimes appends
+  return raw
+    .filter((k) => k.close > 0)
+    .map((k) => ({
+      time:   k.time * 1000,
+      open:   k.open,
+      high:   k.high,
+      low:    k.low,
+      close:  k.close,
+      volume: k.volumefrom,
+    }));
 }
 
-async function fetchKlines(binanceSymbol, interval) {
-  const url = `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${CANDLE_LIMIT}`;
+async function fetchCandles(symbol, timeframe) {
+  const { endpoint, aggregate, interval } = TF_CONFIG[timeframe] ?? TF_CONFIG['1D'];
+  const url = `${CC_BASE}/${endpoint}?fsym=${symbol}&tsym=USD&limit=${LIMIT}&aggregate=${aggregate}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Binance API error ${res.status}`);
-  return parseKlines(await res.json());
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const json = await res.json();
+  if (json.Response === 'Error') throw new Error(json.Message ?? 'API error');
+  return { candles: parseCC(json.Data.Data), interval };
 }
 
-export function useCoinData(binanceSymbol, timeframe) {
+export function useCoinData(coinSymbol, timeframe) {
   const [state, setState] = useState({
     data: null,
     loading: true,
@@ -31,17 +46,15 @@ export function useCoinData(binanceSymbol, timeframe) {
     lastUpdated: null,
   });
 
-  const interval = INTERVAL_MAP[timeframe] ?? '1d';
-  // Keep a ref so the interval callback always has the latest values
-  const paramsRef = useRef({ binanceSymbol, interval });
-  paramsRef.current = { binanceSymbol, interval };
+  const paramsRef = useRef({ coinSymbol, timeframe });
+  paramsRef.current = { coinSymbol, timeframe };
 
   const fetchData = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const { binanceSymbol: sym, interval: iv } = paramsRef.current;
-      const candles  = await fetchKlines(sym, iv);
-      const analysis = analyzeCandles(candles, iv);
+      const { coinSymbol: sym, timeframe: tf } = paramsRef.current;
+      const { candles, interval } = await fetchCandles(sym, tf);
+      const analysis = analyzeCandles(candles, interval);
       setState({ data: analysis, loading: false, error: null, lastUpdated: new Date() });
     } catch (err) {
       setState((prev) => ({
@@ -50,14 +63,13 @@ export function useCoinData(binanceSymbol, timeframe) {
         error: err.message ?? 'Failed to fetch data',
       }));
     }
-  }, []);  // stable — params read via ref
+  }, []);
 
-  // Re-fetch immediately when symbol/timeframe changes
   useEffect(() => {
     fetchData();
     const timer = setInterval(fetchData, REFRESH_MS);
     return () => clearInterval(timer);
-  }, [fetchData, binanceSymbol, interval]);
+  }, [fetchData, coinSymbol, timeframe]);
 
   return { ...state, refresh: fetchData };
 }
