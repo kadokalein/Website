@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCoinData } from '../hooks/useCryptoData';
 import VolatilityBadge from './VolatilityBadge';
 import EntrySignal from './EntrySignal';
@@ -80,7 +81,11 @@ export default function CoinCard({ symbol, name, color, timeframe }) {
   }
 
   return (
-    <div className={`rounded-xl border transition-colors duration-500 ${cardStyle} overflow-hidden flex flex-col`}>
+    <Link
+      to={`/coin/${symbol}`}
+      className={`rounded-xl border transition-colors duration-500 ${cardStyle} overflow-hidden flex flex-col group cursor-pointer no-underline`}
+      style={{ textDecoration: 'none', color: 'inherit' }}
+    >
 
       {/* ── Header ── */}
       <div className="p-5 pb-3">
@@ -280,6 +285,6 @@ export default function CoinCard({ symbol, name, color, timeframe }) {
           </>
         ) : null}
       </div>
-    </div>
+    </Link>
   );
 }

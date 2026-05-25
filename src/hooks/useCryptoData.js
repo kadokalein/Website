@@ -41,6 +41,7 @@ async function fetchCandles(symbol, timeframe) {
 export function useCoinData(coinSymbol, timeframe) {
   const [state, setState] = useState({
     data: null,
+    candles: null,
     loading: true,
     error: null,
     lastUpdated: null,
@@ -55,7 +56,7 @@ export function useCoinData(coinSymbol, timeframe) {
       const { coinSymbol: sym, timeframe: tf } = paramsRef.current;
       const { candles, interval } = await fetchCandles(sym, tf);
       const analysis = analyzeCandles(candles, interval);
-      setState({ data: analysis, loading: false, error: null, lastUpdated: new Date() });
+      setState({ data: analysis, candles, loading: false, error: null, lastUpdated: new Date() });
     } catch (err) {
       setState((prev) => ({
         ...prev,
