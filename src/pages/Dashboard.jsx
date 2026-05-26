@@ -10,13 +10,16 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#0d1117] text-white">
       <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-semibold text-white tracking-tight">
-              Crypto Volatility &amp; Entry Tracker
-            </h1>
-            <p className="text-xs text-[#8b949e] mt-0.5">
-              BTC · ETH · SOL · XRP · DOGE — live data via CryptoCompare, refreshes every 60 s
-            </p>
+          <div className="flex items-center gap-3">
+            <img src="/Website/logo.svg" alt="Promethea Programs" className="w-8 h-8 rounded-full flex-shrink-0" />
+            <div>
+              <h1 className="text-lg font-semibold text-white tracking-tight">
+                Promethea Programs
+              </h1>
+              <p className="text-xs text-[#8b949e] mt-0.5">
+                Crypto Volatility &amp; Entry Tracker — live data, refreshes every 60 s
+              </p>
+            </div>
           </div>
           <TimeframeToggle value={timeframe} onChange={setTimeframe} />
         </div>

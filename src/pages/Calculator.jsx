@@ -339,7 +339,7 @@ export default function Calculator() {
             <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4">
               <div className="text-[10px] font-semibold text-[#484f58] uppercase tracking-widest mb-3">Price Chart · Entry Line</div>
               {candles
-                ? <PriceChart candles={candles} interval="1d" color={coin.color} buyPrice={buyPrice} />
+                ? <PriceChart candles={candles} interval="1d" color={coin.color} buyPrice={buyPrice} coinName={`${coin.symbol} Calculator`} />
                 : <div className="h-[240px] flex items-center justify-center text-[#484f58] text-sm">Loading…</div>
               }
               <div className="mt-2 text-[10px] text-[#484f58]">Yellow dashed line = your entry price</div>

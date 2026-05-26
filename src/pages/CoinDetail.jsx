@@ -50,6 +50,7 @@ export default function CoinDetail() {
       <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
+            <img src="/Website/logo.svg" alt="Promethea Programs" className="w-6 h-6 rounded-full flex-shrink-0 hidden sm:block" />
             <Link to="/" className="text-[#8b949e] hover:text-white transition-colors text-sm flex items-center gap-1.5">
               ← Dashboard
             </Link>
@@ -96,7 +97,7 @@ export default function CoinDetail() {
           <div className="text-xs font-semibold text-[#484f58] uppercase tracking-widest mb-3">Price · Bollinger Bands</div>
           {loading && !candles
             ? <div className="h-[240px] flex items-center justify-center text-[#484f58] text-sm">Loading…</div>
-            : <PriceChart candles={candles} interval={{ '1H':'1h','4H':'4h','1D':'1d','1W':'1w' }[timeframe]} color={coin.color} />
+            : <PriceChart candles={candles} interval={{ '1H':'1h','4H':'4h','1D':'1d','1W':'1w' }[timeframe]} color={coin.color} coinName={`${coin.symbol} · ${timeframe}`} />
           }
         </div>
 
