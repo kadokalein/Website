@@ -91,8 +91,17 @@ export default function Subscribe() {
     setBusy(true); setErr('');
     const { error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
     setBusy(false);
-    if (error) { setErr(error.message); return; }
-    // onAuthStateChange will update user; useEffect will check subscription
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('invalid') || msg.includes('not found')) {
+        setErr('No account found. Try "Create account" above, or check your email and password.');
+      } else if (msg.includes('email not confirmed')) {
+        setErr('Please check your inbox and click the confirmation link before signing in.');
+      } else {
+        setErr(error.message);
+      }
+      return;
+    }
   }
 
   async function handleOAuth(provider) {
@@ -326,6 +335,13 @@ export default function Subscribe() {
               }
             </div>
           )}
+        </div>
+
+        {/* Admin shortcut */}
+        <div className="text-center mt-6">
+          <Link to="/admin" className="text-xs text-[#484f58] hover:text-[#8b949e] transition-colors">
+            Admin access →
+          </Link>
         </div>
       </main>
     </div>
