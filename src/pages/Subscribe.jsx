@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isSupabaseConfigured, STRIPE_PAYMENT_LINK, ADMIN_EMAIL } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
@@ -20,7 +20,8 @@ const BTN_SOCIAL = 'w-full py-2.5 rounded-lg border border-[#30363d] bg-[#21262d
 export default function Subscribe() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState('signup'); // signup | signin | payment | success
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState(searchParams.get('mode') === 'signin' ? 'signin' : 'signup');
   const [form, setForm] = useState({ name: '', email: '', password: '', country: '' });
   const [card, setCard] = useState({ number: '', expiry: '', cvv: '', nameOnCard: '' });
   const [err, setErr] = useState('');

@@ -25,6 +25,12 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <TimeframeToggle value={timeframe} onChange={setTimeframe} />
             <Link
+              to="/subscribe?mode=signin"
+              className="px-3 py-1.5 rounded-lg border border-[#30363d] bg-[#21262d] hover:bg-[#30363d] text-white text-sm font-medium transition-colors whitespace-nowrap"
+            >
+              Login
+            </Link>
+            <Link
               to="/subscribe"
               className="px-3 py-1.5 rounded-lg bg-[#238636] hover:bg-[#2ea043] text-white text-sm font-semibold transition-colors whitespace-nowrap"
             >
