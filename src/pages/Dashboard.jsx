@@ -9,34 +9,27 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
-      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          {/* Logo + title */}
-          <div className="flex items-center gap-3 min-w-0">
-            <img src="/Website/logo.svg" alt="Promethea Programs" className="w-8 h-8 rounded-full flex-shrink-0" />
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold text-white tracking-tight">Promethea Programs</h1>
-              <p className="text-xs text-[#8b949e]">Crypto Volatility &amp; Entry Tracker — refreshes every 5 s</p>
-            </div>
-            <h1 className="sm:hidden text-base font-semibold text-white">Promethea</h1>
+      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
+        {/* Row 1: Logo + title + Login/Subscribe always visible */}
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <img src="/Website/logo.svg" alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
+            <span className="font-semibold text-white text-sm sm:text-base truncate">Promethea Programs</span>
           </div>
-
-          {/* Right controls — always visible */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <TimeframeToggle value={timeframe} onChange={setTimeframe} />
-            <Link
-              to="/subscribe?mode=signin"
-              className="px-3 py-1.5 rounded-lg bg-[#1f6feb] hover:bg-[#388bfd] text-white text-sm font-medium transition-colors whitespace-nowrap"
-            >
+            <Link to="/subscribe?mode=signin"
+              className="px-3 py-1.5 rounded-lg bg-[#1f6feb] hover:bg-[#388bfd] text-white text-sm font-medium transition-colors">
               Login
             </Link>
-            <Link
-              to="/subscribe"
-              className="px-3 py-1.5 rounded-lg bg-[#238636] hover:bg-[#2ea043] text-white text-sm font-semibold transition-colors whitespace-nowrap"
-            >
+            <Link to="/subscribe"
+              className="px-3 py-1.5 rounded-lg bg-[#238636] hover:bg-[#2ea043] text-white text-sm font-semibold transition-colors">
               Subscribe
             </Link>
           </div>
+        </div>
+        {/* Row 2: Timeframe toggle */}
+        <div className="max-w-7xl mx-auto">
+          <TimeframeToggle value={timeframe} onChange={setTimeframe} />
         </div>
       </header>
 

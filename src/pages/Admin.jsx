@@ -179,19 +179,27 @@ export default function Admin() {
     if (loginForm.email !== ADMIN_EMAIL) { setLoginErr('Access denied: not the admin email.'); return; }
     setLoginBusy(true);
 
-    // Try signing in first
     const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email, password: loginForm.password });
 
     if (!error) { setLoginBusy(false); return; }
 
-    // If account doesn't exist yet, create it automatically
-    if (error.message.toLowerCase().includes('invalid') || error.message.toLowerCase().includes('not found')) {
+    const msg = error.message.toLowerCase();
+
+    if (msg.includes('email not confirmed')) {
+      setLoginErr('');
+      setLoginInfo('✉ Check your email inbox and click the confirmation link Supabase sent, then try again. Or disable email confirmation in Supabase → Authentication → Settings.');
+      setLoginBusy(false); return;
+    }
+
+    if (msg.includes('invalid') || msg.includes('not found') || msg.includes('no user')) {
       setLoginInfo('Account not found — creating it now…');
       const { error: signUpErr } = await supabase.auth.signUp({ email: loginForm.email, password: loginForm.password });
-      if (signUpErr) { setLoginErr(signUpErr.message); setLoginBusy(false); return; }
-      // Sign in immediately after sign-up
+      if (signUpErr) { setLoginErr(signUpErr.message); setLoginInfo(''); setLoginBusy(false); return; }
       const { error: retryErr } = await supabase.auth.signInWithPassword({ email: loginForm.email, password: loginForm.password });
-      if (retryErr) { setLoginErr('Account created — check your email to confirm, then sign in again.'); setLoginBusy(false); return; }
+      if (retryErr) {
+        setLoginInfo('✉ Account created! Check your email for a confirmation link, click it, then sign in here.');
+        setLoginBusy(false); return;
+      }
     } else {
       setLoginErr(error.message);
     }
