@@ -17,7 +17,7 @@ export default function Dashboard() {
                 Promethea Programs
               </h1>
               <p className="text-xs text-[#8b949e] mt-0.5">
-                Crypto Volatility &amp; Entry Tracker — live data, refreshes every 60 s
+                Crypto Volatility &amp; Entry Tracker — live data, refreshes every 5 s
               </p>
             </div>
           </div>

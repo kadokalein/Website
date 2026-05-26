@@ -4,7 +4,7 @@ import { analyzeCandles } from '../utils/indicators';
 // CryptoCompare public API — no key required, full CORS support on all browsers/iOS
 const CC_BASE    = 'https://min-api.cryptocompare.com/data/v2';
 const LIMIT      = 500;
-const REFRESH_MS = 60_000;
+const REFRESH_MS = 5_000;
 
 // Map app timeframes → CryptoCompare endpoint + aggregate param
 const TF_CONFIG = {
