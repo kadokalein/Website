@@ -155,6 +155,7 @@ export default function Admin() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [loginErr, setLoginErr] = useState('');
   const [loginBusy, setLoginBusy] = useState(false);
+  const [loginInfo, setLoginInfo] = useState('');
 
   const isAdmin = user?.email === ADMIN_EMAIL;
   const isDemo = !isSupabaseConfigured;
@@ -174,18 +175,27 @@ export default function Admin() {
 
   async function handleAdminLogin(e) {
     e.preventDefault();
-    setLoginErr('');
+    setLoginErr(''); setLoginInfo('');
+    if (loginForm.email !== ADMIN_EMAIL) { setLoginErr('Access denied: not the admin email.'); return; }
     setLoginBusy(true);
-    if (!isSupabaseConfigured) {
-      // Demo: allow any credentials for local preview
-      setLoginErr('Supabase not configured — showing demo data.');
-      setLoginBusy(false);
-      return;
-    }
+
+    // Try signing in first
     const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email, password: loginForm.password });
+
+    if (!error) { setLoginBusy(false); return; }
+
+    // If account doesn't exist yet, create it automatically
+    if (error.message.toLowerCase().includes('invalid') || error.message.toLowerCase().includes('not found')) {
+      setLoginInfo('Account not found — creating it now…');
+      const { error: signUpErr } = await supabase.auth.signUp({ email: loginForm.email, password: loginForm.password });
+      if (signUpErr) { setLoginErr(signUpErr.message); setLoginBusy(false); return; }
+      // Sign in immediately after sign-up
+      const { error: retryErr } = await supabase.auth.signInWithPassword({ email: loginForm.email, password: loginForm.password });
+      if (retryErr) { setLoginErr('Account created — check your email to confirm, then sign in again.'); setLoginBusy(false); return; }
+    } else {
+      setLoginErr(error.message);
+    }
     setLoginBusy(false);
-    if (error) { setLoginErr(error.message); return; }
-    if (loginForm.email !== ADMIN_EMAIL) setLoginErr('Access denied: not an admin account.');
   }
 
   async function handleSignOut() {
@@ -230,6 +240,7 @@ export default function Admin() {
                 className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-white placeholder-[#484f58] text-sm focus:outline-none focus:border-[#58a6ff]"
                 type="password" placeholder="Password" value={loginForm.password}
                 onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} />
+              {loginInfo && <p className="text-blue-400 text-xs">{loginInfo}</p>}
               {loginErr && <p className="text-red-400 text-xs">{loginErr}</p>}
               <button type="submit" disabled={loginBusy}
                 className="w-full py-3 rounded-lg bg-[#6e40c9] hover:bg-[#7d4fd4] text-white font-semibold text-sm transition-colors disabled:opacity-50">
