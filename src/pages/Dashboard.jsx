@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { COINS } from '../constants';
 import CoinCard from '../components/CoinCard';
 import TimeframeToggle from '../components/TimeframeToggle';
@@ -21,7 +22,15 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <TimeframeToggle value={timeframe} onChange={setTimeframe} />
+          <div className="flex items-center gap-2">
+            <TimeframeToggle value={timeframe} onChange={setTimeframe} />
+            <Link
+              to="/subscribe"
+              className="px-3 py-1.5 rounded-lg bg-[#238636] hover:bg-[#2ea043] text-white text-sm font-semibold transition-colors whitespace-nowrap"
+            >
+              Subscribe
+            </Link>
+          </div>
         </div>
       </header>
 
