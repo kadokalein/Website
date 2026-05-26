@@ -111,10 +111,14 @@ export default function Subscribe() {
     if (!card.expiry.match(/^\d{2}\/\d{2}$/)) { setBusy(false); setErr('Enter expiry as MM/YY.'); return; }
     if (card.cvv.length < 3) { setBusy(false); setErr('Enter a valid CVV.'); return; }
 
-    // If Stripe Payment Link is configured, redirect there
+    // Redirect to Stripe Payment Link
     if (STRIPE_PAYMENT_LINK) {
-      const link = `${STRIPE_PAYMENT_LINK}?client_reference_id=${user.id}&prefilled_email=${encodeURIComponent(user.email)}&success_url=${encodeURIComponent(window.location.href + '?payment_success=1')}`;
-      window.location.href = link;
+      const successUrl = `${window.location.origin}${window.location.pathname}#/subscribe?payment_success=1`;
+      const params = new URLSearchParams({
+        client_reference_id: user.id,
+        prefilled_email: user.email,
+      });
+      window.location.href = `${STRIPE_PAYMENT_LINK}?${params.toString()}`;
       return;
     }
 

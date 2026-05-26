@@ -8,3 +8,4 @@ export const isSupabaseConfigured = Boolean(url && key);
 
 export const ADMIN_EMAIL = 'sk.8trboi247@live.com';
 export const STRIPE_PAYMENT_LINK = import.meta.env.VITE_STRIPE_PAYMENT_LINK || '';
+export const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
