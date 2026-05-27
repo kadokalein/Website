@@ -269,7 +269,7 @@ export default function ChartPage() {
       {data && (
         <div className="flex-shrink-0 border-t border-[#30363d] bg-[#161b22] px-4 py-2 grid grid-cols-4 gap-1 text-center">
           {[
-            { label: 'Volatility', value: data.volatility.toUpperCase(), color: data.volatility === 'low' ? 'text-green-400' : data.volatility === 'high' ? 'text-red-400' : 'text-yellow-400' },
+            { label: 'Volatility', value: data.volatility ? data.volatility.toUpperCase() : '—', color: data.volatility === 'low' ? 'text-green-400' : data.volatility === 'high' ? 'text-red-400' : 'text-yellow-400' },
             { label: 'RSI', value: data.rsi != null ? data.rsi.toFixed(1) : '—', color: data.rsi < 30 ? 'text-green-400' : data.rsi > 70 ? 'text-red-400' : 'text-white' },
             { label: 'MACD', value: data.macd?.status ? data.macd.status.charAt(0).toUpperCase() + data.macd.status.slice(1) : '—', color: data.macd?.status === 'bullish' ? 'text-green-400' : data.macd?.status === 'bearish' ? 'text-red-400' : 'text-yellow-400' },
             { label: 'Entry', value: data.entrySignal ? '● Active' : `${data.activeConditions}/5`, color: data.entrySignal ? 'text-green-400' : 'text-[#8b949e]' },
