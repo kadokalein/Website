@@ -97,7 +97,7 @@ export default function CoinDetail() {
           <div className="text-xs font-semibold text-[#484f58] uppercase tracking-widest mb-3">Price · Bollinger Bands</div>
           {loading && !candles
             ? <div className="h-[240px] flex items-center justify-center text-[#484f58] text-sm">Loading…</div>
-            : <PriceChart candles={candles} interval={{ '1H':'1h','4H':'4h','1D':'1d','1W':'1w' }[timeframe]} color={coin.color} coinName={`${coin.symbol} · ${timeframe}`} />
+            : <PriceChart candles={candles} interval={{ '1H':'1h','4H':'4h','1D':'1d','1W':'1w' }[timeframe]} color={coin.color} coinSymbol={coin.symbol} timeframe={timeframe} />
           }
         </div>
 
