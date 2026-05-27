@@ -38,7 +38,7 @@ async function fetchCandles(symbol, timeframe) {
   return { candles: parseCC(json.Data.Data), interval };
 }
 
-export function useCoinData(coinSymbol, timeframe) {
+export function useCoinData(coinSymbol, timeframe, refreshMs = REFRESH_MS) {
   const [state, setState] = useState({
     data: null,
     candles: null,
@@ -68,9 +68,9 @@ export function useCoinData(coinSymbol, timeframe) {
 
   useEffect(() => {
     fetchData();
-    const timer = setInterval(fetchData, REFRESH_MS);
+    const timer = setInterval(fetchData, refreshMs);
     return () => clearInterval(timer);
-  }, [fetchData, coinSymbol, timeframe]);
+  }, [fetchData, coinSymbol, timeframe, refreshMs]);
 
   return { ...state, refresh: fetchData };
 }

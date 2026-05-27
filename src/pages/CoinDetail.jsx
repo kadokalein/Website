@@ -31,7 +31,7 @@ export default function CoinDetail() {
   const [timeframe, setTimeframe] = useState('1D');
 
   const coin = COINS.find((c) => c.symbol === symbol);
-  const { data, candles, loading, error, lastUpdated, refresh } = useCoinData(symbol, timeframe);
+  const { data, candles, loading, error, lastUpdated, refresh } = useCoinData(symbol, timeframe, 60_000);
 
   if (!coin) {
     return (
