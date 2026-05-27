@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { createChart, ColorType, LineStyle, CrosshairMode } from 'lightweight-charts';
+import {
+  createChart, ColorType, LineStyle, CrosshairMode,
+  CandlestickSeries, HistogramSeries, LineSeries,
+} from 'lightweight-charts';
 import { COINS } from '../constants';
 import { useCoinData } from '../hooks/useCryptoData';
 import { calcBollingerBands } from '../utils/indicators';
 import TimeframeToggle from '../components/TimeframeToggle';
-
-const TF_MAP = { '1H': '1h', '4H': '4h', '1D': '1d', '1W': '1w' };
 
 function fmtPrice(p) {
   if (p == null) return '—';
@@ -33,8 +34,8 @@ export default function ChartPage() {
 
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
-  const [crosshair, setCrosshair]   = useState(null);
-  const [chartErr, setChartErr]     = useState(null);
+  const [crosshair, setCrosshair] = useState(null);
+  const [chartErr, setChartErr]   = useState(null);
 
   // Block body scroll while this page is open
   useEffect(() => {
@@ -53,7 +54,6 @@ export default function ChartPage() {
   useEffect(() => {
     if (!candles?.length || !containerRef.current) return;
 
-    // Destroy previous chart
     if (chartRef.current) {
       try { chartRef.current.remove(); } catch (_) {}
       chartRef.current = null;
@@ -61,7 +61,6 @@ export default function ChartPage() {
     setChartErr(null);
 
     const el = containerRef.current;
-    // Measure container — if it has no size yet, wait a tick
     if (el.clientHeight < 10) return;
 
     let chart;
@@ -94,63 +93,66 @@ export default function ChartPage() {
         width:  el.clientWidth,
         height: el.clientHeight,
       });
+
+      chartRef.current = chart;
+
+      // ── Candlesticks (v5 API) ─────────────────────────────────────
+      const candleSeries = chart.addSeries(CandlestickSeries, {
+        upColor:         '#3fb950',
+        downColor:       '#f85149',
+        borderUpColor:   '#3fb950',
+        borderDownColor: '#f85149',
+        wickUpColor:     '#3fb950',
+        wickDownColor:   '#f85149',
+      });
+      candleSeries.setData(candles.map(c => ({
+        time: Math.floor(c.time / 1000),
+        open: c.open, high: c.high, low: c.low, close: c.close,
+      })));
+
+      // ── Volume bars (v5 API) ──────────────────────────────────────
+      const volSeries = chart.addSeries(HistogramSeries, {
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'vol',
+      });
+      chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+      volSeries.setData(candles.map(c => ({
+        time:  Math.floor(c.time / 1000),
+        value: c.volume,
+        color: c.close >= c.open ? '#3fb95035' : '#f8514935',
+      })));
+
+      // ── Bollinger Bands (v5 API) ──────────────────────────────────
+      try {
+        const bbs      = calcBollingerBands(candles, 20, 2);
+        const bbOffset = candles.length - bbs.length;
+        const lineOpts = { lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false };
+
+        const bbU = chart.addSeries(LineSeries, { ...lineOpts, color: '#3b4b6b', lineWidth: 1, lineStyle: LineStyle.Dashed });
+        const bbM = chart.addSeries(LineSeries, { ...lineOpts, color: '#484f58', lineWidth: 1, lineStyle: LineStyle.Dotted });
+        const bbL = chart.addSeries(LineSeries, { ...lineOpts, color: '#3b4b6b', lineWidth: 1, lineStyle: LineStyle.Dashed });
+
+        bbU.setData(bbs.map((b, i) => ({ time: Math.floor(candles[i + bbOffset].time / 1000), value: b.upper })));
+        bbM.setData(bbs.map((b, i) => ({ time: Math.floor(candles[i + bbOffset].time / 1000), value: b.middle })));
+        bbL.setData(bbs.map((b, i) => ({ time: Math.floor(candles[i + bbOffset].time / 1000), value: b.lower })));
+      } catch (_) { /* BB calc failed silently */ }
+
+      // ── Crosshair → OHLCV bar ─────────────────────────────────────
+      chart.subscribeCrosshairMove(param => {
+        if (!param?.time) { setCrosshair(null); return; }
+        const cd = param.seriesData?.get(candleSeries);
+        const vd = param.seriesData?.get(volSeries);
+        if (cd) setCrosshair({ ...cd, volume: vd?.value });
+      });
+
+      chart.timeScale().fitContent();
+
     } catch (err) {
       setChartErr('Chart failed to load. Tap Back to return.');
+      if (chart) { try { chart.remove(); } catch (_) {} }
+      chartRef.current = null;
       return;
     }
-
-    chartRef.current = chart;
-
-    // ── Candlesticks ──────────────────────────────────────────────
-    const candleSeries = chart.addCandlestickSeries({
-      upColor:         '#3fb950',
-      downColor:       '#f85149',
-      borderUpColor:   '#3fb950',
-      borderDownColor: '#f85149',
-      wickUpColor:     '#3fb950',
-      wickDownColor:   '#f85149',
-    });
-    candleSeries.setData(candles.map(c => ({
-      time: Math.floor(c.time / 1000),
-      open: c.open, high: c.high, low: c.low, close: c.close,
-    })));
-
-    // ── Volume bars ───────────────────────────────────────────────
-    const volSeries = chart.addHistogramSeries({
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'vol',
-    });
-    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
-    volSeries.setData(candles.map(c => ({
-      time:  Math.floor(c.time / 1000),
-      value: c.volume,
-      color: c.close >= c.open ? '#3fb95035' : '#f8514935',
-    })));
-
-    // ── Bollinger Bands ───────────────────────────────────────────
-    try {
-      const bbs      = calcBollingerBands(candles, 20, 2);
-      const bbOffset = candles.length - bbs.length;
-      const lineOpts = { lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false };
-
-      const bbU = chart.addLineSeries({ ...lineOpts, color: '#3b4b6b', lineWidth: 1, lineStyle: LineStyle.Dashed });
-      const bbM = chart.addLineSeries({ ...lineOpts, color: '#484f58', lineWidth: 1, lineStyle: LineStyle.Dotted });
-      const bbL = chart.addLineSeries({ ...lineOpts, color: '#3b4b6b', lineWidth: 1, lineStyle: LineStyle.Dashed });
-
-      bbU.setData(bbs.map((b, i) => ({ time: Math.floor(candles[i + bbOffset].time / 1000), value: b.upper })));
-      bbM.setData(bbs.map((b, i) => ({ time: Math.floor(candles[i + bbOffset].time / 1000), value: b.middle })));
-      bbL.setData(bbs.map((b, i) => ({ time: Math.floor(candles[i + bbOffset].time / 1000), value: b.lower })));
-    } catch (_) { /* BB calc failed silently */ }
-
-    // ── Crosshair → OHLCV bar ─────────────────────────────────────
-    chart.subscribeCrosshairMove(param => {
-      if (!param?.time) { setCrosshair(null); return; }
-      const cd = param.seriesData?.get(candleSeries);
-      const vd = param.seriesData?.get(volSeries);
-      if (cd) setCrosshair({ ...cd, volume: vd?.value });
-    });
-
-    chart.timeScale().fitContent();
 
     // Resize observer
     const ro = new ResizeObserver(() => {
@@ -162,7 +164,7 @@ export default function ChartPage() {
 
     return () => {
       ro.disconnect();
-      try { chart.remove(); } catch (_) {}
+      try { chartRef.current?.remove(); } catch (_) {}
       chartRef.current = null;
     };
   }, [candles]);
@@ -176,21 +178,18 @@ export default function ChartPage() {
     );
   }
 
-  const currentPrice = data?.currentPrice ?? candles?.[candles?.length - 1]?.close;
+  const currentPrice = data?.currentPrice ?? candles?.[candles.length - 1]?.close;
   const prevClose    = candles?.length >= 2 ? candles[candles.length - 2].close : null;
   const change       = currentPrice != null && prevClose ? currentPrice - prevClose : null;
   const changePct    = change != null && prevClose ? (change / prevClose) * 100 : null;
 
-  // HEADER HEIGHT ≈ 96px, OHLCV bar ≈ 36px, BOTTOM ≈ 52px → chart fills the rest
   return (
-    // position:fixed covers full screen including Safari chrome area
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column' }}
       className="bg-[#0d1117] text-white">
 
       {/* ── HEADER ────────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-b border-[#30363d] px-4 pt-12 pb-2 sm:pt-3">
         <div className="flex items-center justify-between mb-2">
-          {/* Back + coin */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(`/coin/${symbol}`)}
@@ -209,7 +208,6 @@ export default function ChartPage() {
             </div>
           </div>
 
-          {/* Price + change */}
           <div className="text-right">
             {currentPrice != null && (
               <>
@@ -224,7 +222,6 @@ export default function ChartPage() {
           </div>
         </div>
 
-        {/* Timeframe */}
         <TimeframeToggle value={timeframe} onChange={setTimeframe} />
       </div>
 
@@ -270,9 +267,9 @@ export default function ChartPage() {
         <div className="flex-shrink-0 border-t border-[#30363d] bg-[#161b22] px-4 py-2 grid grid-cols-4 gap-1 text-center">
           {[
             { label: 'Volatility', value: data.volatility ? data.volatility.toUpperCase() : '—', color: data.volatility === 'low' ? 'text-green-400' : data.volatility === 'high' ? 'text-red-400' : 'text-yellow-400' },
-            { label: 'RSI', value: data.rsi != null ? data.rsi.toFixed(1) : '—', color: data.rsi < 30 ? 'text-green-400' : data.rsi > 70 ? 'text-red-400' : 'text-white' },
+            { label: 'RSI', value: data.rsi != null ? data.rsi.toFixed(1) : '—', color: data.rsi != null && data.rsi < 30 ? 'text-green-400' : data.rsi != null && data.rsi > 70 ? 'text-red-400' : 'text-white' },
             { label: 'MACD', value: data.macd?.status ? data.macd.status.charAt(0).toUpperCase() + data.macd.status.slice(1) : '—', color: data.macd?.status === 'bullish' ? 'text-green-400' : data.macd?.status === 'bearish' ? 'text-red-400' : 'text-yellow-400' },
-            { label: 'Entry', value: data.entrySignal ? '● Active' : `${data.activeConditions}/5`, color: data.entrySignal ? 'text-green-400' : 'text-[#8b949e]' },
+            { label: 'Entry', value: data.entrySignal ? '● Active' : `${data.activeConditions ?? 0}/5`, color: data.entrySignal ? 'text-green-400' : 'text-[#8b949e]' },
           ].map(({ label, value, color }) => (
             <div key={label}>
               <div className="text-[9px] text-[#484f58] uppercase tracking-wider">{label}</div>
