@@ -625,6 +625,63 @@
     }
     .prod-card:hover .prod-add { opacity: 1; }
 
+    /* ── 360° VIEWER ── */
+    .viewer-overlay {
+      position: fixed; inset: 0; z-index: 4000;
+      background: #000; opacity: 0; pointer-events: none;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transition: opacity .25s;
+    }
+    .viewer-overlay.open { opacity: 1; pointer-events: all; }
+    .viewer-close-btn {
+      position: absolute; top: 22px; right: 28px;
+      background: none; border: none; color: var(--g3);
+      font-size: 28px; cursor: pointer; line-height: 1;
+      transition: color .12s;
+    }
+    .viewer-close-btn:hover { color: var(--white); }
+    .viewer-scene {
+      width: min(70vmin, 520px); height: min(70vmin, 520px);
+      cursor: grab; user-select: none; position: relative;
+    }
+    .viewer-scene:active { cursor: grabbing; }
+    .viewer-scene img {
+      width: 100%; height: 100%; object-fit: contain;
+      will-change: transform; transform-origin: center center;
+    }
+    .viewer-dots {
+      position: absolute; bottom: -36px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 6px;
+    }
+    .viewer-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--g1); transition: background .15s; cursor: pointer;
+    }
+    .viewer-dot.active { background: var(--white); }
+    .viewer-hint {
+      margin-top: 52px; font-size: 9px; letter-spacing: 4px;
+      text-transform: uppercase; color: var(--g2);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .viewer-hint::before, .viewer-hint::after {
+      content: '←'; font-size: 12px;
+    }
+    .viewer-hint::after { content: '→'; }
+    .viewer-360-badge {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      padding: 5px 10px; font-size: 9px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--g3);
+    }
+    .viewer-zoom-note {
+      margin-top: 16px; font-size: 9px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--g1);
+    }
+    /* Gallery image shows a cursor hint */
+    .pdp-gallery img { cursor: zoom-in; }
+
     /* ── LOADING SPINNER ── */
     .loading-ring {
       display: inline-block; width: 18px; height: 18px;
@@ -678,7 +735,7 @@
     <div class="pdp-main">
       <!-- Gallery -->
       <div class="pdp-gallery">
-        <img id="pdpImg" src="" alt="">
+        <img id="pdpImg" src="" alt="" onclick="openViewer(this.src)" title="Click to view 360°">
         <div class="pdp-thumbs" id="pdpThumbs"></div>
       </div>
 
@@ -695,12 +752,12 @@
 
         <div class="pdp-label">Select Size</div>
         <div class="pdp-sizes">
-          <button class="size-btn" data-size="XS">XS</button>
-          <button class="size-btn" data-size="S">S</button>
-          <button class="size-btn" data-size="M">M</button>
-          <button class="size-btn" data-size="L">L</button>
-          <button class="size-btn" data-size="XL">XL</button>
-          <button class="size-btn" data-size="XXL">XXL</button>
+          <button class="size-btn" data-size="XS" onclick="selectSize(this)">XS</button>
+          <button class="size-btn" data-size="S"  onclick="selectSize(this)">S</button>
+          <button class="size-btn" data-size="M"  onclick="selectSize(this)">M</button>
+          <button class="size-btn" data-size="L"  onclick="selectSize(this)">L</button>
+          <button class="size-btn" data-size="XL" onclick="selectSize(this)">XL</button>
+          <button class="size-btn" data-size="XXL" onclick="selectSize(this)">XXL</button>
         </div>
         <span class="pdp-size-guide" onclick="openSizeGuide()">Size guide →</span>
 
@@ -755,6 +812,21 @@
       </table>
       <button class="sg-close-btn" onclick="closeSizeGuide()">Close</button>
     </div>
+  </div>
+
+  <!-- 360° Image Viewer -->
+  <div class="viewer-overlay" id="viewerOverlay">
+    <button class="viewer-close-btn" onclick="closeViewer()">×</button>
+    <div class="viewer-scene" id="viewerScene">
+      <div class="viewer-360-badge">360°</div>
+      <img id="viewerImg" src="" alt="" draggable="false">
+      <div class="viewer-dots" id="viewerDots">
+        <div class="viewer-dot active" onclick="viewerGoTo(0)"></div>
+        <div class="viewer-dot" onclick="viewerGoTo(1)"></div>
+      </div>
+    </div>
+    <div class="viewer-hint">Drag to rotate</div>
+    <div class="viewer-zoom-note">Esc to close</div>
   </div>
 
   <!-- Announcement -->
@@ -1395,6 +1467,141 @@
       if (el) el.textContent = 'LOOK ' + String(look).padStart(2,'0');
     }, 3200);
 
+    /* ── 360° VIEWER ── */
+    let vDragging = false;
+    let vStartX = 0;
+    let vTotalDrag = 0;       // accumulated px
+    let vCurrentFront = true;
+    let vFrontSrc = '';
+    let vBackSrc  = '';
+    let vAutoRaf  = null;
+
+    function openViewer(clickedSrc) {
+      // Determine front/back sources from what's currently showing
+      const pdpImg = document.getElementById('pdpImg');
+      const src = clickedSrc || pdpImg.src;
+
+      // Front = whatever is displayed; back = the other shirt view
+      if (src.includes('back')) {
+        vFrontSrc = src;
+        vBackSrc  = src.replace('tshirt-back.svg', 'tshirt-dark.svg').replace(/tshirt-dark/, 'tshirt').replace(/tshirt\.svg/, 'tshirt-dark.svg');
+      } else if (src.includes('dark')) {
+        vFrontSrc = src;
+        vBackSrc  = src.replace('tshirt-dark.svg', 'tshirt-back.svg');
+      } else {
+        vFrontSrc = src;
+        vBackSrc  = src.replace('tshirt.svg', 'tshirt-back.svg');
+      }
+
+      vCurrentFront = true;
+      vTotalDrag = 0;
+
+      const img = document.getElementById('viewerImg');
+      img.src = vFrontSrc;
+      img.style.transform = 'scaleX(1)';
+      img.style.transition = 'none';
+
+      updateViewerDots(true);
+      document.getElementById('viewerOverlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      // Auto-spin once on open
+      setTimeout(autoSpinOnce, 300);
+    }
+
+    function closeViewer() {
+      if (vAutoRaf) { cancelAnimationFrame(vAutoRaf); vAutoRaf = null; }
+      document.getElementById('viewerOverlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function autoSpinOnce() {
+      const img = document.getElementById('viewerImg');
+      const totalFrames = 90;
+      let frame = 0;
+      let front = true;
+
+      function tick() {
+        if (!document.getElementById('viewerOverlay').classList.contains('open')) return;
+        if (vDragging) return; // stop auto if user grabbed it
+
+        frame++;
+        const progress = frame / totalFrames; // 0→1 = one full "rotation"
+
+        // Two flip cycles in one full spin: 0-0.25 squeeze, 0.25-0.5 expand (back),
+        //   0.5-0.75 squeeze, 0.75-1 expand (front)
+        const phase = (progress * 4) % 1;
+        const quarter = Math.floor(progress * 4);
+
+        let scaleX;
+        if (quarter === 0)      { scaleX = 1 - phase; if (scaleX < 0.05 && front)  { front = false; img.src = vBackSrc;  updateViewerDots(false); } }
+        else if (quarter === 1) { scaleX = phase; }
+        else if (quarter === 2) { scaleX = 1 - phase; if (scaleX < 0.05 && !front) { front = true;  img.src = vFrontSrc; updateViewerDots(true);  } }
+        else                    { scaleX = phase; }
+
+        img.style.transform = `scaleX(${Math.max(0.02, scaleX)})`;
+
+        if (frame < totalFrames) {
+          vAutoRaf = requestAnimationFrame(tick);
+        } else {
+          img.style.transform = 'scaleX(1)';
+          vCurrentFront = front;
+        }
+      }
+      vAutoRaf = requestAnimationFrame(tick);
+    }
+
+    function applyViewerDrag(deltaX) {
+      if (vAutoRaf) { cancelAnimationFrame(vAutoRaf); vAutoRaf = null; }
+      vTotalDrag += deltaX;
+
+      // Every 140px of drag = 180° (one flip front↔back)
+      const angle = ((vTotalDrag * 1.286) % 360 + 360) % 360;
+      const showFront = angle < 90 || angle > 270;
+
+      const img = document.getElementById('viewerImg');
+      if (showFront !== vCurrentFront) {
+        vCurrentFront = showFront;
+        img.src = showFront ? vFrontSrc : vBackSrc;
+        updateViewerDots(showFront);
+      }
+
+      // scaleX compression: cos of angle within current half (0=full, 90=flat, 0=full)
+      const halfAngle = showFront
+        ? (angle <= 90 ? angle : 360 - angle)
+        : (angle <= 180 ? angle - 90 : 270 - angle);
+      const scaleX = Math.cos(halfAngle * Math.PI / 180);
+      img.style.transform = `scaleX(${Math.max(0.03, scaleX)})`;
+      img.style.transition = 'none';
+    }
+
+    function viewerGoTo(index) {
+      const img = document.getElementById('viewerImg');
+      img.style.transition = 'transform .2s';
+      img.style.transform = 'scaleX(1)';
+      vCurrentFront = index === 0;
+      img.src = vCurrentFront ? vFrontSrc : vBackSrc;
+      vTotalDrag = vCurrentFront ? 0 : 140;
+      updateViewerDots(vCurrentFront);
+    }
+
+    function updateViewerDots(isFront) {
+      const dots = document.querySelectorAll('.viewer-dot');
+      dots.forEach((d, i) => d.classList.toggle('active', i === (isFront ? 0 : 1)));
+    }
+
+    /* Mouse events */
+    (function() {
+      const scene = document.getElementById('viewerScene');
+      if (!scene) return;
+      scene.addEventListener('mousedown',  e => { vDragging = true;  vStartX = e.clientX; e.preventDefault(); });
+      scene.addEventListener('touchstart', e => { vDragging = true;  vStartX = e.touches[0].clientX; }, { passive: true });
+      document.addEventListener('mousemove',  e => { if (vDragging) applyViewerDrag(e.clientX - vStartX); vStartX = e.clientX; });
+      document.addEventListener('touchmove',  e => { if (vDragging) { applyViewerDrag(e.touches[0].clientX - vStartX); vStartX = e.touches[0].clientX; } }, { passive: true });
+      document.addEventListener('mouseup',   () => { vDragging = false; });
+      document.addEventListener('touchend',  () => { vDragging = false; });
+    })();
+
     /* ── Size Guide ── */
     function openSizeGuide() {
       document.getElementById('sgOverlay').classList.add('open');
@@ -1422,7 +1629,8 @@
     /* ── Keyboard close ── */
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        if (document.getElementById('sgOverlay').classList.contains('open')) { closeSizeGuide(); }
+        if (document.getElementById('viewerOverlay').classList.contains('open')) { closeViewer(); }
+        else if (document.getElementById('sgOverlay').classList.contains('open')) { closeSizeGuide(); }
         else if (document.getElementById('cartDrawer').classList.contains('open')) { closeCart(); }
         else { closePDP(); }
       }
