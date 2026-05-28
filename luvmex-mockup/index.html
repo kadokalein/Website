@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LUVMEX — Modern Redesign Mockup</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -189,10 +189,10 @@
     }
 
     .hero-title {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(72px, 9vw, 130px);
-      line-height: 0.9;
-      letter-spacing: 2px;
+      font-family: 'UnifrakturMaguntia', cursive;
+      font-size: clamp(68px, 8.5vw, 118px);
+      line-height: 0.95;
+      letter-spacing: 1px;
       color: var(--off-white);
       margin-bottom: 28px;
     }
@@ -505,32 +505,13 @@
       position: absolute;
       inset: 0;
       transition: transform 0.5s ease;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      display: block;
     }
     .product-card:hover .product-photo { transform: scale(1.05); }
-
-    /* Product photo placeholder gradients */
-    .p1 { background: linear-gradient(160deg, #1c1208 0%, #2e1f08 60%, #0f0d0a 100%); }
-    .p2 { background: linear-gradient(160deg, #0a0f14 0%, #141f2e 60%, #08080d 100%); }
-    .p3 { background: linear-gradient(160deg, #0f1208 0%, #1c2208 60%, #0a0d05 100%); }
-    .p4 { background: linear-gradient(160deg, #140a0a 0%, #241010 60%, #0d0808 100%); }
-    .p5 { background: linear-gradient(160deg, #0a0a14 0%, #10102e 60%, #06060f 100%); }
-    .p6 { background: linear-gradient(160deg, #12100a 0%, #221e0f 60%, #0d0b08 100%); }
-    .p7 { background: linear-gradient(160deg, #0a1410 0%, #102e24 60%, #08100d 100%); }
-    .p8 { background: linear-gradient(160deg, #140c0a 0%, #2e1810 60%, #0d0806 100%); }
-
-    /* Decorative pattern on product cards */
-    .product-photo::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: repeating-linear-gradient(
-        45deg,
-        rgba(200,169,110,0.03) 0px,
-        rgba(200,169,110,0.03) 1px,
-        transparent 1px,
-        transparent 20px
-      );
-    }
 
     .product-badge {
       position: absolute;
@@ -1123,7 +1104,7 @@
 
       <div class="product-card">
         <div class="product-img">
-          <div class="product-photo p1"></div>
+          <img class="product-photo" src="tshirt.svg" alt="">
           <span class="product-badge new">New</span>
           <div class="product-actions">
             <button class="add-to-cart">Add to Cart</button>
@@ -1142,7 +1123,7 @@
 
       <div class="product-card">
         <div class="product-img">
-          <div class="product-photo p2"></div>
+          <img class="product-photo" src="tshirt.svg" alt="">
           <span class="product-badge new">New</span>
           <div class="product-actions">
             <button class="add-to-cart">Add to Cart</button>
@@ -1160,7 +1141,7 @@
 
       <div class="product-card">
         <div class="product-img">
-          <div class="product-photo p3"></div>
+          <img class="product-photo" src="tshirt.svg" alt="">
           <div class="product-actions">
             <button class="add-to-cart">Add to Cart</button>
           </div>
@@ -1178,7 +1159,7 @@
 
       <div class="product-card">
         <div class="product-img">
-          <div class="product-photo p4"></div>
+          <img class="product-photo" src="tshirt.svg" alt="">
           <span class="product-badge sold">Sold Out</span>
           <div class="product-actions">
             <button class="add-to-cart">Notify Me</button>
@@ -1195,7 +1176,7 @@
 
       <div class="product-card">
         <div class="product-img">
-          <div class="product-photo p5"></div>
+          <img class="product-photo" src="tshirt.svg" alt="">
           <span class="product-badge new">New</span>
           <div class="product-actions">
             <button class="add-to-cart">Add to Cart</button>
@@ -1213,7 +1194,7 @@
 
       <div class="product-card">
         <div class="product-img">
-          <div class="product-photo p6"></div>
+          <img class="product-photo" src="tshirt.svg" alt="">
           <div class="product-actions">
             <button class="add-to-cart">Add to Cart</button>
           </div>
@@ -1231,7 +1212,7 @@
 
       <div class="product-card">
         <div class="product-img">
-          <div class="product-photo p7"></div>
+          <img class="product-photo" src="tshirt.svg" alt="">
           <span class="product-badge new">New</span>
           <div class="product-actions">
             <button class="add-to-cart">Add to Cart</button>
@@ -1249,7 +1230,7 @@
 
       <div class="product-card">
         <div class="product-img">
-          <div class="product-photo p8"></div>
+          <img class="product-photo" src="tshirt.svg" alt="">
           <div class="product-actions">
             <button class="add-to-cart">Add to Cart</button>
           </div>
