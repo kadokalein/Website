@@ -294,25 +294,58 @@
     .see-all:hover { color:var(--white);border-color:var(--g3); }
 
     /* ── CATEGORIES ── */
-    .cats { background:var(--black);padding-top:72px; }
-    .cats-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:2px; }
-    .cat-item { position:relative;aspect-ratio:3/4;overflow:hidden;cursor:pointer;background:var(--d1); }
-    .cat-item:first-child { grid-column:span 2;aspect-ratio:auto; }
-    .cat-fill { position:absolute;inset:0;transition:transform .5s ease; }
-    .cat-item:hover .cat-fill { transform:scale(1.04); }
-
-    /* shirt images in category tiles */
-    .cat-fill img { width:100%;height:100%;object-fit:contain;object-position:center bottom; }
-    .cat-fill.bg-dark  { background:#1a1a18; }
-    .cat-fill.bg-light { background:#e8e6e4; }
-    .cat-fill.bg-d2    { background:#0d0f14; }
-    .cat-fill.bg-d3    { background:#0f1208; }
-    .cat-fill.bg-d4    { background:#14080a; }
-
-    .cat-info { position:absolute;bottom:0;left:0;right:0;padding:20px 18px;background:linear-gradient(to top,rgba(0,0,0,0.75),transparent);z-index:2; }
-    .cat-name { font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white); }
-    .cat-item:first-child .cat-name { font-size:30px; }
-    .cat-count { font-size:10px;letter-spacing:2px;color:var(--g3);margin-top:2px; }
+    /* ── COLLECTIONS (full-width banners) ── */
+    .cats { background: var(--black); padding-top: 72px; }
+    .cats .sec-label { padding: 0 80px; }
+    .cats .sec-title { padding: 0 80px; margin-bottom: 24px; }
+    .coll-banner {
+      position: relative; width: 100%; height: 70vh; min-height: 480px;
+      overflow: hidden; cursor: pointer; background: var(--d1);
+    }
+    .coll-banner + .coll-banner { margin-top: 2px; }
+    .coll-banner-imgs {
+      position: absolute; inset: 0;
+      display: grid; gap: 2px;
+    }
+    .coll-banner-imgs.count-1 { grid-template-columns: 1fr; }
+    .coll-banner-imgs.count-2 { grid-template-columns: 1fr 1fr; }
+    .coll-banner-imgs.count-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .coll-banner-imgs.count-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .coll-banner-imgs img {
+      width: 100%; height: 100%; object-fit: contain;
+      background: var(--d2); padding: 20px;
+      transition: transform .6s ease;
+    }
+    .coll-banner:hover .coll-banner-imgs img { transform: scale(1.04); }
+    .coll-banner-veil {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.1) 55%, transparent 100%);
+      pointer-events: none;
+    }
+    .coll-banner-info {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+      padding: 48px 64px;
+      display: flex; align-items: flex-end; justify-content: space-between;
+    }
+    .coll-banner-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--g3); margin-bottom: 8px; }
+    .coll-banner-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(44px, 6vw, 88px); font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0px; line-height: .9;
+    }
+    .coll-banner-count { font-size: 11px; letter-spacing: 2px; color: var(--g3); margin-top: 6px; }
+    .coll-banner-cta {
+      background: none; border: 1px solid rgba(255,255,255,.35);
+      color: var(--white); padding: 14px 32px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: background .14s; white-space: nowrap; flex-shrink: 0;
+    }
+    .coll-banner-cta:hover { background: rgba(255,255,255,.14); }
+    .coll-loading {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--g1);
+    }
 
     /* ── PRODUCTS ── */
     .products { background:var(--off-black); }
@@ -835,8 +868,8 @@
   <!-- Nav -->
   <nav>
     <div class="nav-l">
-      <a href="#">Women</a>
-      <a href="#">Men</a>
+      <a href="#products" onclick="event.preventDefault();filterSection('Women')">Women</a>
+      <a href="#products" onclick="event.preventDefault();filterSection('Men')">Men</a>
       <a href="#">New</a>
       <a href="#">Sale</a>
     </div>
@@ -892,32 +925,43 @@
     <span id="shopifyStatusText">Shopify not connected — add your store credentials in the &lt;script&gt; config at the top of this file</span>
   </div>
 
-  <!-- Categories -->
+  <!-- Collections — full-width banners, images pulled from /images/ folders -->
   <section class="cats">
     <div class="sec-label">Browse</div>
     <div class="sec-title">Collections</div>
-    <div class="cats-grid">
-      <div class="cat-item">
-        <div class="cat-fill bg-dark"><img src="tshirt-dark.svg" alt="Graphic Tees"></div>
-        <div class="cat-info"><div class="cat-name">Graphic Tees</div><div class="cat-count">12 Styles</div></div>
+
+    <!-- Men banner — background images from images/background/, products from men/tops + men/bottoms -->
+    <div class="coll-banner" id="collMen" onclick="filterSection('Men')">
+      <div class="coll-banner-imgs count-1" id="collMenImgs">
+        <div class="coll-loading">Loading…</div>
       </div>
-      <div class="cat-item">
-        <div class="cat-fill bg-light"><img src="tshirt.svg" alt="White Tees"></div>
-        <div class="cat-info"><div class="cat-name">White Tees</div><div class="cat-count">8 Styles</div></div>
-      </div>
-      <div class="cat-item">
-        <div class="cat-fill bg-d2"><img src="tshirt-dark.svg" alt="Outerwear"></div>
-        <div class="cat-info"><div class="cat-name">Outerwear</div><div class="cat-count">6 Styles</div></div>
-      </div>
-      <div class="cat-item">
-        <div class="cat-fill bg-d3"><img src="tshirt.svg" alt="Bottoms"></div>
-        <div class="cat-info"><div class="cat-name">Bottoms</div><div class="cat-count">10 Styles</div></div>
-      </div>
-      <div class="cat-item">
-        <div class="cat-fill bg-d4"><img src="tshirt-dark.svg" alt="Accessories"></div>
-        <div class="cat-info"><div class="cat-name">Accessories</div><div class="cat-count">14 Styles</div></div>
+      <div class="coll-banner-veil"></div>
+      <div class="coll-banner-info">
+        <div>
+          <div class="coll-banner-label">Shop Now</div>
+          <div class="coll-banner-title">Men</div>
+          <div class="coll-banner-count" id="collMenCount">— styles</div>
+        </div>
+        <button class="coll-banner-cta">View Collection</button>
       </div>
     </div>
+
+    <!-- Accessories banner -->
+    <div class="coll-banner" id="collAcc" onclick="filterSection('Accessories')">
+      <div class="coll-banner-imgs count-1" id="collAccImgs">
+        <div class="coll-loading">Loading…</div>
+      </div>
+      <div class="coll-banner-veil"></div>
+      <div class="coll-banner-info">
+        <div>
+          <div class="coll-banner-label">New Arrivals</div>
+          <div class="coll-banner-title">Accessories</div>
+          <div class="coll-banner-count" id="collAccCount">— styles</div>
+        </div>
+        <button class="coll-banner-cta">View Collection</button>
+      </div>
+    </div>
+
   </section>
 
   <!-- Products -->
@@ -931,9 +975,10 @@
     </div>
     <div class="filter-row">
       <button class="ftab on">All</button>
+      <button class="ftab">Men</button>
+      <button class="ftab">Women</button>
       <button class="ftab">Tops</button>
       <button class="ftab">Bottoms</button>
-      <button class="ftab">Outerwear</button>
       <button class="ftab">Accessories</button>
     </div>
 
@@ -1231,9 +1276,15 @@
     }
 
     function switchThumb(el, src) {
+      // src is a relative path; resolve it against the page origin
+      const resolved = src.startsWith('http') ? src : (location.origin + '/' + src.replace(/^\//, ''));
       document.querySelectorAll('.pdp-thumb').forEach(t => t.classList.remove('active'));
       el.classList.add('active');
-      document.getElementById('pdpImg').src = src;
+      const mainImg = document.getElementById('pdpImg');
+      mainImg.style.opacity = '0';
+      mainImg.src = resolved;
+      mainImg.onload = () => { mainImg.style.transition = 'opacity .2s'; mainImg.style.opacity = '1'; };
+      mainImg.onerror = () => { mainImg.src = src; mainImg.style.opacity = '1'; };
     }
 
     function toggleAcc(id) {
@@ -1452,11 +1503,126 @@
       loadShopifyProducts();
     }
 
+    /* ─────────────────────────────────────────────
+       IMAGE DATABASE — reads from /images/ folders via server API
+       Folder structure:
+         images/background/   → collection banner backgrounds
+         images/men/tops/     → men's tops
+         images/men/bottoms/  → men's bottoms
+         images/women/tops/   → women's tops
+         images/women/bottoms/→ women's bottoms
+         images/accessories/  → accessories
+    ───────────────────────────────────────────── */
+    const ImageDB = {
+      _cache: {},
+
+      async load(folderPath) {
+        if (this._cache[folderPath]) return this._cache[folderPath];
+        try {
+          const res = await fetch(`/api/images/${folderPath}`);
+          if (!res.ok) throw new Error(res.status);
+          const data = await res.json();
+          this._cache[folderPath] = data;
+          return data;
+        } catch (e) {
+          console.warn('ImageDB: no server at /api/images — using placeholder SVGs');
+          // Fallback when opened as a plain file (no server)
+          const fallback = {
+            images: ['tshirt-dark.svg', 'tshirt-back.svg', 'tshirt.svg'],
+            subfolders: [],
+          };
+          this._cache[folderPath] = fallback;
+          return fallback;
+        }
+      },
+
+      async allFrom(folderPath) {
+        const data = await this.load(folderPath);
+        return data.images || [];
+      },
+    };
+
+    /* Render a collection banner from image data */
+    async function loadCollectionBanner(imgContainerId, countId, folders, bgFolders) {
+      // Load background images first (for the visual banner)
+      let bgImgs = [];
+      for (const f of bgFolders) {
+        const imgs = await ImageDB.allFrom(f);
+        bgImgs = bgImgs.concat(imgs);
+      }
+
+      // Count total product images across product folders
+      let productCount = 0;
+      for (const f of folders) {
+        const imgs = await ImageDB.allFrom(f);
+        productCount += imgs.length;
+      }
+
+      const container = document.getElementById(imgContainerId);
+      if (!container) return;
+
+      if (bgImgs.length === 0) bgImgs = ['tshirt-dark.svg', 'tshirt-back.svg'];
+
+      // Show up to 4 images in the banner
+      const show = bgImgs.slice(0, 4);
+      container.className = `coll-banner-imgs count-${show.length}`;
+      container.innerHTML = show.map(src =>
+        `<img src="${src}" alt="" loading="lazy">`
+      ).join('');
+
+      const countEl = document.getElementById(countId);
+      if (countEl) countEl.textContent = productCount + ' Styles';
+    }
+
+    /* Filter product grid by section (scroll to products) */
+    function filterSection(section) {
+      document.getElementById('products').scrollIntoView({ behavior: 'smooth' });
+      const tabs = document.querySelectorAll('.ftab');
+      tabs.forEach(t => {
+        t.classList.toggle('on', t.textContent === section || (section === 'Men' && t.textContent === 'Tops'));
+      });
+    }
+
+    /* Load Men banner: bg from images/background, count from men/tops + men/bottoms */
+    loadCollectionBanner('collMenImgs', 'collMenCount',
+      ['men/tops', 'men/bottoms'],
+      ['background', 'men/tops']
+    );
+
+    /* Load Accessories banner */
+    loadCollectionBanner('collAccImgs', 'collAccCount',
+      ['accessories'],
+      ['background', 'accessories']
+    );
+
+    /* Load products section images from folder when a tab is clicked */
+    async function loadFolderProducts(folder) {
+      const imgs = await ImageDB.allFrom(folder);
+      if (imgs.length === 0) return;
+      const cards = document.querySelectorAll('.prod-card');
+      imgs.forEach((src, i) => {
+        if (i < cards.length) {
+          const imgEl = cards[i].querySelector('img');
+          if (imgEl) imgEl.src = src;
+          // Also update ALL_PRODUCTS reference
+          const pid = cards[i].dataset.productId;
+          const p = ALL_PRODUCTS.find(x => x.id === pid);
+          if (p) p.img = src;
+        }
+      });
+    }
+
     /* ── UI interactions ── */
     document.querySelectorAll('.ftab').forEach(t => {
       t.addEventListener('click', () => {
         document.querySelectorAll('.ftab').forEach(x => x.classList.remove('on'));
         t.classList.add('on');
+        const label = t.textContent.trim().toLowerCase();
+        if (label === 'men')         loadFolderProducts('men/tops');
+        else if (label === 'women')  loadFolderProducts('women/tops');
+        else if (label === 'tops')   loadFolderProducts('men/tops');
+        else if (label === 'bottoms')loadFolderProducts('men/bottoms');
+        else if (label === 'accessories') loadFolderProducts('accessories');
       });
     });
 
