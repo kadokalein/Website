@@ -6,9 +6,30 @@
   <title>PROMETHEA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,800;1,600;1,700&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!--
+  ╔══════════════════════════════════════════════════════════╗
+  ║  SHOPIFY SETUP — fill in your store details below       ║
+  ║                                                          ║
+  ║  1. In Shopify Admin → Settings → Apps and sales        ║
+  ║     channels → Develop apps → Create an app             ║
+  ║  2. Under "Storefront API" enable:                       ║
+  ║     • products / variants / media read                   ║
+  ║     • checkouts create                                    ║
+  ║  3. Copy your Storefront Access Token                    ║
+  ║  4. Paste it + your store URL below                      ║
+  ╚══════════════════════════════════════════════════════════╝
+  -->
+  <script>
+    window.SHOPIFY = {
+      domain: 'YOUR-STORE.myshopify.com',          // ← your Shopify domain
+      storefrontToken: 'YOUR_STOREFRONT_TOKEN',     // ← your public Storefront token
+      apiVersion: '2024-01',
+    };
+  </script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
       --black:   #000000;
       --off-black:#0a0a0a;
@@ -23,10 +44,9 @@
       --border:  rgba(255,255,255,0.07);
       --borderM: rgba(255,255,255,0.14);
       --red:     #e00000;
+      --pink:    #ff2d7a;
     }
-
     html { scroll-behavior: smooth; }
-
     body {
       font-family: 'Barlow', sans-serif;
       background: var(--black);
@@ -37,222 +57,194 @@
 
     /* ── ANNOUNCEMENT ── */
     .ann {
-      background: var(--black);
-      border-bottom: 1px solid var(--border);
-      padding: 10px 24px;
-      text-align: center;
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: var(--g3);
+      background: var(--d1); border-bottom: 1px solid var(--border);
+      padding: 10px 24px; text-align: center;
+      font-size: 10px; font-weight: 500;
+      letter-spacing: 3px; text-transform: uppercase; color: var(--g3);
     }
 
     /* ── NAV ── */
     nav {
-      position: sticky;
-      top: 0;
-      z-index: 999;
-      background: var(--black);
-      border-bottom: 1px solid var(--border);
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      padding: 0 36px;
-      height: 56px;
+      position: sticky; top: 0; z-index: 999;
+      background: var(--black); border-bottom: 1px solid var(--border);
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      align-items: center; padding: 0 36px; height: 56px;
     }
     .nav-l, .nav-r { display: flex; align-items: center; gap: 24px; }
     .nav-r { justify-content: flex-end; }
-
     .nav-l a, .nav-r a, .nav-r button {
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 2.5px;
-      text-transform: uppercase;
-      color: var(--g3);
-      text-decoration: none;
-      background: none;
-      border: none;
-      cursor: pointer;
+      font-size: 10px; font-weight: 500; letter-spacing: 2.5px;
+      text-transform: uppercase; color: var(--g3);
+      text-decoration: none; background: none; border: none; cursor: pointer;
       transition: color 0.12s;
     }
     .nav-l a:hover, .nav-r a:hover, .nav-r button:hover { color: var(--white); }
-
     .nav-logo {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: 9px;
-      text-transform: uppercase;
-      color: var(--white);
-      text-decoration: none;
-      text-align: center;
+      font-size: 18px; font-weight: 800;
+      letter-spacing: 9px; text-transform: uppercase;
+      color: var(--white); text-decoration: none; text-align: center;
     }
-
     .nav-cart { position: relative; }
     .cart-dot {
       position: absolute; top: -7px; right: -9px;
-      width: 13px; height: 13px;
-      border-radius: 50%;
-      background: var(--white);
-      color: var(--black);
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--white); color: var(--black);
       font-size: 8px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
     }
 
+    /* ── CART DRAWER ── */
+    .cart-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 1998; opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .cart-overlay.open { opacity: 1; pointer-events: all; }
+    .cart-drawer {
+      position: fixed; top: 0; right: -400px; bottom: 0;
+      width: 380px; background: var(--d1);
+      border-left: 1px solid var(--border);
+      z-index: 1999; display: flex; flex-direction: column;
+      transition: right 0.28s cubic-bezier(0.4,0,0.2,1);
+    }
+    .cart-drawer.open { right: 0; }
+    .cart-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+    }
+    .cart-head h3 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+    }
+    .cart-close { background: none; border: none; color: var(--g3); cursor: pointer; font-size: 20px; }
+    .cart-close:hover { color: var(--white); }
+    .cart-items { flex: 1; overflow-y: auto; padding: 16px 24px; }
+    .cart-empty { text-align: center; padding: 60px 24px; color: var(--g2); font-size: 13px; letter-spacing: 1px; }
+    .cart-item {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .cart-item img { width: 72px; height: 90px; object-fit: contain; background: var(--d2); }
+    .cart-item-info { flex: 1; }
+    .cart-item-name { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+    .cart-item-price { font-size: 13px; font-weight: 500; color: var(--g4); }
+    .cart-item-remove {
+      background: none; border: none; color: var(--g2); cursor: pointer;
+      font-size: 16px; padding: 0;
+    }
+    .cart-foot {
+      padding: 20px 24px; border-top: 1px solid var(--border);
+    }
+    .cart-total {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--g4);
+    }
+    .cart-total span { font-size: 16px; font-weight: 500; color: var(--white); }
+    .btn-checkout {
+      width: 100%; background: var(--white); color: var(--black);
+      border: none; padding: 15px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: background 0.12s;
+    }
+    .btn-checkout:hover { background: #e8e8e8; }
+    .shopify-note {
+      margin-top: 10px; text-align: center;
+      font-size: 9px; letter-spacing: 1px; color: var(--g1);
+    }
+
     /* ── HERO ── */
     .hero {
-      position: relative;
-      min-height: 92vh;
-      display: flex;
-      align-items: flex-end;
-      overflow: hidden;
+      position: relative; min-height: 92vh;
+      display: flex; align-items: flex-end; overflow: hidden;
     }
     .hero-bg {
       position: absolute; inset: 0;
       background: radial-gradient(ellipse at 30% 60%, #111 0%, #000 70%);
     }
-    /* Subtle halftone grid */
     .hero-grid {
       position: absolute; inset: 0;
       background-image:
         linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
-      background-size: 80px 80px;
-      pointer-events: none;
+      background-size: 80px 80px; pointer-events: none;
     }
-    /* Left edge accent line */
     .hero-line {
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 3px;
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
       background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0.06) 70%, transparent);
     }
-
     .hero-content {
-      position: relative;
-      z-index: 2;
-      padding: 0 80px 88px;
-      max-width: 680px;
+      position: relative; z-index: 2;
+      padding: 0 80px 88px; max-width: 680px;
     }
     .hero-eyebrow {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 5px;
-      text-transform: uppercase;
-      color: var(--g2);
-      margin-bottom: 18px;
+      font-size: 10px; font-weight: 600; letter-spacing: 5px;
+      text-transform: uppercase; color: var(--g2); margin-bottom: 18px;
       display: flex; align-items: center; gap: 14px;
     }
     .hero-eyebrow::before { content: ''; width: 28px; height: 1px; background: var(--g2); }
-
     .hero-title {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: clamp(82px, 9.5vw, 136px);
-      font-weight: 800;
-      line-height: 0.87;
-      letter-spacing: -1px;
-      text-transform: uppercase;
-      color: var(--white);
-      margin-bottom: 30px;
+      font-size: clamp(82px, 9.5vw, 136px); font-weight: 800;
+      line-height: 0.87; letter-spacing: -1px; text-transform: uppercase;
+      color: var(--white); margin-bottom: 30px;
     }
-    .hero-title .italic {
-      font-style: italic;
-      font-weight: 700;
-      color: var(--g3);
-    }
-
+    .hero-title .italic { font-style: italic; font-weight: 700; color: var(--g3); }
     .hero-desc {
-      font-size: 13px;
-      font-weight: 300;
-      color: var(--g2);
-      line-height: 1.9;
-      letter-spacing: 0.4px;
-      margin-bottom: 40px;
-      max-width: 380px;
+      font-size: 13px; font-weight: 300; color: var(--g2);
+      line-height: 1.9; letter-spacing: 0.4px; margin-bottom: 40px; max-width: 380px;
     }
     .hero-ctas { display: flex; gap: 10px; }
     .btn-solid {
-      background: var(--white);
-      color: var(--black);
-      border: none;
-      padding: 13px 34px;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 12px; font-weight: 700;
-      letter-spacing: 3px; text-transform: uppercase;
-      cursor: pointer; text-decoration: none;
-      display: inline-block;
+      background: var(--white); color: var(--black); border: none;
+      padding: 13px 34px; font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; text-decoration: none; display: inline-block;
       transition: background 0.12s;
     }
     .btn-solid:hover { background: #e6e6e6; }
     .btn-line {
-      background: transparent;
-      color: var(--g3);
-      border: 1px solid var(--borderM);
-      padding: 13px 34px;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 12px; font-weight: 600;
-      letter-spacing: 3px; text-transform: uppercase;
-      cursor: pointer; text-decoration: none;
-      display: inline-block;
+      background: transparent; color: var(--g3); border: 1px solid var(--borderM);
+      padding: 13px 34px; font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; text-decoration: none; display: inline-block;
       transition: color 0.12s, border-color 0.12s;
     }
     .btn-line:hover { color: var(--white); border-color: rgba(255,255,255,0.35); }
 
-    /* ── RUNWAY WINDOW (hero right) ── */
+    /* ── RUNWAY WINDOW ── */
     .runway-window {
-      position: absolute;
-      right: 6%;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 300px;
-      z-index: 3;
+      position: absolute; right: 6%; top: 50%;
+      transform: translateY(-50%); width: 300px; z-index: 3;
     }
     @media (max-width: 1160px) { .runway-window { display: none; } }
-
     .rw-eyebrow {
-      font-size: 9px; font-weight: 500;
-      letter-spacing: 3px; text-transform: uppercase;
-      color: var(--g2); margin-bottom: 9px;
+      font-size: 9px; font-weight: 500; letter-spacing: 3px;
+      text-transform: uppercase; color: var(--g2); margin-bottom: 9px;
       display: flex; align-items: center; gap: 8px;
     }
     .rw-eyebrow::before { content: ''; flex: 1; height: 1px; background: var(--d3); }
-
-    .rw-frame {
-      border: 1px solid var(--borderM);
-      overflow: hidden;
-      box-shadow: 0 40px 100px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,0,0,1);
-    }
-    .runway-screen {
-      position: relative;
-      aspect-ratio: 4/5;
-      background: #040404;
-      overflow: hidden;
-    }
+    .rw-frame { border: 1px solid var(--borderM); overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,0.9), 0 0 0 1px #000; }
+    .runway-screen { position: relative; aspect-ratio: 4/5; background: #040404; overflow: hidden; }
     .rw-bg { position: absolute; inset: 0; background: #060606; }
-    .rw-catwalk {
-      position: absolute; inset: 0;
-      clip-path: polygon(39% 0%, 61% 0%, 100% 100%, 0% 100%);
-      background: linear-gradient(180deg, #101010 0%, #1c1c1a 70%, #222 100%);
-    }
+    .rw-catwalk { position: absolute; inset: 0; clip-path: polygon(39% 0%, 61% 0%, 100% 100%, 0% 100%); background: linear-gradient(180deg, #101010 0%, #1c1c1a 70%, #222 100%); }
     .rw-el { position: absolute; inset: 0; clip-path: polygon(38.5% 0%,39% 0%,0% 100%,0% 99.5%); background: rgba(255,255,255,0.04); }
     .rw-er { position: absolute; inset: 0; clip-path: polygon(61% 0%,61.5% 0%,100% 99.5%,100% 100%); background: rgba(255,255,255,0.04); }
-
     .rw-lb { position: absolute; top: 0; width: 65px; height: 70%; background: linear-gradient(to bottom, rgba(255,255,248,0.1) 0%, transparent 88%); transform-origin: top center; }
     .rw-lb.c { left: calc(50% - 32px); }
     .rw-lb.l { left: calc(37% - 32px); transform: rotate(-9deg); opacity: 0.45; }
-    .rw-lb.r { left: calc(63% - 32px); transform: rotate(9deg);  opacity: 0.45; }
-
+    .rw-lb.r { left: calc(63% - 32px); transform: rotate(9deg); opacity: 0.45; }
     .rw-vl { position: absolute; inset: 0; background: linear-gradient(to right, rgba(0,0,0,0.95) 0%, transparent 36%); }
     .rw-vr { position: absolute; inset: 0; background: linear-gradient(to left,  rgba(0,0,0,0.95) 0%, transparent 36%); }
     .rw-vt { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 20%); }
-    .rw-vb { position: absolute; inset: 0; background: linear-gradient(to top,    rgba(0,0,0,0.4) 0%, transparent 12%); }
+    .rw-vb { position: absolute; inset: 0; background: linear-gradient(to top,   rgba(0,0,0,0.4) 0%, transparent 12%); }
 
     .model { position: absolute; left: 50%; bottom: 0; display: flex; flex-direction: column; align-items: center; transform-origin: bottom center; }
     .model-inner { animation: sway 0.88s ease-in-out infinite; }
     @keyframes sway { 0%,100%{transform:translateX(0)} 30%{transform:translateX(2px)} 70%{transform:translateX(-2px)} }
-
     .m-head { width:10px;height:10px;border-radius:50%;background:#c49a78;flex-shrink:0; }
     .m-neck { width:3px;height:3px;background:#b08868;flex-shrink:0; }
     .m-body { flex-shrink:0; }
@@ -260,444 +252,229 @@
     .m-leg  { display:flex;flex-direction:column;align-items:center; }
     .m-th   { width:4px;height:10px;background:#1a1816; }
     .m-sh   { width:3px;height:9px; background:#1a1816; }
-    .m-shoe { width:7px;height:3px; background:#0c0b0a; border-radius:0 0 2px 2px; }
-
+    .m-shoe { width:7px;height:3px; background:#0c0b0a;border-radius:0 0 2px 2px; }
     .fit-cocoon .m-body { width:34px;height:44px;background:#1e1d1c;border-radius:40% 40% 22% 22%/35% 35% 18% 18%; }
     .fit-jacket .m-body { width:32px;height:38px;background:#161514;clip-path:polygon(0% 20%,20% 0%,80% 0%,100% 20%,100% 100%,0% 100%); }
     .fit-trench .m-body { width:22px;height:52px;background:linear-gradient(180deg,#1e1c17,#181510);border-radius:2px; }
     .fit-cape   .m-body { width:44px;height:46px;background:#141312;clip-path:polygon(20% 0%,80% 0%,100% 100%,0% 100%); }
-
     @keyframes walkIn {
       0%   { bottom:90%;transform:translateX(-50%) scale(0.08);opacity:0; }
       7%   { opacity:1; }
       78%  { bottom:2%; transform:translateX(-50%) scale(1.02);opacity:1; }
       90%  { opacity:0; }
-      100% { bottom:-6%;transform:translateX(-50%) scale(1.1); opacity:0; }
+      100% { bottom:-6%;transform:translateX(-50%) scale(1.1);opacity:0; }
     }
-    .m1 { animation: walkIn 7s ease-in-out infinite 0s;     }
+    .m1 { animation: walkIn 7s ease-in-out infinite 0s; }
     .m2 { animation: walkIn 7s ease-in-out infinite -1.75s; }
-    .m3 { animation: walkIn 7s ease-in-out infinite -3.5s;  }
+    .m3 { animation: walkIn 7s ease-in-out infinite -3.5s; }
     .m4 { animation: walkIn 7s ease-in-out infinite -5.25s; }
-
     .rw-overlay { position:absolute;inset:0;z-index:10;pointer-events:none; }
     .rw-scanlines { position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.04) 0px,rgba(0,0,0,0.04) 1px,transparent 1px,transparent 2px); }
-    .rw-live {
-      position:absolute;top:10px;left:10px;
-      display:flex;align-items:center;gap:5px;
-      font-size:8px;font-weight:600;letter-spacing:2.5px;color:var(--white);
-      background:rgba(0,0,0,0.6);padding:4px 8px;
-    }
+    .rw-live { position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:5px;font-size:8px;font-weight:600;letter-spacing:2.5px;color:#fff;background:rgba(0,0,0,0.6);padding:4px 8px; }
     .rw-dot { width:6px;height:6px;border-radius:50%;background:var(--red);animation:blink 1.2s ease-in-out infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
-    .rw-brand {
-      position:absolute;top:10px;right:10px;
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:11px;font-weight:700;letter-spacing:3px;color:var(--white);
-      background:rgba(0,0,0,0.6);padding:4px 8px;
-    }
-    .rw-bar {
-      position:absolute;bottom:0;left:0;right:0;
-      background:rgba(0,0,0,0.7);border-top:1px solid rgba(255,255,255,0.08);
-      padding:8px 11px;
-      display:flex;align-items:center;justify-content:space-between;
-    }
+    .rw-brand { position:absolute;top:10px;right:10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;color:#fff;background:rgba(0,0,0,0.6);padding:4px 8px; }
+    .rw-bar { position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);border-top:1px solid rgba(255,255,255,0.08);padding:8px 11px;display:flex;align-items:center;justify-content:space-between; }
     .rw-look { font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;color:var(--g4); }
     .rw-city { font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:var(--g1); }
     .rw-rbrand { font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--g3); }
 
     /* ── TICKER ── */
-    .ticker {
-      background: var(--d1);
-      border-bottom: 1px solid var(--border);
-      overflow: hidden;
-      padding: 11px 0;
-    }
-    .ticker-track {
-      display: flex;
-      white-space: nowrap;
-      animation: tick 22s linear infinite;
-    }
+    .ticker { background: var(--d1); border-bottom: 1px solid var(--border); overflow: hidden; padding: 11px 0; }
+    .ticker-track { display: flex; white-space: nowrap; animation: tick 24s linear infinite; }
     @keyframes tick { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-    .ticker-track span {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 11px; font-weight: 600;
-      letter-spacing: 4px; text-transform: uppercase;
-      color: var(--g2);
-      padding: 0 30px;
-    }
-    .ticker-track span.sep { color: var(--d3); padding: 0; }
+    .ticker-track span { font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--g2);padding:0 30px; }
+    .ticker-track span.sep { color:var(--d3);padding:0; }
 
-    /* ── SECTION COMMON ── */
+    /* ── SHARED SECTION ── */
     section { padding: 88px 80px; }
-    .sec-label {
-      font-size: 9px; font-weight: 600;
-      letter-spacing: 4px; text-transform: uppercase;
-      color: var(--g2); margin-bottom: 8px;
-    }
-    .sec-title {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: clamp(38px, 4.5vw, 60px);
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      text-transform: uppercase;
-      color: var(--white);
-      line-height: 1;
-      margin-bottom: 48px;
-    }
+    .sec-label { font-size:9px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--g2);margin-bottom:8px; }
+    .sec-title { font-family:'Barlow Condensed',sans-serif;font-size:clamp(38px,4.5vw,60px);font-weight:800;letter-spacing:-0.5px;text-transform:uppercase;color:var(--white);line-height:1;margin-bottom:48px; }
+    .see-all { font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--g3);text-decoration:none;border-bottom:1px solid var(--g1);padding-bottom:1px;transition:color .12s,border-color .12s; }
+    .see-all:hover { color:var(--white);border-color:var(--g3); }
 
     /* ── CATEGORIES ── */
-    .cats { background: var(--black); padding-top: 72px; }
-    .cats-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 2px;
-    }
-    .cat-item {
-      position: relative;
-      aspect-ratio: 3/4;
-      overflow: hidden;
-      cursor: pointer;
-      background: var(--d1);
-    }
-    .cat-item:first-child { grid-column: span 2; aspect-ratio: auto; }
-    .cat-fill {
-      position: absolute; inset: 0;
-      transition: transform 0.5s ease;
-    }
-    .cat-item:hover .cat-fill { transform: scale(1.04); }
-    .cf1 { background: linear-gradient(160deg, #1a1a18 0%, #0f0f0d 100%); }
-    .cf2 { background: linear-gradient(160deg, #0d0f14 0%, #08080d 100%); }
-    .cf3 { background: linear-gradient(160deg, #0f1208 0%, #0a0d05 100%); }
-    .cf4 { background: linear-gradient(160deg, #14080a 0%, #0d0508 100%); }
-    .cf5 { background: linear-gradient(160deg, #100a14 0%, #080a0d 100%); }
-    .cat-info {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 20px 18px;
-      background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
-      z-index: 2;
-    }
-    .cat-name {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 20px; font-weight: 700;
-      letter-spacing: 2px; text-transform: uppercase;
-      color: var(--white);
-    }
-    .cat-item:first-child .cat-name { font-size: 30px; }
-    .cat-count { font-size: 10px; letter-spacing: 2px; color: var(--g3); margin-top: 2px; }
+    .cats { background:var(--black);padding-top:72px; }
+    .cats-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:2px; }
+    .cat-item { position:relative;aspect-ratio:3/4;overflow:hidden;cursor:pointer;background:var(--d1); }
+    .cat-item:first-child { grid-column:span 2;aspect-ratio:auto; }
+    .cat-fill { position:absolute;inset:0;transition:transform .5s ease; }
+    .cat-item:hover .cat-fill { transform:scale(1.04); }
+
+    /* shirt images in category tiles */
+    .cat-fill img { width:100%;height:100%;object-fit:contain;object-position:center bottom; }
+    .cat-fill.bg-dark  { background:#1a1a18; }
+    .cat-fill.bg-light { background:#e8e6e4; }
+    .cat-fill.bg-d2    { background:#0d0f14; }
+    .cat-fill.bg-d3    { background:#0f1208; }
+    .cat-fill.bg-d4    { background:#14080a; }
+
+    .cat-info { position:absolute;bottom:0;left:0;right:0;padding:20px 18px;background:linear-gradient(to top,rgba(0,0,0,0.75),transparent);z-index:2; }
+    .cat-name { font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--white); }
+    .cat-item:first-child .cat-name { font-size:30px; }
+    .cat-count { font-size:10px;letter-spacing:2px;color:var(--g3);margin-top:2px; }
 
     /* ── PRODUCTS ── */
-    .products { background: var(--off-black); }
-    .products-hd {
-      display: flex; justify-content: space-between; align-items: flex-end;
-      margin-bottom: 40px;
-    }
-    .products-hd .sec-title { margin-bottom: 0; }
-    .see-all {
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 3px; text-transform: uppercase;
-      color: var(--g3); text-decoration: none;
-      border-bottom: 1px solid var(--g1);
-      padding-bottom: 1px;
-      transition: color 0.12s, border-color 0.12s;
-    }
-    .see-all:hover { color: var(--white); border-color: var(--g3); }
+    .products { background:var(--off-black); }
+    .products-hd { display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:40px; }
+    .products-hd .sec-title { margin-bottom:0; }
+    .filter-row { display:flex;gap:2px;margin-bottom:36px; }
+    .ftab { background:none;border:1px solid var(--border);color:var(--g2);padding:7px 18px;font-size:9px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;transition:all .12s; }
+    .ftab:hover,.ftab.on { background:var(--white);border-color:var(--white);color:var(--black); }
 
-    .filter-row {
-      display: flex; gap: 2px; margin-bottom: 36px;
-    }
-    .ftab {
-      background: none; border: 1px solid var(--border);
-      color: var(--g2); padding: 7px 18px;
-      font-size: 9px; font-weight: 600;
-      letter-spacing: 2.5px; text-transform: uppercase;
-      cursor: pointer; transition: all 0.12s;
-    }
-    .ftab:hover, .ftab.on { background: var(--white); border-color: var(--white); color: var(--black); }
-
-    .prod-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 2px;
-    }
-    .prod-card { cursor: pointer; }
+    .prod-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:2px; }
+    .prod-card { cursor:pointer;position:relative; }
     .prod-img {
-      position: relative;
-      aspect-ratio: 3/4;
-      overflow: hidden;
-      background: var(--d1);
-      margin-bottom: 12px;
+      position:relative;aspect-ratio:3/4;overflow:hidden;
+      background:var(--d1);margin-bottom:12px;
     }
-    .prod-img img {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: contain;
-      transition: transform 0.5s ease;
+    .prod-img img { position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:transform .5s ease; }
+    .prod-card:hover .prod-img img { transform:scale(1.04); }
+    .prod-flag { position:absolute;top:10px;left:10px;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:3px 8px;z-index:2; }
+    .flag-new  { background:var(--white);color:var(--black); }
+    .flag-sold { background:var(--d3);color:var(--g4); }
+    .prod-info { padding: 0 2px; }
+    .prod-name { font-size:11px;font-weight:400;letter-spacing:1px;color:var(--g4);margin-bottom:5px;text-transform:uppercase; }
+    .prod-price { font-size:13px;font-weight:500;color:var(--white); }
+    .prod-price s { color:var(--g2);font-weight:300;margin-left:6px;font-size:11px; }
+    .prod-swatches { display:flex;gap:4px;margin-top:6px; }
+    .swatch { width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,0.1); }
+    .prod-add {
+      display:none;
+      position:absolute;bottom:0;left:0;right:0;
+      background:rgba(0,0,0,0.85);border-top:1px solid rgba(255,255,255,0.1);
+      padding:10px 12px;
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
+      color:var(--white);text-align:center;cursor:pointer;
+      transition:background .12s;
+      border:none;width:100%;
     }
-    .prod-card:hover .prod-img img { transform: scale(1.04); }
-    .prod-flag {
-      position: absolute; top: 10px; left: 10px;
-      font-size: 8px; font-weight: 700;
-      letter-spacing: 2px; text-transform: uppercase;
-      padding: 3px 8px;
-      z-index: 2;
+    .prod-img:hover .prod-add { display:block; }
+    .prod-add:hover { background:rgba(255,255,255,0.1); }
+    .prod-shopify-link {
+      display:block;margin-top:10px;
+      font-size:9px;letter-spacing:2px;text-transform:uppercase;
+      color:var(--g2);text-decoration:none;text-align:center;
+      transition:color .12s;
     }
-    .flag-new  { background: var(--white); color: var(--black); }
-    .flag-sold { background: var(--d3); color: var(--g4); }
+    .prod-shopify-link:hover { color:var(--white); }
 
-    .prod-name {
-      font-size: 11px; font-weight: 400;
-      letter-spacing: 1px; color: var(--g4);
-      margin-bottom: 5px;
-      text-transform: uppercase;
-    }
-    .prod-price { font-size: 13px; font-weight: 500; color: var(--white); }
-    .prod-price s { color: var(--g2); font-weight: 300; margin-left: 6px; font-size: 11px; }
-    .prod-swatches { display: flex; gap: 4px; margin-top: 6px; }
-    .swatch {
-      width: 10px; height: 10px; border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    /* ── EDITORIAL STRIP ── */
-    .editorial {
-      background: var(--d1);
-      padding: 0;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      min-height: 560px;
-    }
-    .ed-visual {
-      position: relative;
-      overflow: hidden;
-    }
-    .ed-bg {
-      position: absolute; inset: 0;
-      transition: transform 0.6s ease;
-    }
-    .editorial:hover .ed-bg { transform: scale(1.03); }
-    .ed-bg-1 { background: linear-gradient(135deg, #0f0d08 0%, #1a1608 50%, #0a0a08 100%); }
-    .ed-bg-2 { background: linear-gradient(135deg, #08080f 0%, #10101a 50%, #060608 100%); }
-
-    .ed-text {
-      padding: 72px 64px;
-      display: flex; flex-direction: column; justify-content: center;
-    }
-    .ed-season {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 10px; font-weight: 600;
-      letter-spacing: 5px; text-transform: uppercase;
-      color: var(--g2); margin-bottom: 16px;
-    }
-    .ed-headline {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: clamp(52px, 5vw, 80px);
-      font-weight: 800; line-height: 0.9;
-      text-transform: uppercase; color: var(--white);
-      margin-bottom: 24px;
-    }
-    .ed-headline i { font-style: italic; font-weight: 700; color: var(--g3); }
-    .ed-body {
-      font-size: 13px; font-weight: 300;
-      color: var(--g2); line-height: 1.9;
-      margin-bottom: 36px; max-width: 380px;
-    }
+    /* ── EDITORIAL ── */
+    .editorial { background:var(--d1);padding:0;display:grid;grid-template-columns:1fr 1fr;min-height:560px; }
+    .ed-visual { position:relative;overflow:hidden; }
+    .ed-visual img { position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;background:var(--d2); }
+    .ed-text { padding:72px 64px;display:flex;flex-direction:column;justify-content:center; }
+    .ed-season { font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:5px;text-transform:uppercase;color:var(--g2);margin-bottom:16px; }
+    .ed-headline { font-family:'Barlow Condensed',sans-serif;font-size:clamp(52px,5vw,80px);font-weight:800;line-height:.9;text-transform:uppercase;color:var(--white);margin-bottom:24px; }
+    .ed-headline i { font-style:italic;font-weight:700;color:var(--g3); }
+    .ed-body { font-size:13px;font-weight:300;color:var(--g2);line-height:1.9;margin-bottom:36px;max-width:380px; }
 
     /* ── LOOKBOOK ── */
-    .lookbook { background: var(--black); padding: 80px 0; }
-    .lookbook-hd {
-      padding: 0 80px 36px;
-      display: flex; justify-content: space-between; align-items: flex-end;
-    }
-    .lookbook-hd .sec-title { margin-bottom: 0; }
-    .lb-scroll {
-      display: flex; gap: 2px;
-      padding: 0 80px;
-      overflow-x: auto; scrollbar-width: none;
-    }
-    .lb-scroll::-webkit-scrollbar { display: none; }
-    .lb-item {
-      flex-shrink: 0; width: 260px;
-      overflow: hidden; position: relative;
-    }
-    .lb-fill {
-      aspect-ratio: 2/3;
-      transition: transform 0.5s;
-    }
-    .lb-item:hover .lb-fill { transform: scale(1.04); }
-    .lb1 { background: linear-gradient(160deg, #180e02 0%, #2a1a04 50%, #0d0906 100%); }
-    .lb2 { background: linear-gradient(160deg, #08100e 0%, #0d1e1a 50%, #060a0a 100%); }
-    .lb3 { background: linear-gradient(160deg, #100a18 0%, #1a1028 50%, #080608 100%); }
-    .lb4 { background: linear-gradient(160deg, #180c06 0%, #2c1a08 50%, #0d0a06 100%); }
-    .lb5 { background: linear-gradient(160deg, #0c1008 0%, #1a1e10 50%, #08100a 100%); }
-    .lb-num {
-      position: absolute; bottom: 12px; right: 14px;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 13px; font-weight: 700; letter-spacing: 2px;
-      color: rgba(255,255,255,0.18);
-    }
+    .lookbook { background:var(--black);padding:80px 0; }
+    .lookbook-hd { padding:0 80px 36px;display:flex;justify-content:space-between;align-items:flex-end; }
+    .lookbook-hd .sec-title { margin-bottom:0; }
+    .lb-scroll { display:flex;gap:2px;padding:0 80px;overflow-x:auto;scrollbar-width:none; }
+    .lb-scroll::-webkit-scrollbar { display:none; }
+    .lb-item { flex-shrink:0;width:260px;overflow:hidden;position:relative; }
+    .lb-fill { aspect-ratio:2/3;background:var(--d1);position:relative;overflow:hidden; }
+    .lb-fill img { width:100%;height:100%;object-fit:contain;object-position:center bottom;transition:transform .5s; }
+    .lb-item:hover .lb-fill img { transform:scale(1.04); }
+    .lb-num { position:absolute;bottom:12px;right:14px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.2); }
 
-    /* ── BRAND STATEMENT ── */
-    .statement {
-      background: var(--white);
-      padding: 100px 80px;
-      display: flex;
-      gap: 80px;
-      align-items: center;
-    }
-    .stmt-num {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 120px; font-weight: 800;
-      color: rgba(0,0,0,0.06);
-      line-height: 1;
-      flex-shrink: 0;
-      user-select: none;
-    }
-    .stmt-text {
-      flex: 1;
-    }
-    .stmt-label {
-      font-size: 9px; font-weight: 600;
-      letter-spacing: 4px; text-transform: uppercase;
-      color: #999; margin-bottom: 12px;
-    }
-    .stmt-headline {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: clamp(40px, 4vw, 60px);
-      font-weight: 800; line-height: 0.92;
-      text-transform: uppercase; color: var(--black);
-      margin-bottom: 20px;
-    }
-    .stmt-headline i { font-style: italic; font-weight: 700; color: #666; }
-    .stmt-body {
-      font-size: 13px; font-weight: 300;
-      color: #666; line-height: 1.9; max-width: 480px;
-      margin-bottom: 32px;
-    }
-    .btn-solid-dark {
-      background: var(--black);
-      color: var(--white);
-      border: none;
-      padding: 13px 34px;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 12px; font-weight: 700;
-      letter-spacing: 3px; text-transform: uppercase;
-      cursor: pointer; text-decoration: none;
-      display: inline-block;
-      transition: background 0.12s;
-    }
-    .btn-solid-dark:hover { background: #222; }
+    /* ── STATEMENT ── */
+    .statement { background:var(--white);padding:100px 80px;display:flex;gap:80px;align-items:center; }
+    .stmt-num { font-family:'Barlow Condensed',sans-serif;font-size:120px;font-weight:800;color:rgba(0,0,0,0.06);line-height:1;flex-shrink:0;user-select:none; }
+    .stmt-text { flex:1; }
+    .stmt-label { font-size:9px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:#999;margin-bottom:12px; }
+    .stmt-headline { font-family:'Barlow Condensed',sans-serif;font-size:clamp(40px,4vw,60px);font-weight:800;line-height:.92;text-transform:uppercase;color:var(--black);margin-bottom:20px; }
+    .stmt-headline i { font-style:italic;font-weight:700;color:#666; }
+    .stmt-body { font-size:13px;font-weight:300;color:#666;line-height:1.9;max-width:480px;margin-bottom:32px; }
+    .btn-solid-dark { background:var(--black);color:var(--white);border:none;padding:13px 34px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;cursor:pointer;text-decoration:none;display:inline-block;transition:background .12s; }
+    .btn-solid-dark:hover { background:#222; }
 
     /* ── NEWSLETTER ── */
-    .newsletter {
-      background: var(--d1);
-      border-top: 1px solid var(--border);
-      padding: 72px 80px;
-      text-align: center;
+    .newsletter { background:var(--d1);border-top:1px solid var(--border);padding:72px 80px;text-align:center; }
+    .newsletter .sec-title { font-size:clamp(32px,3.5vw,48px);margin-bottom:12px; }
+    .nl-sub { font-size:12px;color:var(--g2);letter-spacing:.5px;margin-bottom:36px; }
+    .nl-form { display:flex;max-width:420px;margin:0 auto; }
+    .nl-input { flex:1;background:transparent;border:1px solid var(--borderM);border-right:none;color:var(--white);padding:13px 16px;font-size:12px;font-family:'Barlow',sans-serif;outline:none; }
+    .nl-input::placeholder { color:var(--g1); }
+    .nl-btn { background:var(--white);color:var(--black);border:none;padding:13px 24px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:background .12s; }
+    .nl-btn:hover { background:#e8e8e8; }
+
+    /* ── SHOPIFY STATUS ── */
+    .shopify-status {
+      background: var(--d2); border: 1px solid var(--border);
+      margin: 0 80px 0; padding: 14px 20px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--g2);
     }
-    .newsletter .sec-title { font-size: clamp(32px, 3.5vw, 48px); margin-bottom: 12px; }
-    .nl-sub { font-size: 12px; color: var(--g2); letter-spacing: 0.5px; margin-bottom: 36px; }
-    .nl-form { display: flex; max-width: 420px; margin: 0 auto; }
-    .nl-input {
-      flex: 1;
-      background: transparent;
-      border: 1px solid var(--borderM);
-      border-right: none;
-      color: var(--white);
-      padding: 13px 16px;
-      font-size: 12px; letter-spacing: 0.5px;
-      font-family: 'Barlow', sans-serif;
-      outline: none;
-    }
-    .nl-input::placeholder { color: var(--g1); }
-    .nl-btn {
-      background: var(--white); color: var(--black);
-      border: none; padding: 13px 24px;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 2.5px; text-transform: uppercase;
-      cursor: pointer; white-space: nowrap;
-      transition: background 0.12s;
-    }
-    .nl-btn:hover { background: #e8e8e8; }
+    .shopify-status .dot { width:8px;height:8px;border-radius:50%;background:var(--g1); }
+    .shopify-status.connected .dot { background:#22c55e; }
+    .shopify-status.connected { color:var(--g3); }
 
     /* ── FOOTER ── */
-    footer {
-      background: var(--black);
-      border-top: 1px solid var(--border);
-      padding: 60px 80px 36px;
-    }
-    .ft-top {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 48px;
-      margin-bottom: 52px;
-    }
-    .ft-brand-name {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 22px; font-weight: 800;
-      letter-spacing: 8px; text-transform: uppercase;
-      color: var(--white); margin-bottom: 14px;
-    }
-    .ft-desc { font-size: 12px; color: var(--g2); line-height: 1.8; margin-bottom: 24px; }
-    .ft-socials { display: flex; gap: 14px; }
-    .ft-social {
-      width: 32px; height: 32px;
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      color: var(--g2); text-decoration: none; font-size: 12px;
-      transition: all 0.12s;
-    }
-    .ft-social:hover { border-color: var(--g3); color: var(--white); }
-    .ft-col h5 {
-      font-size: 9px; font-weight: 700;
-      letter-spacing: 3.5px; text-transform: uppercase;
-      color: var(--white); margin-bottom: 16px;
-    }
-    .ft-col ul { list-style: none; }
-    .ft-col li { margin-bottom: 10px; }
-    .ft-col a { color: var(--g2); text-decoration: none; font-size: 12px; transition: color 0.12s; }
-    .ft-col a:hover { color: var(--g4); }
-    .ft-bottom {
-      border-top: 1px solid var(--border);
-      padding-top: 24px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .ft-copy { font-size: 10px; color: var(--g1); letter-spacing: 1px; }
-    .ft-legal { display: flex; gap: 20px; }
-    .ft-legal a { font-size: 10px; color: var(--g1); text-decoration: none; transition: color 0.12s; }
-    .ft-legal a:hover { color: var(--g3); }
-
-    /* ── MOCKUP TAG ── */
-    .tag {
-      position: fixed; bottom: 20px; right: 20px;
-      background: var(--white); color: var(--black);
-      font-size: 9px; font-weight: 700; letter-spacing: 2.5px;
-      text-transform: uppercase; padding: 8px 14px;
-      z-index: 9999;
-    }
+    footer { background:var(--black);border-top:1px solid var(--border);padding:60px 80px 36px; }
+    .ft-top { display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:52px; }
+    .ft-brand-name { font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:8px;text-transform:uppercase;color:var(--white);margin-bottom:14px; }
+    .ft-desc { font-size:12px;color:var(--g2);line-height:1.8;margin-bottom:24px; }
+    .ft-socials { display:flex;gap:14px; }
+    .ft-social { width:32px;height:32px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--g2);text-decoration:none;font-size:12px;transition:all .12s; }
+    .ft-social:hover { border-color:var(--g3);color:var(--white); }
+    .ft-col h5 { font-size:9px;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:var(--white);margin-bottom:16px; }
+    .ft-col ul { list-style:none; }
+    .ft-col li { margin-bottom:10px; }
+    .ft-col a { color:var(--g2);text-decoration:none;font-size:12px;transition:color .12s; }
+    .ft-col a:hover { color:var(--g4); }
+    .ft-bottom { border-top:1px solid var(--border);padding-top:24px;display:flex;justify-content:space-between;align-items:center; }
+    .ft-copy { font-size:10px;color:var(--g1);letter-spacing:1px; }
+    .ft-legal { display:flex;gap:20px; }
+    .ft-legal a { font-size:10px;color:var(--g1);text-decoration:none;transition:color .12s; }
+    .ft-legal a:hover { color:var(--g3); }
+    .tag { position:fixed;bottom:20px;right:20px;background:var(--white);color:var(--black);font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:8px 14px;z-index:9999; }
   </style>
 </head>
 <body>
 
+  <!-- Cart drawer -->
+  <div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
+  <div class="cart-drawer" id="cartDrawer">
+    <div class="cart-head">
+      <h3>Your Bag (<span id="cartCount">0</span>)</h3>
+      <button class="cart-close" onclick="closeCart()">×</button>
+    </div>
+    <div class="cart-items" id="cartItems">
+      <div class="cart-empty">Your bag is empty.</div>
+    </div>
+    <div class="cart-foot">
+      <div class="cart-total">Total <span id="cartTotal">$0.00</span></div>
+      <button class="btn-checkout" id="checkoutBtn" onclick="proceedToCheckout()">
+        Checkout on Shopify
+      </button>
+      <p class="shopify-note">Secure checkout powered by Shopify</p>
+    </div>
+  </div>
+
   <!-- Announcement -->
-  <div class="ann">Complimentary shipping on orders over €500 &nbsp;·&nbsp; New collection in stores now</div>
+  <div class="ann">Complimentary shipping on orders over $150 &nbsp;·&nbsp; New collection in stores now</div>
 
   <!-- Nav -->
   <nav>
     <div class="nav-l">
       <a href="#">Women</a>
       <a href="#">Men</a>
-      <a href="#">Kids</a>
+      <a href="#">New</a>
       <a href="#">Sale</a>
     </div>
     <a href="#" class="nav-logo">Promethea</a>
     <div class="nav-r">
       <a href="#">Search</a>
       <a href="#">Account</a>
-      <a href="#" class="nav-cart">
+      <button class="nav-cart" onclick="openCart()">
         Bag
-        <span class="cart-dot">3</span>
-      </a>
+        <span class="cart-dot" id="navCartCount">0</span>
+      </button>
     </div>
   </nav>
 
@@ -707,7 +484,6 @@
     <div class="hero-grid"></div>
     <div class="hero-line"></div>
 
-    <!-- Runway Window -->
     <div class="runway-window">
       <div class="rw-eyebrow">Promethea SS'25 — Runway Live</div>
       <div class="rw-frame">
@@ -715,48 +491,13 @@
           <div class="rw-bg"></div>
           <div class="rw-catwalk"></div>
           <div class="rw-el"></div><div class="rw-er"></div>
-          <div class="rw-lb c"></div>
-          <div class="rw-lb l"></div>
-          <div class="rw-lb r"></div>
+          <div class="rw-lb c"></div><div class="rw-lb l"></div><div class="rw-lb r"></div>
           <div class="rw-vl"></div><div class="rw-vr"></div>
           <div class="rw-vt"></div><div class="rw-vb"></div>
-
-          <!-- Model 1 — cocoon coat -->
-          <div class="model m1 fit-cocoon"><div class="model-inner">
-            <div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div>
-            <div class="m-legs">
-              <div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div>
-              <div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div>
-            </div>
-          </div></div>
-
-          <!-- Model 2 — sharp jacket -->
-          <div class="model m2 fit-jacket"><div class="model-inner">
-            <div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div>
-            <div class="m-legs">
-              <div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div>
-              <div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div>
-            </div>
-          </div></div>
-
-          <!-- Model 3 — long trench -->
-          <div class="model m3 fit-trench"><div class="model-inner">
-            <div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div>
-            <div class="m-legs">
-              <div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div>
-              <div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div>
-            </div>
-          </div></div>
-
-          <!-- Model 4 — cape -->
-          <div class="model m4 fit-cape"><div class="model-inner">
-            <div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div>
-            <div class="m-legs">
-              <div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div>
-              <div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div>
-            </div>
-          </div></div>
-
+          <div class="model m1 fit-cocoon"><div class="model-inner"><div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div><div class="m-legs"><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div></div></div></div>
+          <div class="model m2 fit-jacket"><div class="model-inner"><div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div><div class="m-legs"><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div></div></div></div>
+          <div class="model m3 fit-trench"><div class="model-inner"><div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div><div class="m-legs"><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div></div></div></div>
+          <div class="model m4 fit-cape"><div class="model-inner"><div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div><div class="m-legs"><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div></div></div></div>
           <div class="rw-overlay">
             <div class="rw-scanlines"></div>
             <div class="rw-live"><span class="rw-dot"></span>&nbsp;LIVE</div>
@@ -773,14 +514,11 @@
 
     <div class="hero-content">
       <div class="hero-eyebrow">Spring / Summer 2025</div>
-      <h1 class="hero-title">
-        Wear Your<br>
-        <span class="italic">Culture.</span>
-      </h1>
+      <h1 class="hero-title">Wear Your<br><span class="italic">Culture.</span></h1>
       <p class="hero-desc">A new vision for contemporary fashion — sculpted from the streets, worn by those who define the moment.</p>
       <div class="hero-ctas">
-        <a href="#" class="btn-solid">Shop Now</a>
-        <a href="#" class="btn-line">View Lookbook</a>
+        <a href="#products" class="btn-solid">Shop Now</a>
+        <a href="#lookbook" class="btn-line">View Lookbook</a>
       </div>
     </div>
   </section>
@@ -803,36 +541,42 @@
     </div>
   </div>
 
+  <!-- Shopify connection status (shown until credentials added) -->
+  <div class="shopify-status" id="shopifyStatus">
+    <span class="dot"></span>
+    <span id="shopifyStatusText">Shopify not connected — add your store credentials in the &lt;script&gt; config at the top of this file</span>
+  </div>
+
   <!-- Categories -->
   <section class="cats">
     <div class="sec-label">Browse</div>
     <div class="sec-title">Collections</div>
     <div class="cats-grid">
       <div class="cat-item">
-        <div class="cat-fill cf1"></div>
-        <div class="cat-info"><div class="cat-name">Ready to Wear</div><div class="cat-count">84 Pieces</div></div>
+        <div class="cat-fill bg-dark"><img src="tshirt-dark.svg" alt="Graphic Tees"></div>
+        <div class="cat-info"><div class="cat-name">Graphic Tees</div><div class="cat-count">12 Styles</div></div>
       </div>
       <div class="cat-item">
-        <div class="cat-fill cf2"></div>
-        <div class="cat-info"><div class="cat-name">Outerwear</div><div class="cat-count">22 Pieces</div></div>
+        <div class="cat-fill bg-light"><img src="tshirt.svg" alt="White Tees"></div>
+        <div class="cat-info"><div class="cat-name">White Tees</div><div class="cat-count">8 Styles</div></div>
       </div>
       <div class="cat-item">
-        <div class="cat-fill cf3"></div>
-        <div class="cat-info"><div class="cat-name">Denim</div><div class="cat-count">31 Pieces</div></div>
+        <div class="cat-fill bg-d2"><img src="tshirt-dark.svg" alt="Outerwear"></div>
+        <div class="cat-info"><div class="cat-name">Outerwear</div><div class="cat-count">6 Styles</div></div>
       </div>
       <div class="cat-item">
-        <div class="cat-fill cf4"></div>
-        <div class="cat-info"><div class="cat-name">Bags</div><div class="cat-count">18 Pieces</div></div>
+        <div class="cat-fill bg-d3"><img src="tshirt.svg" alt="Bottoms"></div>
+        <div class="cat-info"><div class="cat-name">Bottoms</div><div class="cat-count">10 Styles</div></div>
       </div>
       <div class="cat-item">
-        <div class="cat-fill cf5"></div>
-        <div class="cat-info"><div class="cat-name">Shoes</div><div class="cat-count">26 Pieces</div></div>
+        <div class="cat-fill bg-d4"><img src="tshirt-dark.svg" alt="Accessories"></div>
+        <div class="cat-info"><div class="cat-name">Accessories</div><div class="cat-count">14 Styles</div></div>
       </div>
     </div>
   </section>
 
   <!-- Products -->
-  <section class="products">
+  <section class="products" id="products">
     <div class="products-hd">
       <div>
         <div class="sec-label">Featured</div>
@@ -840,7 +584,6 @@
       </div>
       <a href="#" class="see-all">See All</a>
     </div>
-
     <div class="filter-row">
       <button class="ftab on">All</button>
       <button class="ftab">Tops</button>
@@ -849,106 +592,107 @@
       <button class="ftab">Accessories</button>
     </div>
 
-    <div class="prod-grid">
+    <!-- Products loaded here dynamically from Shopify, or static fallback -->
+    <div class="prod-grid" id="prodGrid">
 
-      <div class="prod-card">
+      <div class="prod-card" data-product-id="1" data-variant-id="" data-price="48" data-name="Graphic Tee — Charcoal">
         <div class="prod-img">
-          <img src="tshirt.svg" alt="">
+          <img src="tshirt-dark.svg" alt="Graphic Tee Charcoal" id="prod-img-1">
           <span class="prod-flag flag-new">New</span>
+          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
         </div>
-        <div class="prod-name">Graphic Tee — Black</div>
-        <div class="prod-price">$48</div>
-        <div class="prod-swatches">
-          <span class="swatch" style="background:#111"></span>
-          <span class="swatch" style="background:#f5f0eb"></span>
-          <span class="swatch" style="background:#3a3a5c"></span>
+        <div class="prod-info">
+          <div class="prod-name">Graphic Tee — Charcoal</div>
+          <div class="prod-price">$48</div>
+          <div class="prod-swatches"><span class="swatch" style="background:#3a3836"></span><span class="swatch" style="background:#f5f0eb"></span></div>
         </div>
       </div>
 
-      <div class="prod-card">
+      <div class="prod-card" data-product-id="2" data-variant-id="" data-price="48" data-name="Graphic Tee — White">
         <div class="prod-img">
-          <img src="tshirt.svg" alt="">
+          <img src="tshirt.svg" alt="Graphic Tee White" id="prod-img-2">
           <span class="prod-flag flag-new">New</span>
+          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
         </div>
-        <div class="prod-name">Cocoon Pullover</div>
-        <div class="prod-price">$95 <s>$120</s></div>
-        <div class="prod-swatches">
-          <span class="swatch" style="background:#0a1420"></span>
-          <span class="swatch" style="background:#3a3a3a"></span>
-        </div>
-      </div>
-
-      <div class="prod-card">
-        <div class="prod-img">
-          <img src="tshirt.svg" alt="">
-        </div>
-        <div class="prod-name">Track Pants — Cargo</div>
-        <div class="prod-price">$78</div>
-        <div class="prod-swatches">
-          <span class="swatch" style="background:#1a2008"></span>
-          <span class="swatch" style="background:#111"></span>
+        <div class="prod-info">
+          <div class="prod-name">Graphic Tee — White</div>
+          <div class="prod-price">$48</div>
+          <div class="prod-swatches"><span class="swatch" style="background:#f5f0eb"></span><span class="swatch" style="background:#3a3836"></span></div>
         </div>
       </div>
 
-      <div class="prod-card">
+      <div class="prod-card" data-product-id="3" data-variant-id="" data-price="95" data-name="Cocoon Pullover">
         <div class="prod-img">
-          <img src="tshirt.svg" alt="">
+          <img src="tshirt-dark.svg" alt="Cocoon Pullover">
+          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+        </div>
+        <div class="prod-info">
+          <div class="prod-name">Cocoon Pullover</div>
+          <div class="prod-price">$95 <s>$120</s></div>
+          <div class="prod-swatches"><span class="swatch" style="background:#1a1816"></span><span class="swatch" style="background:#e8e6e4"></span></div>
+        </div>
+      </div>
+
+      <div class="prod-card" data-product-id="4" data-variant-id="" data-price="165" data-name="Oversize Bomber">
+        <div class="prod-img">
+          <img src="tshirt.svg" alt="Oversize Bomber">
           <span class="prod-flag flag-sold">Sold Out</span>
+          <button class="prod-add" onclick="addToCart(this)">Notify Me</button>
         </div>
-        <div class="prod-name">Oversize Bomber</div>
-        <div class="prod-price">$165</div>
-        <div class="prod-swatches">
-          <span class="swatch" style="background:#200a08"></span>
+        <div class="prod-info">
+          <div class="prod-name">Oversize Bomber</div>
+          <div class="prod-price">$165</div>
+          <div class="prod-swatches"><span class="swatch" style="background:#200a08"></span></div>
         </div>
       </div>
 
-      <div class="prod-card">
+      <div class="prod-card" data-product-id="5" data-variant-id="" data-price="85" data-name="Script Crewneck">
         <div class="prod-img">
-          <img src="tshirt.svg" alt="">
+          <img src="tshirt-dark.svg" alt="Script Crewneck">
           <span class="prod-flag flag-new">New</span>
+          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
         </div>
-        <div class="prod-name">Script Crewneck</div>
-        <div class="prod-price">$85</div>
-        <div class="prod-swatches">
-          <span class="swatch" style="background:#0a0a18"></span>
-          <span class="swatch" style="background:#e8e0d5"></span>
-        </div>
-      </div>
-
-      <div class="prod-card">
-        <div class="prod-img">
-          <img src="tshirt.svg" alt="">
-        </div>
-        <div class="prod-name">5-Panel Cap</div>
-        <div class="prod-price">$38 <s>$45</s></div>
-        <div class="prod-swatches">
-          <span class="swatch" style="background:#111"></span>
-          <span class="swatch" style="background:#f5f0eb"></span>
+        <div class="prod-info">
+          <div class="prod-name">Script Crewneck</div>
+          <div class="prod-price">$85</div>
+          <div class="prod-swatches"><span class="swatch" style="background:#0a0a18"></span><span class="swatch" style="background:#e8e0d5"></span></div>
         </div>
       </div>
 
-      <div class="prod-card">
+      <div class="prod-card" data-product-id="6" data-variant-id="" data-price="38" data-name="5-Panel Cap">
         <div class="prod-img">
-          <img src="tshirt.svg" alt="">
+          <img src="tshirt.svg" alt="5-Panel Cap">
+          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+        </div>
+        <div class="prod-info">
+          <div class="prod-name">5-Panel Cap</div>
+          <div class="prod-price">$38 <s>$45</s></div>
+          <div class="prod-swatches"><span class="swatch" style="background:#111"></span><span class="swatch" style="background:#f5f0eb"></span></div>
+        </div>
+      </div>
+
+      <div class="prod-card" data-product-id="7" data-variant-id="" data-price="128" data-name="Coach Jacket">
+        <div class="prod-img">
+          <img src="tshirt-dark.svg" alt="Coach Jacket">
           <span class="prod-flag flag-new">New</span>
+          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
         </div>
-        <div class="prod-name">Oversized Coach Jacket</div>
-        <div class="prod-price">$128</div>
-        <div class="prod-swatches">
-          <span class="swatch" style="background:#081a12"></span>
-          <span class="swatch" style="background:#111"></span>
+        <div class="prod-info">
+          <div class="prod-name">Coach Jacket</div>
+          <div class="prod-price">$128</div>
+          <div class="prod-swatches"><span class="swatch" style="background:#081a12"></span><span class="swatch" style="background:#111"></span></div>
         </div>
       </div>
 
-      <div class="prod-card">
+      <div class="prod-card" data-product-id="8" data-variant-id="" data-price="62" data-name="Utility Shorts">
         <div class="prod-img">
-          <img src="tshirt.svg" alt="">
+          <img src="tshirt.svg" alt="Utility Shorts">
+          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
         </div>
-        <div class="prod-name">Utility Shorts</div>
-        <div class="prod-price">$62</div>
-        <div class="prod-swatches">
-          <span class="swatch" style="background:#2a1008"></span>
-          <span class="swatch" style="background:#0a0a0a"></span>
+        <div class="prod-info">
+          <div class="prod-name">Utility Shorts</div>
+          <div class="prod-price">$62</div>
+          <div class="prod-swatches"><span class="swatch" style="background:#2a1008"></span><span class="swatch" style="background:#0a0a0a"></span></div>
         </div>
       </div>
 
@@ -958,18 +702,18 @@
   <!-- Editorial -->
   <section class="editorial">
     <div class="ed-visual">
-      <div class="ed-bg ed-bg-1"></div>
+      <img src="tshirt-dark.svg" alt="The New Silhouette">
     </div>
     <div class="ed-text">
       <div class="ed-season">Spring / Summer 2025</div>
       <h2 class="ed-headline">The New<br><i>Silhouette.</i></h2>
       <p class="ed-body">Architectural forms meet street-level realism. The SS'25 collection redefines volume, proportion, and the relationship between body and garment.</p>
-      <a href="#" class="btn-solid">Explore the Collection</a>
+      <a href="#products" class="btn-solid">Explore the Collection</a>
     </div>
   </section>
 
   <!-- Lookbook -->
-  <section class="lookbook">
+  <section class="lookbook" id="lookbook">
     <div class="lookbook-hd">
       <div>
         <div class="sec-label">SS'25</div>
@@ -978,11 +722,11 @@
       <a href="#" class="see-all">See All Looks</a>
     </div>
     <div class="lb-scroll">
-      <div class="lb-item"><div class="lb-fill lb1"></div><span class="lb-num">01</span></div>
-      <div class="lb-item"><div class="lb-fill lb2"></div><span class="lb-num">02</span></div>
-      <div class="lb-item"><div class="lb-fill lb3"></div><span class="lb-num">03</span></div>
-      <div class="lb-item"><div class="lb-fill lb4"></div><span class="lb-num">04</span></div>
-      <div class="lb-item"><div class="lb-fill lb5"></div><span class="lb-num">05</span></div>
+      <div class="lb-item"><div class="lb-fill"><img src="tshirt-dark.svg" alt="Look 01"></div><span class="lb-num">01</span></div>
+      <div class="lb-item"><div class="lb-fill"><img src="tshirt.svg"      alt="Look 02"></div><span class="lb-num">02</span></div>
+      <div class="lb-item"><div class="lb-fill"><img src="tshirt-dark.svg" alt="Look 03"></div><span class="lb-num">03</span></div>
+      <div class="lb-item"><div class="lb-fill"><img src="tshirt.svg"      alt="Look 04"></div><span class="lb-num">04</span></div>
+      <div class="lb-item"><div class="lb-fill"><img src="tshirt-dark.svg" alt="Look 05"></div><span class="lb-num">05</span></div>
     </div>
   </section>
 
@@ -1020,56 +764,176 @@
           <a href="#" class="ft-social">YT</a>
         </div>
       </div>
-      <div class="ft-col">
-        <h5>Shop</h5>
-        <ul>
-          <li><a href="#">Women</a></li>
-          <li><a href="#">Men</a></li>
-          <li><a href="#">Kids</a></li>
-          <li><a href="#">New Arrivals</a></li>
-          <li><a href="#">Sale</a></li>
-        </ul>
-      </div>
-      <div class="ft-col">
-        <h5>Collections</h5>
-        <ul>
-          <li><a href="#">Ready to Wear</a></li>
-          <li><a href="#">Outerwear</a></li>
-          <li><a href="#">Bags</a></li>
-          <li><a href="#">Shoes</a></li>
-          <li><a href="#">Accessories</a></li>
-        </ul>
-      </div>
-      <div class="ft-col">
-        <h5>Help</h5>
-        <ul>
-          <li><a href="#">FAQ</a></li>
-          <li><a href="#">Shipping & Returns</a></li>
-          <li><a href="#">Size Guide</a></li>
-          <li><a href="#">Find a Store</a></li>
-          <li><a href="#">Contact</a></li>
-        </ul>
-      </div>
+      <div class="ft-col"><h5>Shop</h5><ul>
+        <li><a href="#">Women</a></li><li><a href="#">Men</a></li>
+        <li><a href="#">New Arrivals</a></li><li><a href="#">Sale</a></li>
+      </ul></div>
+      <div class="ft-col"><h5>Collections</h5><ul>
+        <li><a href="#">Graphic Tees</a></li><li><a href="#">Outerwear</a></li>
+        <li><a href="#">Bottoms</a></li><li><a href="#">Accessories</a></li>
+      </ul></div>
+      <div class="ft-col"><h5>Help</h5><ul>
+        <li><a href="#">FAQ</a></li><li><a href="#">Shipping & Returns</a></li>
+        <li><a href="#">Size Guide</a></li><li><a href="#">Contact</a></li>
+      </ul></div>
     </div>
     <div class="ft-bottom">
-      <span class="ft-copy">© 2025 Promethea. All rights reserved.</span>
-      <div class="ft-legal">
-        <a href="#">Privacy</a>
-        <a href="#">Terms</a>
-        <a href="#">Cookies</a>
-      </div>
+      <span class="ft-copy">© 2025 Promethea. All rights reserved. Powered by Shopify.</span>
+      <div class="ft-legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Cookies</a></div>
     </div>
   </footer>
 
   <div class="tag">Design Mockup</div>
 
   <script>
+    /* ─────────────────────────────────────────────
+       CART STATE
+    ───────────────────────────────────────────── */
+    let cart = [];
+    let shopifyCheckoutUrl = null;
+
+    function openCart()  { document.getElementById('cartDrawer').classList.add('open'); document.getElementById('cartOverlay').classList.add('open'); }
+    function closeCart() { document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('cartOverlay').classList.remove('open'); }
+
+    function addToCart(btn) {
+      const card = btn.closest('.prod-card');
+      const item = {
+        id: card.dataset.productId,
+        variantId: card.dataset.variantId || null,
+        name: card.dataset.name,
+        price: parseFloat(card.dataset.price),
+        img: card.querySelector('img').src,
+      };
+      cart.push(item);
+      renderCart();
+      openCart();
+      if (item.variantId) createShopifyCheckout();
+    }
+
+    function removeFromCart(idx) {
+      cart.splice(idx, 1);
+      renderCart();
+    }
+
+    function renderCart() {
+      const total = cart.reduce((s, i) => s + i.price, 0);
+      document.getElementById('cartCount').textContent = cart.length;
+      document.getElementById('navCartCount').textContent = cart.length;
+      document.getElementById('cartTotal').textContent = '$' + total.toFixed(2);
+      const el = document.getElementById('cartItems');
+      if (cart.length === 0) {
+        el.innerHTML = '<div class="cart-empty">Your bag is empty.</div>';
+        return;
+      }
+      el.innerHTML = cart.map((item, idx) => `
+        <div class="cart-item">
+          <img src="${item.img}" alt="${item.name}">
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+          </div>
+          <button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>
+        </div>`).join('');
+    }
+
+    /* ─────────────────────────────────────────────
+       SHOPIFY STOREFRONT API
+    ───────────────────────────────────────────── */
+    const S = window.SHOPIFY;
+    const isConfigured = S.domain !== 'YOUR-STORE.myshopify.com' && S.storefrontToken !== 'YOUR_STOREFRONT_TOKEN';
+
+    async function shopifyFetch(query) {
+      const res = await fetch(`https://${S.domain}/api/${S.apiVersion}/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Storefront-Access-Token': S.storefrontToken,
+        },
+        body: JSON.stringify({ query }),
+      });
+      return res.json();
+    }
+
+    /* Fetch products from Shopify and update the grid */
+    async function loadShopifyProducts() {
+      if (!isConfigured) return;
+      try {
+        const data = await shopifyFetch(`{
+          products(first: 8) {
+            edges { node {
+              id title handle
+              priceRange { minVariantPrice { amount currencyCode } }
+              variants(first: 1) { edges { node { id } } }
+              images(first: 1) { edges { node { url altText } } }
+            }}
+          }
+        }`);
+        const products = data.data.products.edges.map(e => e.node);
+        products.forEach((p, idx) => {
+          const card = document.querySelector(`[data-product-id="${idx + 1}"]`);
+          if (!card) return;
+          const variantId = p.variants.edges[0]?.node.id || '';
+          const imgUrl    = p.images.edges[0]?.node.url || '';
+          const price     = parseFloat(p.priceRange.minVariantPrice.amount);
+          card.dataset.variantId = variantId;
+          card.dataset.name      = p.title;
+          card.dataset.price     = price;
+          card.querySelector('.prod-name').textContent  = p.title;
+          card.querySelector('.prod-price').textContent = `$${price.toFixed(2)}`;
+          if (imgUrl) card.querySelector('img').src = imgUrl;
+        });
+      } catch (e) {
+        console.warn('Shopify product load failed:', e);
+      }
+    }
+
+    /* Create a Shopify checkout from cart items */
+    async function createShopifyCheckout() {
+      if (!isConfigured) return;
+      const variantIds = cart.filter(i => i.variantId).map(i => i.variantId);
+      if (!variantIds.length) return;
+      const lineItems = variantIds.map(id => `{ variantId: "${id}", quantity: 1 }`).join(',');
+      try {
+        const data = await shopifyFetch(`mutation {
+          checkoutCreate(input: { lineItems: [${lineItems}] }) {
+            checkout { webUrl }
+            checkoutUserErrors { message }
+          }
+        }`);
+        shopifyCheckoutUrl = data.data.checkoutCreate.checkout?.webUrl || null;
+      } catch (e) {
+        console.warn('Shopify checkout create failed:', e);
+      }
+    }
+
+    function proceedToCheckout() {
+      if (shopifyCheckoutUrl) {
+        window.location.href = shopifyCheckoutUrl;
+      } else if (isConfigured) {
+        createShopifyCheckout().then(() => {
+          if (shopifyCheckoutUrl) window.location.href = shopifyCheckoutUrl;
+        });
+      } else {
+        alert('Connect your Shopify store first — see the config at the top of index.html');
+      }
+    }
+
+    /* ── Update status banner ── */
+    if (isConfigured) {
+      const s = document.getElementById('shopifyStatus');
+      s.classList.add('connected');
+      document.getElementById('shopifyStatusText').textContent = '✓ Connected to ' + S.domain;
+      loadShopifyProducts();
+    }
+
+    /* ── UI interactions ── */
     document.querySelectorAll('.ftab').forEach(t => {
       t.addEventListener('click', () => {
         document.querySelectorAll('.ftab').forEach(x => x.classList.remove('on'));
         t.classList.add('on');
       });
     });
+
     let look = 1;
     setInterval(() => {
       look = look >= 12 ? 1 : look + 1;
