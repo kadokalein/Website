@@ -434,86 +434,151 @@
     .ft-legal a:hover { color:var(--g3); }
     .tag { position:fixed;bottom:20px;right:20px;background:var(--white);color:var(--black);font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:8px 14px;z-index:9999; }
 
-    /* ── PRODUCT DETAIL MODAL ── */
-    .pdp-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-      z-index: 2000; opacity: 0; pointer-events: none;
-      transition: opacity 0.28s;
+    /* ── PRODUCT DETAIL PAGE (full screen) ── */
+    .pdp-page {
+      position: fixed; inset: 0; z-index: 2000;
+      background: var(--black); overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.36s cubic-bezier(0.4,0,0.2,1);
     }
-    .pdp-overlay.open { opacity: 1; pointer-events: all; }
-    .pdp-modal {
-      position: fixed; top: 0; right: -100%; bottom: 0;
-      width: min(760px, 100%); background: var(--d1);
-      border-left: 1px solid var(--border);
-      z-index: 2001; display: flex; flex-direction: column;
-      transition: right 0.32s cubic-bezier(0.4,0,0.2,1);
-      overflow-y: auto;
+    .pdp-page.open { transform: translateY(0); }
+    .pdp-nav {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; height: 56px;
+      background: var(--black); border-bottom: 1px solid var(--border);
     }
-    .pdp-modal.open { right: 0; }
-    .pdp-inner { display: grid; grid-template-columns: 1fr 1fr; min-height: 100%; }
-    @media (max-width: 680px) { .pdp-inner { grid-template-columns: 1fr; } }
-    .pdp-img-col {
-      position: sticky; top: 0; height: 100vh;
-      background: var(--d2); display: flex; align-items: center; justify-content: center;
+    .pdp-back {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 10px; font-weight: 600; letter-spacing: 2.5px;
+      text-transform: uppercase; color: var(--g3);
+      background: none; border: none; cursor: pointer;
+      transition: color .12s;
+    }
+    .pdp-back:hover { color: var(--white); }
+    .pdp-back::before { content: '←'; font-size: 14px; }
+    .pdp-nav-logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 16px; font-weight: 800; letter-spacing: 8px;
+      text-transform: uppercase; color: var(--white);
+    }
+    .pdp-nav-bag {
+      font-size: 10px; font-weight: 600; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--g3);
+      background: none; border: none; cursor: pointer;
+      position: relative; transition: color .12s;
+    }
+    .pdp-nav-bag:hover { color: var(--white); }
+    .pdp-main {
+      display: grid; grid-template-columns: 55% 45%;
+      min-height: calc(100vh - 56px);
+    }
+    @media (max-width: 820px) { .pdp-main { grid-template-columns: 1fr; } }
+    .pdp-gallery {
+      position: sticky; top: 56px; height: calc(100vh - 56px);
+      background: var(--d1); display: flex; align-items: center; justify-content: center;
       overflow: hidden;
     }
-    @media (max-width: 680px) { .pdp-img-col { height: 56vw; position: relative; } }
-    .pdp-img-col img { width: 100%; height: 100%; object-fit: contain; padding: 24px; }
-    .pdp-info-col { padding: 60px 40px; display: flex; flex-direction: column; gap: 0; }
-    .pdp-close {
-      position: absolute; top: 20px; right: 24px; z-index: 10;
-      background: none; border: none; color: var(--g3); font-size: 22px;
-      cursor: pointer; transition: color .12s;
+    @media (max-width: 820px) { .pdp-gallery { height: 70vw; position: relative; top: 0; } }
+    .pdp-gallery img {
+      width: 100%; height: 100%; object-fit: contain;
+      padding: 40px; transition: transform .4s ease;
     }
-    .pdp-close:hover { color: var(--white); }
-    .pdp-flag { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--pink); margin-bottom: 14px; }
+    .pdp-gallery:hover img { transform: scale(1.04); }
+    .pdp-thumbs {
+      position: absolute; left: 16px; bottom: 20px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .pdp-thumb {
+      width: 52px; height: 64px; background: var(--d2); border: 1px solid var(--border);
+      cursor: pointer; overflow: hidden; transition: border-color .14s;
+    }
+    .pdp-thumb.active { border-color: var(--white); }
+    .pdp-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+    .pdp-details {
+      padding: 52px 52px 60px;
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+    }
+    @media (max-width: 820px) { .pdp-details { padding: 32px 24px 48px; border-left: none; border-top: 1px solid var(--border); } }
+    .pdp-breadcrumb { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--g2); margin-bottom: 20px; }
+    .pdp-breadcrumb span { color: var(--g1); margin: 0 6px; }
+    .pdp-flag { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--pink); margin-bottom: 10px; }
     .pdp-name {
-      font-family: 'Barlow Condensed', sans-serif; font-size: 32px;
+      font-family: 'Barlow Condensed', sans-serif; font-size: clamp(28px, 3vw, 44px);
       font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
-      color: var(--white); margin-bottom: 8px; line-height: 1;
+      color: var(--white); margin-bottom: 6px; line-height: 1;
     }
-    .pdp-price { font-size: 18px; font-weight: 500; color: var(--white); margin-bottom: 28px; }
+    .pdp-price { font-size: 20px; font-weight: 500; color: var(--white); margin-bottom: 28px; }
     .pdp-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 28px; }
     .pdp-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--g2); margin-bottom: 12px; }
-    .pdp-sizes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+    .pdp-sizes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
     .size-btn {
-      width: 46px; height: 46px; border: 1px solid var(--border); background: none;
+      width: 52px; height: 52px; border: 1px solid var(--border); background: none;
       color: var(--g3); font-family: 'Barlow Condensed', sans-serif;
       font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
       cursor: pointer; transition: all .14s;
     }
     .size-btn:hover { border-color: var(--g3); color: var(--white); }
     .size-btn.selected { border-color: var(--white); background: var(--white); color: var(--black); }
-    .size-btn.sold-out { opacity: 0.3; cursor: not-allowed; text-decoration: line-through; }
-    .pdp-size-guide { font-size: 10px; letter-spacing: 1px; color: var(--g2); text-decoration: underline; cursor: pointer; margin-bottom: 28px; }
+    .pdp-size-guide { font-size: 10px; letter-spacing: 1px; color: var(--g2); text-decoration: underline; cursor: pointer; margin-bottom: 28px; display: inline-block; }
     .pdp-size-guide:hover { color: var(--g4); }
-    .pdp-colors { display: flex; gap: 8px; margin-bottom: 32px; }
+    .pdp-colors { display: flex; gap: 10px; margin-bottom: 32px; align-items: center; }
     .pdp-swatch {
-      width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent;
+      width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15);
       cursor: pointer; transition: border-color .12s;
     }
     .pdp-swatch.active { border-color: var(--white); }
-    .pdp-desc { font-size: 12px; font-weight: 300; color: var(--g3); line-height: 1.9; margin-bottom: 32px; }
+    .pdp-desc { font-size: 13px; font-weight: 300; color: var(--g3); line-height: 1.9; margin-bottom: 32px; }
     .pdp-add-btn {
       width: 100%; background: var(--white); color: var(--black);
-      border: none; padding: 16px;
+      border: none; padding: 17px;
       font-family: 'Barlow Condensed', sans-serif;
       font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
       cursor: pointer; transition: background .12s; margin-bottom: 10px;
     }
     .pdp-add-btn:hover { background: #e8e8e8; }
-    .pdp-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .pdp-buy-btn {
       width: 100%; background: none; color: var(--g4);
-      border: 1px solid var(--borderM); padding: 14px;
+      border: 1px solid var(--borderM); padding: 15px;
       font-family: 'Barlow Condensed', sans-serif;
       font-size: 12px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
-      cursor: pointer; transition: all .12s;
+      cursor: pointer; transition: all .12s; margin-bottom: 32px;
     }
     .pdp-buy-btn:hover { border-color: var(--g3); color: var(--white); }
-    .pdp-meta { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; }
-    .pdp-meta-row { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 1px; color: var(--g2); border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-    .pdp-meta-row span:last-child { color: var(--g4); }
+    .pdp-accordion { border-top: 1px solid var(--border); }
+    .pdp-acc-row {
+      border-bottom: 1px solid var(--border); overflow: hidden;
+    }
+    .pdp-acc-btn {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0; background: none; border: none; color: var(--g4);
+      font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: color .12s;
+    }
+    .pdp-acc-btn:hover { color: var(--white); }
+    .pdp-acc-btn .acc-icon { transition: transform .2s; }
+    .pdp-acc-row.open .acc-icon { transform: rotate(45deg); }
+    .pdp-acc-body {
+      max-height: 0; overflow: hidden; transition: max-height .3s ease;
+      font-size: 12px; font-weight: 300; color: var(--g2); line-height: 1.9;
+    }
+    .pdp-acc-row.open .pdp-acc-body { max-height: 200px; padding-bottom: 16px; }
+
+    /* ── RELATED PRODUCTS ── */
+    .pdp-related { background: var(--d1); border-top: 1px solid var(--border); padding: 72px 40px; }
+    .pdp-related-hd { margin-bottom: 40px; }
+    .pdp-related-hd .sec-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--g2); margin-bottom: 8px; }
+    .pdp-related-hd .sec-title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(28px,3vw,40px); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+    .related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+    @media (max-width: 900px) { .related-grid { grid-template-columns: repeat(2, 1fr); } }
+    .related-card { cursor: pointer; background: var(--d2); }
+    .related-card .r-img { aspect-ratio: 3/4; overflow: hidden; position: relative; }
+    .related-card .r-img img { width: 100%; height: 100%; object-fit: contain; padding: 20px; transition: transform .4s ease; }
+    .related-card:hover .r-img img { transform: scale(1.05); }
+    .related-card .r-info { padding: 14px 16px; border-top: 1px solid var(--border); }
+    .related-card .r-name { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--g4); margin-bottom: 4px; }
+    .related-card .r-price { font-size: 13px; font-weight: 500; color: var(--white); }
 
     /* ── SIZE GUIDE POPUP ── */
     .sg-overlay {
@@ -599,21 +664,35 @@
   <!-- Toast notification -->
   <div class="toast" id="toast"></div>
 
-  <!-- Product Detail Modal -->
-  <div class="pdp-overlay" id="pdpOverlay" onclick="closePDP(event)"></div>
-  <div class="pdp-modal" id="pdpModal">
-    <button class="pdp-close" onclick="closePDP()">×</button>
-    <div class="pdp-inner">
-      <div class="pdp-img-col">
+  <!-- Product Detail Page (full screen) -->
+  <div class="pdp-page" id="pdpPage">
+
+    <!-- PDP Nav -->
+    <nav class="pdp-nav">
+      <button class="pdp-back" onclick="closePDP()">Back to Shop</button>
+      <div class="pdp-nav-logo">Promethea</div>
+      <button class="pdp-nav-bag" onclick="closePDP();openCart()">Bag (<span id="pdpCartCount">0</span>)</button>
+    </nav>
+
+    <!-- Main product area -->
+    <div class="pdp-main">
+      <!-- Gallery -->
+      <div class="pdp-gallery">
         <img id="pdpImg" src="" alt="">
+        <div class="pdp-thumbs" id="pdpThumbs"></div>
       </div>
-      <div class="pdp-info-col">
+
+      <!-- Details -->
+      <div class="pdp-details">
+        <div class="pdp-breadcrumb">Shop <span>›</span> <span id="pdpBreadcrumb">Product</span></div>
         <div class="pdp-flag" id="pdpFlag">New Arrival</div>
         <div class="pdp-name" id="pdpName">Product Name</div>
         <div class="pdp-price" id="pdpPrice">$00</div>
         <hr class="pdp-divider">
+
         <div class="pdp-label">Color</div>
         <div class="pdp-colors" id="pdpColors"></div>
+
         <div class="pdp-label">Select Size</div>
         <div class="pdp-sizes">
           <button class="size-btn" data-size="XS">XS</button>
@@ -623,18 +702,40 @@
           <button class="size-btn" data-size="XL">XL</button>
           <button class="size-btn" data-size="XXL">XXL</button>
         </div>
-        <div class="pdp-size-guide" onclick="openSizeGuide()">Size guide →</div>
+        <span class="pdp-size-guide" onclick="openSizeGuide()">Size guide →</span>
+
         <p class="pdp-desc" id="pdpDesc">Raw-cut distressed hem. Heavyweight 300gsm cotton. Oversized fit — size up for extreme drop shoulder. Machine wash cold. Made in Portugal.</p>
+
         <button class="pdp-add-btn" id="pdpAddBtn" onclick="addFromPDP()">Select a size</button>
-        <button class="pdp-buy-btn" id="pdpBuyBtn" onclick="buyNow()">Buy Now — Checkout on Shopify</button>
-        <div class="pdp-meta">
-          <div class="pdp-meta-row"><span>Material</span><span>300gsm Cotton / 5% Elastane</span></div>
-          <div class="pdp-meta-row"><span>Fit</span><span>Oversized Drop Shoulder</span></div>
-          <div class="pdp-meta-row"><span>Made In</span><span>Portugal</span></div>
-          <div class="pdp-meta-row"><span>Delivery</span><span>3–5 Business Days</span></div>
+        <button class="pdp-buy-btn" onclick="buyNow()">Buy Now — Checkout on Shopify</button>
+
+        <!-- Accordion details -->
+        <div class="pdp-accordion">
+          <div class="pdp-acc-row" id="acc1">
+            <button class="pdp-acc-btn" onclick="toggleAcc('acc1')">Details & Materials <span class="acc-icon">+</span></button>
+            <div class="pdp-acc-body">300gsm heavyweight cotton · 5% elastane · Raw-cut distressed hem · Oversized drop-shoulder fit · Ribbed crew neck · Double-stitched seams</div>
+          </div>
+          <div class="pdp-acc-row" id="acc2">
+            <button class="pdp-acc-btn" onclick="toggleAcc('acc2')">Sizing & Fit <span class="acc-icon">+</span></button>
+            <div class="pdp-acc-body">Model is 6'1" wearing size L. Fits true to size for a standard oversized look — size up one for an extreme drop-shoulder silhouette.</div>
+          </div>
+          <div class="pdp-acc-row" id="acc3">
+            <button class="pdp-acc-btn" onclick="toggleAcc('acc3')">Shipping & Returns <span class="acc-icon">+</span></button>
+            <div class="pdp-acc-body">Free standard shipping on orders over $150. Delivery in 3–5 business days. Free returns within 30 days. Final sale items excluded.</div>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- You May Also Like -->
+    <section class="pdp-related">
+      <div class="pdp-related-hd">
+        <div class="sec-label">Complete the Look</div>
+        <div class="sec-title">You May Also Like</div>
+      </div>
+      <div class="related-grid" id="relatedGrid"></div>
+    </section>
+
   </div>
 
   <!-- Size Guide Popup -->
@@ -683,34 +784,6 @@
     <div class="hero-bg"></div>
     <div class="hero-grid"></div>
     <div class="hero-line"></div>
-
-    <div class="runway-window">
-      <div class="rw-eyebrow">Promethea SS'25 — Runway Live</div>
-      <div class="rw-frame">
-        <div class="runway-screen">
-          <div class="rw-bg"></div>
-          <div class="rw-catwalk"></div>
-          <div class="rw-el"></div><div class="rw-er"></div>
-          <div class="rw-lb c"></div><div class="rw-lb l"></div><div class="rw-lb r"></div>
-          <div class="rw-vl"></div><div class="rw-vr"></div>
-          <div class="rw-vt"></div><div class="rw-vb"></div>
-          <div class="model m1 fit-cocoon"><div class="model-inner"><div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div><div class="m-legs"><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div></div></div></div>
-          <div class="model m2 fit-jacket"><div class="model-inner"><div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div><div class="m-legs"><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div></div></div></div>
-          <div class="model m3 fit-trench"><div class="model-inner"><div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div><div class="m-legs"><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div></div></div></div>
-          <div class="model m4 fit-cape"><div class="model-inner"><div class="m-head"></div><div class="m-neck"></div><div class="m-body"></div><div class="m-legs"><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div><div class="m-leg"><div class="m-th"></div><div class="m-sh"></div><div class="m-shoe"></div></div></div></div></div>
-          <div class="rw-overlay">
-            <div class="rw-scanlines"></div>
-            <div class="rw-live"><span class="rw-dot"></span>&nbsp;LIVE</div>
-            <div class="rw-brand">PROMETHEA</div>
-            <div class="rw-bar">
-              <span class="rw-look" id="lookNum">LOOK 01</span>
-              <span class="rw-city">Paris · SS'25</span>
-              <span class="rw-rbrand">PROMETHEA</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <div class="hero-content">
       <div class="hero-eyebrow">Spring / Summer 2025</div>
@@ -1008,45 +1081,92 @@
     function openCart()  { document.getElementById('cartDrawer').classList.add('open'); document.getElementById('cartOverlay').classList.add('open'); }
     function closeCart() { document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('cartOverlay').classList.remove('open'); }
 
-    /* ── Product Detail Modal ── */
+    /* ── Product Detail Page ── */
+    const ALL_PRODUCTS = [
+      { id:'1', name:'Graphic Tee — Charcoal', price:48, img:'tshirt-dark.svg', swatches:'#3a3836,#f5f0eb', flag:'New Arrival' },
+      { id:'2', name:'Claw Tee — Charcoal',   price:48, img:'tshirt-back.svg', swatches:'#3a3836',        flag:'New Arrival' },
+      { id:'3', name:'Graphic Tee — White',   price:48, img:'tshirt.svg',      swatches:'#f5f0eb,#3a3836', flag:'New Arrival' },
+      { id:'4', name:'Oversize Bomber',        price:165, img:'tshirt.svg',     swatches:'#200a08',        flag:'Limited' },
+      { id:'5', name:'Script Crewneck',        price:85,  img:'tshirt-dark.svg',swatches:'#0a0a18,#e8e0d5',flag:'New Arrival' },
+      { id:'6', name:'5-Panel Cap',            price:38,  img:'tshirt.svg',     swatches:'#111,#f5f0eb',   flag:'Sale' },
+      { id:'7', name:'Coach Jacket',           price:128, img:'tshirt-dark.svg',swatches:'#081a12,#111',   flag:'New Arrival' },
+      { id:'8', name:'Utility Shorts',         price:62,  img:'tshirt.svg',     swatches:'#2a1008,#0a0a0a',flag:'New Arrival' },
+    ];
+
     function openPDP(card) {
       pdpCard = card;
       selectedSize = null;
-      const name  = card.dataset.name;
-      const price = parseFloat(card.dataset.price);
-      const img   = card.querySelector('img').src;
+      const pid    = card.dataset.productId;
+      const name   = card.dataset.name;
+      const price  = parseFloat(card.dataset.price);
+      const img    = card.querySelector('img').src;
       const swatches = (card.dataset.swatches || '').split(',').filter(Boolean);
 
-      document.getElementById('pdpName').textContent  = name;
-      document.getElementById('pdpPrice').textContent = '$' + price.toFixed(2);
+      document.getElementById('pdpName').textContent      = name;
+      document.getElementById('pdpBreadcrumb').textContent = name;
+      document.getElementById('pdpPrice').textContent     = '$' + price.toFixed(2);
       document.getElementById('pdpImg').src = img;
       document.getElementById('pdpImg').alt = name;
 
-      const colorsEl = document.getElementById('pdpColors');
-      colorsEl.innerHTML = swatches.map((c, i) =>
-        `<div class="pdp-swatch${i===0?' active':''}" style="background:${c}" data-color="${c}" onclick="selectColor(this)"></div>`
+      // Thumbnails (front + back alternates)
+      const thumbSrcs = img.includes('dark') ? ['tshirt-dark.svg','tshirt-back.svg'] : ['tshirt.svg','tshirt-dark.svg'];
+      document.getElementById('pdpThumbs').innerHTML = thumbSrcs.map((src, i) =>
+        `<div class="pdp-thumb${i===0?' active':''}" onclick="switchThumb(this,'${src}')"><img src="${src}" alt=""></div>`
       ).join('');
 
-      document.querySelectorAll('.size-btn').forEach(b => {
-        b.classList.remove('selected');
-        b.onclick = function() { selectSize(this); };
-      });
+      // Color swatches
+      document.getElementById('pdpColors').innerHTML = swatches.map((c, i) =>
+        `<div class="pdp-swatch${i===0?' active':''}" style="background:${c}" onclick="selectColor(this)"></div>`
+      ).join('');
+
+      // Size buttons
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
 
       const addBtn = document.getElementById('pdpAddBtn');
       addBtn.textContent = 'Select a size';
-      addBtn.disabled = false;
 
-      document.getElementById('pdpOverlay').classList.add('open');
-      document.getElementById('pdpModal').classList.add('open');
+      // Related products (all except current, pick 4)
+      const related = ALL_PRODUCTS.filter(p => p.id !== pid).slice(0, 4);
+      document.getElementById('relatedGrid').innerHTML = related.map(p => `
+        <div class="related-card" onclick="openPDPById('${p.id}')">
+          <div class="r-img"><img src="${p.img}" alt="${p.name}"></div>
+          <div class="r-info">
+            <div class="r-name">${p.name}</div>
+            <div class="r-price">$${p.price.toFixed(2)}</div>
+          </div>
+        </div>
+      `).join('');
+
+      // Update PDP cart count badge
+      document.getElementById('pdpCartCount').textContent = cart.length;
+
+      // Show full page
+      const page = document.getElementById('pdpPage');
+      page.classList.add('open');
+      page.scrollTop = 0;
       document.body.style.overflow = 'hidden';
     }
 
+    function openPDPById(id) {
+      const card = document.querySelector(`[data-product-id="${id}"]`);
+      if (card) openPDP(card);
+    }
+
     function closePDP(e) {
-      if (e && e.target !== document.getElementById('pdpOverlay')) return;
-      document.getElementById('pdpOverlay').classList.remove('open');
-      document.getElementById('pdpModal').classList.remove('open');
+      document.getElementById('pdpPage').classList.remove('open');
       document.body.style.overflow = '';
       pdpCard = null;
+    }
+
+    function switchThumb(el, src) {
+      document.querySelectorAll('.pdp-thumb').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('pdpImg').src = src;
+    }
+
+    function toggleAcc(id) {
+      const row = document.getElementById(id);
+      row.classList.toggle('open');
     }
 
     function selectSize(btn) {
@@ -1134,6 +1254,8 @@
       const total = cart.reduce((s, i) => s + i.price, 0);
       document.getElementById('cartCount').textContent = cart.length;
       document.getElementById('navCartCount').textContent = cart.length;
+      const pdpBadge = document.getElementById('pdpCartCount');
+      if (pdpBadge) pdpBadge.textContent = cart.length;
       document.getElementById('cartTotal').textContent = '$' + total.toFixed(2);
       const el = document.getElementById('cartItems');
       if (cart.length === 0) {
@@ -1300,9 +1422,9 @@
     /* ── Keyboard close ── */
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        closePDP();
-        closeCart();
-        closeSizeGuide();
+        if (document.getElementById('sgOverlay').classList.contains('open')) { closeSizeGuide(); }
+        else if (document.getElementById('cartDrawer').classList.contains('open')) { closeCart(); }
+        else { closePDP(); }
       }
     });
   </script>
