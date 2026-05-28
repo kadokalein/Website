@@ -24,7 +24,7 @@
     window.SHOPIFY = {
       domain: 'yp7neb-5u.myshopify.com',
       storefrontToken: 'aeb72afa2a298385bd5f3f82883b9c9f',
-      apiVersion: '2024-01',
+      apiVersion: '2024-10',
     };
   </script>
 
@@ -433,6 +433,146 @@
     .ft-legal a { font-size:10px;color:var(--g1);text-decoration:none;transition:color .12s; }
     .ft-legal a:hover { color:var(--g3); }
     .tag { position:fixed;bottom:20px;right:20px;background:var(--white);color:var(--black);font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:8px 14px;z-index:9999; }
+
+    /* ── PRODUCT DETAIL MODAL ── */
+    .pdp-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      z-index: 2000; opacity: 0; pointer-events: none;
+      transition: opacity 0.28s;
+    }
+    .pdp-overlay.open { opacity: 1; pointer-events: all; }
+    .pdp-modal {
+      position: fixed; top: 0; right: -100%; bottom: 0;
+      width: min(760px, 100%); background: var(--d1);
+      border-left: 1px solid var(--border);
+      z-index: 2001; display: flex; flex-direction: column;
+      transition: right 0.32s cubic-bezier(0.4,0,0.2,1);
+      overflow-y: auto;
+    }
+    .pdp-modal.open { right: 0; }
+    .pdp-inner { display: grid; grid-template-columns: 1fr 1fr; min-height: 100%; }
+    @media (max-width: 680px) { .pdp-inner { grid-template-columns: 1fr; } }
+    .pdp-img-col {
+      position: sticky; top: 0; height: 100vh;
+      background: var(--d2); display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    @media (max-width: 680px) { .pdp-img-col { height: 56vw; position: relative; } }
+    .pdp-img-col img { width: 100%; height: 100%; object-fit: contain; padding: 24px; }
+    .pdp-info-col { padding: 60px 40px; display: flex; flex-direction: column; gap: 0; }
+    .pdp-close {
+      position: absolute; top: 20px; right: 24px; z-index: 10;
+      background: none; border: none; color: var(--g3); font-size: 22px;
+      cursor: pointer; transition: color .12s;
+    }
+    .pdp-close:hover { color: var(--white); }
+    .pdp-flag { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--pink); margin-bottom: 14px; }
+    .pdp-name {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 32px;
+      font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--white); margin-bottom: 8px; line-height: 1;
+    }
+    .pdp-price { font-size: 18px; font-weight: 500; color: var(--white); margin-bottom: 28px; }
+    .pdp-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 28px; }
+    .pdp-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--g2); margin-bottom: 12px; }
+    .pdp-sizes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+    .size-btn {
+      width: 46px; height: 46px; border: 1px solid var(--border); background: none;
+      color: var(--g3); font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      cursor: pointer; transition: all .14s;
+    }
+    .size-btn:hover { border-color: var(--g3); color: var(--white); }
+    .size-btn.selected { border-color: var(--white); background: var(--white); color: var(--black); }
+    .size-btn.sold-out { opacity: 0.3; cursor: not-allowed; text-decoration: line-through; }
+    .pdp-size-guide { font-size: 10px; letter-spacing: 1px; color: var(--g2); text-decoration: underline; cursor: pointer; margin-bottom: 28px; }
+    .pdp-size-guide:hover { color: var(--g4); }
+    .pdp-colors { display: flex; gap: 8px; margin-bottom: 32px; }
+    .pdp-swatch {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent;
+      cursor: pointer; transition: border-color .12s;
+    }
+    .pdp-swatch.active { border-color: var(--white); }
+    .pdp-desc { font-size: 12px; font-weight: 300; color: var(--g3); line-height: 1.9; margin-bottom: 32px; }
+    .pdp-add-btn {
+      width: 100%; background: var(--white); color: var(--black);
+      border: none; padding: 16px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: background .12s; margin-bottom: 10px;
+    }
+    .pdp-add-btn:hover { background: #e8e8e8; }
+    .pdp-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pdp-buy-btn {
+      width: 100%; background: none; color: var(--g4);
+      border: 1px solid var(--borderM); padding: 14px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: all .12s;
+    }
+    .pdp-buy-btn:hover { border-color: var(--g3); color: var(--white); }
+    .pdp-meta { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; }
+    .pdp-meta-row { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 1px; color: var(--g2); border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .pdp-meta-row span:last-child { color: var(--g4); }
+
+    /* ── SIZE GUIDE POPUP ── */
+    .sg-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 3000; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .sg-overlay.open { opacity: 1; pointer-events: all; }
+    .sg-box {
+      background: var(--d1); border: 1px solid var(--border);
+      padding: 40px; max-width: 480px; width: 90%;
+    }
+    .sg-title { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 24px; }
+    .sg-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .sg-table th { text-align: left; letter-spacing: 2px; text-transform: uppercase; color: var(--g2); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .sg-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--g4); }
+    .sg-close-btn { margin-top: 24px; background: none; border: 1px solid var(--border); color: var(--g3); padding: 10px 24px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all .12s; }
+    .sg-close-btn:hover { border-color: var(--g3); color: var(--white); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--white); color: var(--black);
+      padding: 14px 28px; font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      z-index: 9998; opacity: 0; transition: all 0.28s cubic-bezier(0.4,0,0.2,1);
+      pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── PRODUCT CARD — clickable ── */
+    .prod-card { cursor: pointer; }
+    .prod-card .prod-img {
+      transition: transform .32s cubic-bezier(0.4,0,0.2,1);
+    }
+    .prod-card:hover .prod-img { transform: scale(1.015); }
+    .prod-card .prod-add {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: var(--white); color: var(--black);
+      border: none; padding: 13px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;
+      cursor: pointer; opacity: 0; transition: opacity .18s;
+    }
+    .prod-card:hover .prod-add { opacity: 1; }
+
+    /* ── LOADING SPINNER ── */
+    .loading-ring {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: var(--white);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── SCROLL REVEAL ── */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
   </style>
 </head>
 <body>
@@ -453,6 +593,66 @@
         Checkout on Shopify
       </button>
       <p class="shopify-note">Secure checkout powered by Shopify</p>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Product Detail Modal -->
+  <div class="pdp-overlay" id="pdpOverlay" onclick="closePDP(event)"></div>
+  <div class="pdp-modal" id="pdpModal">
+    <button class="pdp-close" onclick="closePDP()">×</button>
+    <div class="pdp-inner">
+      <div class="pdp-img-col">
+        <img id="pdpImg" src="" alt="">
+      </div>
+      <div class="pdp-info-col">
+        <div class="pdp-flag" id="pdpFlag">New Arrival</div>
+        <div class="pdp-name" id="pdpName">Product Name</div>
+        <div class="pdp-price" id="pdpPrice">$00</div>
+        <hr class="pdp-divider">
+        <div class="pdp-label">Color</div>
+        <div class="pdp-colors" id="pdpColors"></div>
+        <div class="pdp-label">Select Size</div>
+        <div class="pdp-sizes">
+          <button class="size-btn" data-size="XS">XS</button>
+          <button class="size-btn" data-size="S">S</button>
+          <button class="size-btn" data-size="M">M</button>
+          <button class="size-btn" data-size="L">L</button>
+          <button class="size-btn" data-size="XL">XL</button>
+          <button class="size-btn" data-size="XXL">XXL</button>
+        </div>
+        <div class="pdp-size-guide" onclick="openSizeGuide()">Size guide →</div>
+        <p class="pdp-desc" id="pdpDesc">Raw-cut distressed hem. Heavyweight 300gsm cotton. Oversized fit — size up for extreme drop shoulder. Machine wash cold. Made in Portugal.</p>
+        <button class="pdp-add-btn" id="pdpAddBtn" onclick="addFromPDP()">Select a size</button>
+        <button class="pdp-buy-btn" id="pdpBuyBtn" onclick="buyNow()">Buy Now — Checkout on Shopify</button>
+        <div class="pdp-meta">
+          <div class="pdp-meta-row"><span>Material</span><span>300gsm Cotton / 5% Elastane</span></div>
+          <div class="pdp-meta-row"><span>Fit</span><span>Oversized Drop Shoulder</span></div>
+          <div class="pdp-meta-row"><span>Made In</span><span>Portugal</span></div>
+          <div class="pdp-meta-row"><span>Delivery</span><span>3–5 Business Days</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Size Guide Popup -->
+  <div class="sg-overlay" id="sgOverlay" onclick="closeSizeGuide(event)">
+    <div class="sg-box">
+      <div class="sg-title">Size Guide</div>
+      <table class="sg-table">
+        <thead><tr><th>Size</th><th>Chest (in)</th><th>Length (in)</th><th>Shoulder (in)</th></tr></thead>
+        <tbody>
+          <tr><td>XS</td><td>38–40</td><td>27</td><td>18</td></tr>
+          <tr><td>S</td><td>40–42</td><td>28</td><td>19</td></tr>
+          <tr><td>M</td><td>42–44</td><td>29</td><td>20</td></tr>
+          <tr><td>L</td><td>44–46</td><td>30</td><td>21</td></tr>
+          <tr><td>XL</td><td>48–50</td><td>31</td><td>22.5</td></tr>
+          <tr><td>XXL</td><td>52–54</td><td>32</td><td>24</td></tr>
+        </tbody>
+      </table>
+      <button class="sg-close-btn" onclick="closeSizeGuide()">Close</button>
     </div>
   </div>
 
@@ -595,11 +795,11 @@
     <!-- Products loaded here dynamically from Shopify, or static fallback -->
     <div class="prod-grid" id="prodGrid">
 
-      <div class="prod-card" data-product-id="1" data-variant-id="" data-price="48" data-name="Graphic Tee — Charcoal">
+      <div class="prod-card reveal" data-product-id="1" data-variant-id="" data-price="48" data-name="Graphic Tee — Charcoal" data-swatches="#3a3836,#f5f0eb" onclick="openPDP(this)">
         <div class="prod-img">
           <img src="tshirt-dark.svg" alt="Graphic Tee Charcoal" id="prod-img-1">
           <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
         </div>
         <div class="prod-info">
           <div class="prod-name">Graphic Tee — Charcoal</div>
@@ -608,11 +808,11 @@
         </div>
       </div>
 
-      <div class="prod-card" data-product-id="2" data-variant-id="" data-price="48" data-name="Claw Tee — Charcoal">
+      <div class="prod-card reveal" data-product-id="2" data-variant-id="" data-price="48" data-name="Claw Tee — Charcoal" data-swatches="#3a3836" onclick="openPDP(this)">
         <div class="prod-img">
           <img src="tshirt-back.svg" alt="Claw Tee Back" id="prod-img-2">
           <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
         </div>
         <div class="prod-info">
           <div class="prod-name">Claw Tee — Charcoal</div>
@@ -621,11 +821,11 @@
         </div>
       </div>
 
-      <div class="prod-card" data-product-id="3" data-variant-id="" data-price="48" data-name="Graphic Tee — White">
+      <div class="prod-card reveal" data-product-id="3" data-variant-id="" data-price="48" data-name="Graphic Tee — White" data-swatches="#f5f0eb,#3a3836" onclick="openPDP(this)">
         <div class="prod-img">
           <img src="tshirt.svg" alt="Graphic Tee White">
           <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
         </div>
         <div class="prod-info">
           <div class="prod-name">Graphic Tee — White</div>
@@ -634,11 +834,11 @@
         </div>
       </div>
 
-      <div class="prod-card" data-product-id="4" data-variant-id="" data-price="165" data-name="Oversize Bomber">
+      <div class="prod-card reveal" data-product-id="4" data-variant-id="" data-price="165" data-name="Oversize Bomber" data-swatches="#200a08" onclick="openPDP(this)">
         <div class="prod-img">
           <img src="tshirt.svg" alt="Oversize Bomber">
           <span class="prod-flag flag-sold">Sold Out</span>
-          <button class="prod-add" onclick="addToCart(this)">Notify Me</button>
+          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Notify Me</button>
         </div>
         <div class="prod-info">
           <div class="prod-name">Oversize Bomber</div>
@@ -647,11 +847,11 @@
         </div>
       </div>
 
-      <div class="prod-card" data-product-id="5" data-variant-id="" data-price="85" data-name="Script Crewneck">
+      <div class="prod-card reveal" data-product-id="5" data-variant-id="" data-price="85" data-name="Script Crewneck" data-swatches="#0a0a18,#e8e0d5" onclick="openPDP(this)">
         <div class="prod-img">
           <img src="tshirt-dark.svg" alt="Script Crewneck">
           <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
         </div>
         <div class="prod-info">
           <div class="prod-name">Script Crewneck</div>
@@ -660,10 +860,10 @@
         </div>
       </div>
 
-      <div class="prod-card" data-product-id="6" data-variant-id="" data-price="38" data-name="5-Panel Cap">
+      <div class="prod-card reveal" data-product-id="6" data-variant-id="" data-price="38" data-name="5-Panel Cap" data-swatches="#111,#f5f0eb" onclick="openPDP(this)">
         <div class="prod-img">
           <img src="tshirt.svg" alt="5-Panel Cap">
-          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
         </div>
         <div class="prod-info">
           <div class="prod-name">5-Panel Cap</div>
@@ -672,11 +872,11 @@
         </div>
       </div>
 
-      <div class="prod-card" data-product-id="7" data-variant-id="" data-price="128" data-name="Coach Jacket">
+      <div class="prod-card reveal" data-product-id="7" data-variant-id="" data-price="128" data-name="Coach Jacket" data-swatches="#081a12,#111" onclick="openPDP(this)">
         <div class="prod-img">
           <img src="tshirt-dark.svg" alt="Coach Jacket">
           <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
         </div>
         <div class="prod-info">
           <div class="prod-name">Coach Jacket</div>
@@ -685,10 +885,10 @@
         </div>
       </div>
 
-      <div class="prod-card" data-product-id="8" data-variant-id="" data-price="62" data-name="Utility Shorts">
+      <div class="prod-card reveal" data-product-id="8" data-variant-id="" data-price="62" data-name="Utility Shorts" data-swatches="#2a1008,#0a0a0a" onclick="openPDP(this)">
         <div class="prod-img">
           <img src="tshirt.svg" alt="Utility Shorts">
-          <button class="prod-add" onclick="addToCart(this)">Add to Bag</button>
+          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
         </div>
         <div class="prod-info">
           <div class="prod-name">Utility Shorts</div>
@@ -791,10 +991,124 @@
        CART STATE
     ───────────────────────────────────────────── */
     let cart = [];
+    let shopifyCartId = null;
     let shopifyCheckoutUrl = null;
+    let pdpCard = null;
+    let selectedSize = null;
 
+    /* ── Toast ── */
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2400);
+    }
+
+    /* ── Cart Drawer ── */
     function openCart()  { document.getElementById('cartDrawer').classList.add('open'); document.getElementById('cartOverlay').classList.add('open'); }
     function closeCart() { document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('cartOverlay').classList.remove('open'); }
+
+    /* ── Product Detail Modal ── */
+    function openPDP(card) {
+      pdpCard = card;
+      selectedSize = null;
+      const name  = card.dataset.name;
+      const price = parseFloat(card.dataset.price);
+      const img   = card.querySelector('img').src;
+      const swatches = (card.dataset.swatches || '').split(',').filter(Boolean);
+
+      document.getElementById('pdpName').textContent  = name;
+      document.getElementById('pdpPrice').textContent = '$' + price.toFixed(2);
+      document.getElementById('pdpImg').src = img;
+      document.getElementById('pdpImg').alt = name;
+
+      const colorsEl = document.getElementById('pdpColors');
+      colorsEl.innerHTML = swatches.map((c, i) =>
+        `<div class="pdp-swatch${i===0?' active':''}" style="background:${c}" data-color="${c}" onclick="selectColor(this)"></div>`
+      ).join('');
+
+      document.querySelectorAll('.size-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.onclick = function() { selectSize(this); };
+      });
+
+      const addBtn = document.getElementById('pdpAddBtn');
+      addBtn.textContent = 'Select a size';
+      addBtn.disabled = false;
+
+      document.getElementById('pdpOverlay').classList.add('open');
+      document.getElementById('pdpModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePDP(e) {
+      if (e && e.target !== document.getElementById('pdpOverlay')) return;
+      document.getElementById('pdpOverlay').classList.remove('open');
+      document.getElementById('pdpModal').classList.remove('open');
+      document.body.style.overflow = '';
+      pdpCard = null;
+    }
+
+    function selectSize(btn) {
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedSize = btn.dataset.size;
+      const addBtn = document.getElementById('pdpAddBtn');
+      addBtn.textContent = 'Add to Bag — ' + selectedSize;
+      addBtn.disabled = false;
+    }
+
+    function selectColor(el) {
+      document.querySelectorAll('.pdp-swatch').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function addFromPDP() {
+      if (!selectedSize) { showToast('Please select a size'); return; }
+      if (!pdpCard) return;
+      const item = {
+        id: pdpCard.dataset.productId,
+        variantId: pdpCard.dataset.variantId || null,
+        name: pdpCard.dataset.name,
+        price: parseFloat(pdpCard.dataset.price),
+        img: pdpCard.querySelector('img').src,
+        size: selectedSize,
+      };
+      cart.push(item);
+      renderCart();
+      showToast('Added to bag — ' + item.name);
+      document.getElementById('pdpOverlay').classList.remove('open');
+      document.getElementById('pdpModal').classList.remove('open');
+      document.body.style.overflow = '';
+      openCart();
+      if (item.variantId) createShopifyCart();
+    }
+
+    function buyNow() {
+      if (!selectedSize) { showToast('Please select a size'); return; }
+      addFromPDP();
+      setTimeout(proceedToCheckout, 400);
+    }
+
+    function quickAdd(btn) {
+      const card = btn.closest('.prod-card');
+      const item = {
+        id: card.dataset.productId,
+        variantId: card.dataset.variantId || null,
+        name: card.dataset.name,
+        price: parseFloat(card.dataset.price),
+        img: card.querySelector('img').src,
+        size: 'M',
+      };
+      cart.push(item);
+      renderCart();
+      showToast('Added to bag — ' + item.name);
+      openCart();
+      if (item.variantId) createShopifyCart();
+    }
+
+    /* kept for compatibility */
+    function addToCart(btn) { quickAdd(btn); }
 
     function addToCart(btn) {
       const card = btn.closest('.prod-card');
@@ -888,34 +1202,51 @@
       }
     }
 
-    /* Create a Shopify checkout from cart items */
-    async function createShopifyCheckout() {
+    /* Create/update Shopify cart using Cart API */
+    async function createShopifyCart() {
       if (!isConfigured) return;
-      const variantIds = cart.filter(i => i.variantId).map(i => i.variantId);
-      if (!variantIds.length) return;
-      const lineItems = variantIds.map(id => `{ variantId: "${id}", quantity: 1 }`).join(',');
+      const lines = cart.filter(i => i.variantId).map(i => ({
+        merchandiseId: i.variantId, quantity: 1,
+      }));
+      if (!lines.length) return;
       try {
-        const data = await shopifyFetch(`mutation {
-          checkoutCreate(input: { lineItems: [${lineItems}] }) {
-            checkout { webUrl }
-            checkoutUserErrors { message }
-          }
-        }`);
-        shopifyCheckoutUrl = data.data.checkoutCreate.checkout?.webUrl || null;
-      } catch (e) {
-        console.warn('Shopify checkout create failed:', e);
-      }
+        if (shopifyCartId) {
+          const data = await shopifyFetch(`mutation {
+            cartLinesAdd(cartId: "${shopifyCartId}", lines: [${
+              lines.map(l => `{ merchandiseId: "${l.merchandiseId}", quantity: ${l.quantity} }`).join(',')
+            }]) { cart { id checkoutUrl } }
+          }`);
+          shopifyCheckoutUrl = data.data?.cartLinesAdd?.cart?.checkoutUrl || shopifyCheckoutUrl;
+        } else {
+          const data = await shopifyFetch(`mutation {
+            cartCreate(input: { lines: [${
+              lines.map(l => `{ merchandiseId: "${l.merchandiseId}", quantity: ${l.quantity} }`).join(',')
+            }] }) { cart { id checkoutUrl } userErrors { message } }
+          }`);
+          const c = data.data?.cartCreate?.cart;
+          if (c) { shopifyCartId = c.id; shopifyCheckoutUrl = c.checkoutUrl; }
+        }
+      } catch (e) { console.warn('Shopify cart error:', e); }
     }
+
+    /* Legacy alias */
+    const createShopifyCheckout = createShopifyCart;
 
     function proceedToCheckout() {
       if (shopifyCheckoutUrl) {
-        window.location.href = shopifyCheckoutUrl;
-      } else if (isConfigured) {
-        createShopifyCheckout().then(() => {
-          if (shopifyCheckoutUrl) window.location.href = shopifyCheckoutUrl;
+        window.open(shopifyCheckoutUrl, '_blank');
+      } else if (isConfigured && cart.some(i => i.variantId)) {
+        const btn = document.getElementById('checkoutBtn');
+        btn.innerHTML = '<span class="loading-ring"></span>';
+        createShopifyCart().then(() => {
+          btn.textContent = 'Checkout on Shopify';
+          if (shopifyCheckoutUrl) window.open(shopifyCheckoutUrl, '_blank');
+          else showToast('Add products in Shopify Admin first');
         });
+      } else if (isConfigured) {
+        showToast('Add products in your Shopify store to enable checkout');
       } else {
-        alert('Connect your Shopify store first — see the config at the top of index.html');
+        showToast('Shopify not connected — check config');
       }
     }
 
@@ -941,6 +1272,39 @@
       const el = document.getElementById('lookNum');
       if (el) el.textContent = 'LOOK ' + String(look).padStart(2,'0');
     }, 3200);
+
+    /* ── Size Guide ── */
+    function openSizeGuide() {
+      document.getElementById('sgOverlay').classList.add('open');
+    }
+    function closeSizeGuide(e) {
+      if (e && !e.target.closest('.sg-box')) {
+        document.getElementById('sgOverlay').classList.remove('open');
+      } else if (!e) {
+        document.getElementById('sgOverlay').classList.remove('open');
+      }
+    }
+
+    /* ── Scroll Reveal ── */
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    /* ── Nav scroll style ── */
+    window.addEventListener('scroll', () => {
+      const nav = document.querySelector('nav');
+      nav.style.borderBottomColor = window.scrollY > 40 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.07)';
+    });
+
+    /* ── Keyboard close ── */
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closePDP();
+        closeCart();
+        closeSizeGuide();
+      }
+    });
   </script>
 </body>
 </html>
