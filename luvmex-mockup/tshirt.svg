@@ -1,95 +1,102 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 380">
-  <!-- Studio background -->
+  <!-- Dark studio background (website card) -->
   <rect width="300" height="380" fill="#141414"/>
 
-  <!-- Subtle top vignette for realism -->
   <defs>
-    <radialGradient id="vign" cx="50%" cy="30%" r="70%">
-      <stop offset="0%" stop-color="#464543"/>
-      <stop offset="100%" stop-color="#2c2b29"/>
-    </radialGradient>
-    <filter id="softedge" x="-5%" y="-5%" width="110%" height="110%">
-      <feGaussianBlur stdDeviation="1.5" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-    </filter>
+    <linearGradient id="shirtGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#efefed"/>
+      <stop offset="50%"  stop-color="#e8e6e4"/>
+      <stop offset="100%" stop-color="#d8d6d4"/>
+    </linearGradient>
   </defs>
 
-  <!-- Main shirt body + sleeves (charcoal, boxy) -->
-  <path fill="url(#vign)"
+  <!-- White/off-white shirt body + sleeves -->
+  <path fill="url(#shirtGrad)"
     d="M 5,52 L 58,28 L 105,22 Q 150,57 195,22 L 242,28 L 295,52
        L 295,90 L 248,76 L 248,295 L 52,295 L 52,76 L 5,90 Z"/>
 
-  <!-- Collar inner shadow (depth) -->
-  <path fill="#1a1917"
+  <!-- Collar inner shadow -->
+  <path fill="#c8c6c4"
     d="M 105,22 Q 150,57 195,22 Q 172,52 150,57 Q 128,52 105,22 Z"/>
 
   <!-- Left armhole shadow -->
-  <path fill="#1e1d1b" opacity="0.65"
+  <path fill="#c0bebb" opacity="0.55"
     d="M 58,28 L 52,76 L 64,76 L 68,31 Z"/>
   <!-- Right armhole shadow -->
-  <path fill="#1e1d1b" opacity="0.65"
+  <path fill="#c0bebb" opacity="0.55"
     d="M 242,28 L 248,76 L 236,76 L 232,31 Z"/>
 
-  <!-- Left side body shadow -->
-  <rect x="52" y="76" width="14" height="219" fill="#1e1d1b" opacity="0.25"/>
-  <!-- Right side body shadow -->
-  <rect x="234" y="76" width="14" height="219" fill="#1e1d1b" opacity="0.25"/>
+  <!-- Side shadows for depth -->
+  <rect x="52"  y="76" width="14" height="219" fill="#c8c6c4" opacity="0.22"/>
+  <rect x="234" y="76" width="14" height="219" fill="#c8c6c4" opacity="0.22"/>
 
-  <!-- Bottom hem shadow before strips -->
-  <rect x="52" y="280" width="196" height="15" fill="#1e1d1b" opacity="0.3"/>
+  <!-- Bottom hem shadow -->
+  <rect x="52" y="278" width="196" height="17" fill="#c0bebb" opacity="0.25"/>
 
   <!-- ── Chest graphic ── -->
-  <!-- White bold brand text -->
+
+  <!-- PROMETHEA — black, bold -->
   <text x="150" y="148"
     text-anchor="middle"
     font-family="Impact, 'Arial Narrow', Arial Black, sans-serif"
     font-size="21" font-weight="900" letter-spacing="3"
-    fill="#f0ece6">PROMETHEA</text>
+    fill="#1a1a1a">PROMETHEA</text>
 
-  <!-- Gold barcode strip (like in photo) -->
-  <rect x="82" y="160" width="136" height="12" rx="1" fill="#c8a96e"/>
+  <!-- Gold barcode strip -->
+  <rect x="82" y="160" width="136" height="12" rx="1" fill="#c8a000"/>
   <!-- Barcode vertical marks -->
-  <rect x="91"  y="160" width="2" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="98"  y="160" width="1" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="104" y="160" width="3" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="112" y="160" width="1" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="117" y="160" width="2" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="123" y="160" width="4" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="131" y="160" width="1" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="136" y="160" width="2" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="142" y="160" width="3" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="148" y="160" width="2" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="154" y="160" width="4" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="162" y="160" width="1" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="167" y="160" width="2" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="172" y="160" width="3" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="179" y="160" width="1" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="184" y="160" width="2" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="190" y="160" width="4" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="199" y="160" width="1" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="204" y="160" width="2" height="12" fill="#3a3836" opacity="0.65"/>
-  <rect x="210" y="160" width="1" height="12" fill="#3a3836" opacity="0.65"/>
+  <rect x="91"  y="160" width="2" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="98"  y="160" width="1" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="104" y="160" width="3" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="112" y="160" width="1" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="117" y="160" width="2" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="123" y="160" width="4" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="131" y="160" width="1" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="136" y="160" width="2" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="142" y="160" width="3" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="148" y="160" width="2" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="154" y="160" width="4" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="162" y="160" width="1" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="167" y="160" width="2" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="172" y="160" width="3" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="179" y="160" width="1" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="184" y="160" width="2" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="190" y="160" width="4" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="199" y="160" width="1" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="204" y="160" width="2" height="12" fill="#e8e6e4" opacity="0.55"/>
+  <rect x="210" y="160" width="1" height="12" fill="#e8e6e4" opacity="0.55"/>
+
+  <!-- ── Pink crosses (upper-right design area) ── -->
+  <!-- Cross 1 — largest -->
+  <path d="M207,93 V109 M199,101 H215"
+    stroke="#ff2d7a" stroke-width="1.8" stroke-linecap="square"/>
+  <!-- Cross 2 — medium -->
+  <path d="M219,113 V126 M212.5,119.5 H225.5"
+    stroke="#ff2d7a" stroke-width="1.5" stroke-linecap="square"/>
+  <!-- Cross 3 — small -->
+  <path d="M212,130 V140 M207,135 H217"
+    stroke="#ff2d7a" stroke-width="1.3" stroke-linecap="square"/>
 
   <!-- ── Distressed raw-cut hem strips ── -->
-  <rect x="52"  y="292" width="5" height="32" rx="2" fill="#373634"/>
-  <rect x="62"  y="292" width="3" height="52" rx="2" fill="#343230"/>
-  <rect x="70"  y="290" width="6" height="40" rx="2" fill="#383735"/>
-  <rect x="81"  y="292" width="4" height="60" rx="2" fill="#343230"/>
-  <rect x="90"  y="291" width="5" height="28" rx="2" fill="#373634"/>
-  <rect x="100" y="292" width="3" height="46" rx="2" fill="#353432"/>
-  <rect x="108" y="290" width="7" height="36" rx="2" fill="#383735"/>
-  <rect x="120" y="292" width="4" height="56" rx="2" fill="#343230"/>
-  <rect x="130" y="291" width="5" height="24" rx="2" fill="#373634"/>
-  <rect x="140" y="292" width="3" height="48" rx="2" fill="#353432"/>
-  <rect x="148" y="290" width="6" height="40" rx="2" fill="#383735"/>
-  <rect x="159" y="292" width="4" height="64" rx="2" fill="#323130"/>
-  <rect x="169" y="291" width="5" height="30" rx="2" fill="#373634"/>
-  <rect x="180" y="292" width="3" height="46" rx="2" fill="#353432"/>
-  <rect x="188" y="290" width="7" height="42" rx="2" fill="#383735"/>
-  <rect x="200" y="292" width="4" height="54" rx="2" fill="#343230"/>
-  <rect x="210" y="291" width="5" height="28" rx="2" fill="#373634"/>
-  <rect x="220" y="292" width="3" height="44" rx="2" fill="#353432"/>
-  <rect x="228" y="290" width="6" height="36" rx="2" fill="#383735"/>
-  <rect x="239" y="292" width="4" height="58" rx="2" fill="#343230"/>
-  <rect x="247" y="291" width="4" height="30" rx="2" fill="#373634"/>
+  <rect x="52"  y="292" width="5" height="32" rx="1" fill="#c8c6c3"/>
+  <rect x="62"  y="292" width="3" height="52" rx="1" fill="#bdbbb8"/>
+  <rect x="70"  y="290" width="6" height="40" rx="1" fill="#c4c2bf"/>
+  <rect x="81"  y="292" width="4" height="60" rx="1" fill="#bdbbb8"/>
+  <rect x="90"  y="291" width="5" height="28" rx="1" fill="#c8c6c3"/>
+  <rect x="100" y="292" width="3" height="46" rx="1" fill="#c0bebb"/>
+  <rect x="108" y="290" width="7" height="36" rx="1" fill="#c4c2bf"/>
+  <rect x="120" y="292" width="4" height="56" rx="1" fill="#bdbbb8"/>
+  <rect x="130" y="291" width="5" height="24" rx="1" fill="#c8c6c3"/>
+  <rect x="140" y="292" width="3" height="48" rx="1" fill="#c0bebb"/>
+  <rect x="148" y="290" width="6" height="40" rx="1" fill="#c4c2bf"/>
+  <rect x="159" y="292" width="4" height="64" rx="1" fill="#b8b6b3"/>
+  <rect x="169" y="291" width="5" height="30" rx="1" fill="#c8c6c3"/>
+  <rect x="180" y="292" width="3" height="46" rx="1" fill="#c0bebb"/>
+  <rect x="188" y="290" width="7" height="42" rx="1" fill="#c4c2bf"/>
+  <rect x="200" y="292" width="4" height="54" rx="1" fill="#bdbbb8"/>
+  <rect x="210" y="291" width="5" height="28" rx="1" fill="#c8c6c3"/>
+  <rect x="220" y="292" width="3" height="44" rx="1" fill="#c0bebb"/>
+  <rect x="228" y="290" width="6" height="36" rx="1" fill="#c4c2bf"/>
+  <rect x="239" y="292" width="4" height="58" rx="1" fill="#bdbbb8"/>
+  <rect x="247" y="291" width="4" height="30" rx="1" fill="#c8c6c3"/>
 </svg>
