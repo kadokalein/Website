@@ -35,11 +35,11 @@
 
   <!-- ── Chest graphic ── -->
 
-  <!-- PROMETHEA — black, bold -->
-  <text x="150" y="148"
+  <!-- PROMETHEA — gothic blackletter style, black on white shirt -->
+  <text x="150" y="150"
     text-anchor="middle"
-    font-family="Impact, 'Arial Narrow', Arial Black, sans-serif"
-    font-size="21" font-weight="900" letter-spacing="3"
+    font-family="'Old English Text MT', 'UnifrakturMaguntia', 'Blackletter', 'MedievalSharp', serif"
+    font-size="24" font-weight="900" letter-spacing="2"
     fill="#1a1a1a">PROMETHEA</text>
 
   <!-- Gold barcode strip -->

@@ -28,11 +28,11 @@
   <rect x="234" y="76" width="14" height="219" fill="#1e1d1c" opacity="0.28"/>
   <rect x="52"  y="278" width="196" height="17" fill="#1e1d1c" opacity="0.3"/>
 
-  <!-- PROMETHEA — white, visible on dark shirt -->
-  <text x="150" y="148"
+  <!-- PROMETHEA — gothic blackletter style, white on dark shirt -->
+  <text x="150" y="150"
     text-anchor="middle"
-    font-family="Impact, 'Arial Narrow', Arial Black, sans-serif"
-    font-size="21" font-weight="900" letter-spacing="3"
+    font-family="'Old English Text MT', 'UnifrakturMaguntia', 'Blackletter', 'MedievalSharp', serif"
+    font-size="24" font-weight="900" letter-spacing="2"
     fill="#f0ece6">PROMETHEA</text>
 
   <!-- Gold barcode strip -->

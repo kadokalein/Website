@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 380">
+  <!-- Dark background -->
+  <rect width="300" height="380" fill="#141414"/>
+
+  <defs>
+    <linearGradient id="dsg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#484644"/>
+      <stop offset="45%"  stop-color="#3d3c3a"/>
+      <stop offset="100%" stop-color="#2e2d2b"/>
+    </linearGradient>
+
+    <!-- Rainbow gradient top→bottom (red→orange→yellow→green→blue→violet) -->
+    <linearGradient id="rg" x1="0" y1="118" x2="0" y2="272" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#ff1a1a"/>
+      <stop offset="18%"  stop-color="#ff6600"/>
+      <stop offset="33%"  stop-color="#ffdd00"/>
+      <stop offset="50%"  stop-color="#22cc44"/>
+      <stop offset="67%"  stop-color="#0055ff"/>
+      <stop offset="83%"  stop-color="#6600bb"/>
+      <stop offset="100%" stop-color="#9900ee"/>
+    </linearGradient>
+
+    <!-- Slight inner shadow for depth on each claw -->
+    <linearGradient id="clawShadow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#000" stop-opacity="0.4"/>
+      <stop offset="30%"  stop-color="#000" stop-opacity="0"/>
+      <stop offset="70%"  stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Charcoal shirt body + sleeves (back view) -->
+  <path fill="url(#dsg3)"
+    d="M 5,52 L 58,28 L 105,22 Q 150,57 195,22 L 242,28 L 295,52
+       L 295,90 L 248,76 L 248,295 L 52,295 L 52,76 L 5,90 Z"/>
+
+  <!-- Back collar (smaller arc, no deep V) -->
+  <path fill="#1e1d1c"
+    d="M 118,22 Q 150,30 182,22 Q 168,40 150,43 Q 132,40 118,22 Z"/>
+
+  <!-- Armhole shadows -->
+  <path fill="#232221" opacity="0.65" d="M 58,28 L 52,76 L 64,76 L 68,31 Z"/>
+  <path fill="#232221" opacity="0.65" d="M 242,28 L 248,76 L 236,76 L 232,31 Z"/>
+
+  <!-- Side body shadows -->
+  <rect x="52"  y="76" width="14" height="219" fill="#1e1d1c" opacity="0.28"/>
+  <rect x="234" y="76" width="14" height="219" fill="#1e1d1c" opacity="0.28"/>
+  <rect x="52"  y="278" width="196" height="17" fill="#1e1d1c" opacity="0.3"/>
+
+  <!-- Rainbow claw marks — 4 slashes, rotated ~-10° -->
+  <ellipse cx="107" cy="194" rx="9" ry="77" transform="rotate(-10 107 194)" fill="url(#rg)"/>
+  <ellipse cx="107" cy="194" rx="9" ry="77" transform="rotate(-10 107 194)" fill="url(#clawShadow)"/>
+
+  <ellipse cx="129" cy="194" rx="9" ry="77" transform="rotate(-10 129 194)" fill="url(#rg)"/>
+  <ellipse cx="129" cy="194" rx="9" ry="77" transform="rotate(-10 129 194)" fill="url(#clawShadow)"/>
+
+  <ellipse cx="151" cy="194" rx="9" ry="77" transform="rotate(-10 151 194)" fill="url(#rg)"/>
+  <ellipse cx="151" cy="194" rx="9" ry="77" transform="rotate(-10 151 194)" fill="url(#clawShadow)"/>
+
+  <ellipse cx="173" cy="194" rx="9" ry="77" transform="rotate(-10 173 194)" fill="url(#rg)"/>
+  <ellipse cx="173" cy="194" rx="9" ry="77" transform="rotate(-10 173 194)" fill="url(#clawShadow)"/>
+
+  <!-- Sparkle dots inside claws -->
+  <circle cx="109" cy="148" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="131" cy="162" r="1.2" fill="white" opacity="0.6"/>
+  <circle cx="153" cy="140" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="175" cy="170" r="1.2" fill="white" opacity="0.6"/>
+  <circle cx="108" cy="230" r="1.2" fill="white" opacity="0.5"/>
+  <circle cx="152" cy="218" r="1.5" fill="white" opacity="0.5"/>
+
+  <!-- Distressed raw-cut hem strips -->
+  <rect x="52"  y="292" width="5" height="32" rx="1" fill="#383634"/>
+  <rect x="62"  y="292" width="3" height="52" rx="1" fill="#343230"/>
+  <rect x="70"  y="290" width="6" height="40" rx="1" fill="#393735"/>
+  <rect x="81"  y="292" width="4" height="60" rx="1" fill="#343230"/>
+  <rect x="90"  y="291" width="5" height="28" rx="1" fill="#383634"/>
+  <rect x="100" y="292" width="3" height="46" rx="1" fill="#353331"/>
+  <rect x="108" y="290" width="7" height="36" rx="1" fill="#393735"/>
+  <rect x="120" y="292" width="4" height="56" rx="1" fill="#343230"/>
+  <rect x="130" y="291" width="5" height="24" rx="1" fill="#383634"/>
+  <rect x="140" y="292" width="3" height="48" rx="1" fill="#353331"/>
+  <rect x="148" y="290" width="6" height="40" rx="1" fill="#393735"/>
+  <rect x="159" y="292" width="4" height="64" rx="1" fill="#323030"/>
+  <rect x="169" y="291" width="5" height="30" rx="1" fill="#383634"/>
+  <rect x="180" y="292" width="3" height="46" rx="1" fill="#353331"/>
+  <rect x="188" y="290" width="7" height="42" rx="1" fill="#393735"/>
+  <rect x="200" y="292" width="4" height="54" rx="1" fill="#343230"/>
+  <rect x="210" y="291" width="5" height="28" rx="1" fill="#383634"/>
+  <rect x="220" y="292" width="3" height="44" rx="1" fill="#353331"/>
+  <rect x="228" y="290" width="6" height="36" rx="1" fill="#393735"/>
+  <rect x="239" y="292" width="4" height="58" rx="1" fill="#343230"/>
+  <rect x="247" y="291" width="4" height="30" rx="1" fill="#383634"/>
+</svg>
