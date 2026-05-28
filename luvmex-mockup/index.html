@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LUVMEX — Modern Redesign Mockup</title>
+  <title>PROMETHEA — Modern Redesign Mockup</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
   <style>
@@ -273,6 +273,192 @@
       width: 1px;
       height: 60px;
       background: linear-gradient(to bottom, #555, transparent);
+    }
+
+    /* ── RUNWAY WINDOW ── */
+    .hero-figure { display: none; }
+
+    .runway-window {
+      position: absolute;
+      right: 6%;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 300px;
+      z-index: 3;
+    }
+    @media (max-width: 1150px) { .runway-window { display: none; } }
+
+    .rw-label {
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.65;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rw-label::before {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(200,169,110,0.2);
+    }
+    .rw-frame {
+      border: 1px solid rgba(200,169,110,0.2);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.9),
+        0 28px 80px rgba(0,0,0,0.85),
+        0 0 60px rgba(200,169,110,0.07);
+    }
+    .runway-screen {
+      position: relative;
+      aspect-ratio: 4/5;
+      background: #050505;
+      overflow: hidden;
+    }
+
+    /* ── Runway environment ── */
+    .rw-bg { position: absolute; inset: 0; background: #070707; }
+
+    .rw-catwalk {
+      position: absolute; inset: 0;
+      clip-path: polygon(39% 0%, 61% 0%, 100% 100%, 0% 100%);
+      background: linear-gradient(180deg, #121210 0%, #1e1e1c 65%, #252522 100%);
+    }
+    .rw-catwalk-el {
+      position: absolute; inset: 0;
+      clip-path: polygon(38.3% 0%, 39% 0%, 0% 100%, 0% 99.5%);
+      background: rgba(200,169,110,0.06);
+    }
+    .rw-catwalk-er {
+      position: absolute; inset: 0;
+      clip-path: polygon(61% 0%, 61.7% 0%, 100% 99.5%, 100% 100%);
+      background: rgba(200,169,110,0.06);
+    }
+
+    /* Overhead light beams */
+    .rw-lb {
+      position: absolute;
+      top: 0;
+      width: 70px;
+      height: 72%;
+      background: linear-gradient(to bottom, rgba(255,255,240,0.11) 0%, transparent 88%);
+      transform-origin: top center;
+    }
+    .rw-lb-c { left: calc(50% - 35px); }
+    .rw-lb-l { left: calc(36% - 35px); transform: rotate(-9deg); opacity: 0.5; }
+    .rw-lb-r { left: calc(64% - 35px); transform: rotate(9deg);  opacity: 0.5; }
+
+    /* Vignettes (audience + ceiling) */
+    .rw-vl { position: absolute; inset: 0; background: linear-gradient(to right, rgba(0,0,0,0.94) 0%, transparent 37%); }
+    .rw-vr { position: absolute; inset: 0; background: linear-gradient(to left,  rgba(0,0,0,0.94) 0%, transparent 37%); }
+    .rw-vt { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 22%); }
+    .rw-vb { position: absolute; inset: 0; background: linear-gradient(to top,    rgba(0,0,0,0.45) 0%, transparent 12%); }
+
+    /* ── Model silhouettes ── */
+    .model {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform-origin: bottom center;
+    }
+    .model-inner { animation: catSway 0.85s ease-in-out infinite; }
+    @keyframes catSway {
+      0%,100% { transform: translateX(0); }
+      30%     { transform: translateX(2.5px); }
+      70%     { transform: translateX(-2.5px); }
+    }
+
+    .m-head {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #c49a78;
+      flex-shrink: 0;
+    }
+    .m-neck {
+      width: 3px; height: 3px;
+      background: #b88a68;
+      flex-shrink: 0;
+    }
+    .m-body { flex-shrink: 0; }
+    .m-legs { display: flex; gap: 5px; flex-shrink: 0; }
+    .m-leg  { display: flex; flex-direction: column; align-items: center; }
+    .m-thigh { width: 4px; height: 10px; background: #1a1816; }
+    .m-shin  { width: 3px; height: 9px;  background: #1a1816; }
+    .m-shoe  { width: 7px; height: 3px;  background: #0d0c0b; border-radius: 0 0 2px 2px; }
+
+    /* 4 distinct high-fashion silhouettes */
+    .fit-cocoon  .m-body { width:34px; height:44px; background:#1a1918; border-radius:40% 40% 22% 22% / 35% 35% 18% 18%; }
+    .fit-jacket  .m-body { width:32px; height:38px; background:#141312; clip-path:polygon(0% 20%,20% 0%,80% 0%,100% 20%,100% 100%,0% 100%); }
+    .fit-trench  .m-body { width:22px; height:52px; background:linear-gradient(180deg,#1c1a15,#161410); border-radius:2px 2px 3px 3px; }
+    .fit-cape    .m-body { width:44px; height:46px; background:#121110; clip-path:polygon(20% 0%,80% 0%,100% 100%,0% 100%); }
+
+    /* Walk-in animation: small & far at top → large & near at bottom */
+    @keyframes walkIn {
+      0%   { bottom:90%; transform:translateX(-50%) scale(0.08); opacity:0; }
+      7%   { opacity:1; }
+      78%  { bottom:2%; transform:translateX(-50%) scale(1.02); opacity:1; }
+      90%  { opacity:0; }
+      100% { bottom:-6%; transform:translateX(-50%) scale(1.1); opacity:0; }
+    }
+    .model-1 { animation: walkIn 7s ease-in-out infinite; animation-delay:0s; }
+    .model-2 { animation: walkIn 7s ease-in-out infinite; animation-delay:-1.75s; }
+    .model-3 { animation: walkIn 7s ease-in-out infinite; animation-delay:-3.5s; }
+    .model-4 { animation: walkIn 7s ease-in-out infinite; animation-delay:-5.25s; }
+
+    /* ── Screen UI overlay ── */
+    .rw-overlay { position:absolute; inset:0; z-index:10; pointer-events:none; }
+    .rw-scanlines {
+      position:absolute; inset:0;
+      background: repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 1px, transparent 1px, transparent 2px);
+    }
+    .rw-live {
+      position:absolute; top:11px; left:11px;
+      display:flex; align-items:center; gap:5px;
+      font-size:9px; font-weight:700; letter-spacing:2px; color:#fff;
+      background:rgba(0,0,0,0.55); padding:4px 8px; border-radius:2px;
+      backdrop-filter:blur(4px);
+    }
+    .rw-dot {
+      width:6px; height:6px; border-radius:50%;
+      background:#e03030;
+      animation: dotBlink 1.2s ease-in-out infinite;
+    }
+    @keyframes dotBlink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    .rw-brand-badge {
+      position:absolute; top:11px; right:11px;
+      font-family:'Bebas Neue',sans-serif;
+      font-size:13px; letter-spacing:3px; color:var(--accent);
+      background:rgba(0,0,0,0.55); padding:4px 9px; border-radius:2px;
+      backdrop-filter:blur(4px);
+    }
+    .rw-bottom-bar {
+      position:absolute; bottom:0; left:0; right:0;
+      background:rgba(0,0,0,0.62);
+      backdrop-filter:blur(6px);
+      border-top:1px solid rgba(200,169,110,0.14);
+      padding:8px 12px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .rw-look {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:13px; letter-spacing:2px; color:rgba(255,255,255,0.82);
+    }
+    .rw-city {
+      font-size:8px; letter-spacing:2.5px; text-transform:uppercase;
+      color:rgba(255,255,255,0.35);
+    }
+    .rw-brand-footer {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:11px; letter-spacing:3px; color:var(--accent);
     }
 
     /* ── MARQUEE ── */
@@ -949,11 +1135,11 @@
 <body>
 
   <!-- Announcement -->
-  <div class="announcement">Free shipping on orders over $75 &nbsp;·&nbsp; New drop every Friday &nbsp;·&nbsp; Use code LUVMEX10 for 10% off</div>
+  <div class="announcement">Free shipping on orders over $75 &nbsp;·&nbsp; New drop every Friday &nbsp;·&nbsp; Use code PROMETHEA10 for 10% off</div>
 
   <!-- Nav -->
   <nav>
-    <a href="#" class="nav-logo">LUV<span>MEX</span></a>
+    <a href="#" class="nav-logo">PROMET<span>HEA</span></a>
     <ul class="nav-links">
       <li><a href="#">New Arrivals</a></li>
       <li><a href="#">Shop</a></li>
@@ -977,6 +1163,85 @@
     <div class="hero-figure"></div>
     <div class="hero-grid-overlay"></div>
     <div class="hero-bg"></div>
+
+    <!-- Runway Window -->
+    <div class="runway-window">
+      <div class="rw-label">Promethea SS'25 — Runway Live</div>
+      <div class="rw-frame">
+        <div class="runway-screen">
+          <div class="rw-bg"></div>
+          <div class="rw-catwalk"></div>
+          <div class="rw-catwalk-el"></div>
+          <div class="rw-catwalk-er"></div>
+          <div class="rw-lb rw-lb-c"></div>
+          <div class="rw-lb rw-lb-l"></div>
+          <div class="rw-lb rw-lb-r"></div>
+          <div class="rw-vl"></div><div class="rw-vr"></div>
+          <div class="rw-vt"></div><div class="rw-vb"></div>
+
+          <!-- Model 1 — cocoon coat -->
+          <div class="model model-1 fit-cocoon">
+            <div class="model-inner">
+              <div class="m-head"></div><div class="m-neck"></div>
+              <div class="m-body"></div>
+              <div class="m-legs">
+                <div class="m-leg"><div class="m-thigh"></div><div class="m-shin"></div><div class="m-shoe"></div></div>
+                <div class="m-leg"><div class="m-thigh"></div><div class="m-shin"></div><div class="m-shoe"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model 2 — sculptural jacket -->
+          <div class="model model-2 fit-jacket">
+            <div class="model-inner">
+              <div class="m-head"></div><div class="m-neck"></div>
+              <div class="m-body"></div>
+              <div class="m-legs">
+                <div class="m-leg"><div class="m-thigh"></div><div class="m-shin"></div><div class="m-shoe"></div></div>
+                <div class="m-leg"><div class="m-thigh"></div><div class="m-shin"></div><div class="m-shoe"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model 3 — long trench -->
+          <div class="model model-3 fit-trench">
+            <div class="model-inner">
+              <div class="m-head"></div><div class="m-neck"></div>
+              <div class="m-body"></div>
+              <div class="m-legs">
+                <div class="m-leg"><div class="m-thigh"></div><div class="m-shin"></div><div class="m-shoe"></div></div>
+                <div class="m-leg"><div class="m-thigh"></div><div class="m-shin"></div><div class="m-shoe"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model 4 — dramatic cape -->
+          <div class="model model-4 fit-cape">
+            <div class="model-inner">
+              <div class="m-head"></div><div class="m-neck"></div>
+              <div class="m-body"></div>
+              <div class="m-legs">
+                <div class="m-leg"><div class="m-thigh"></div><div class="m-shin"></div><div class="m-shoe"></div></div>
+                <div class="m-leg"><div class="m-thigh"></div><div class="m-shin"></div><div class="m-shoe"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screen UI overlay -->
+          <div class="rw-overlay">
+            <div class="rw-scanlines"></div>
+            <div class="rw-live"><span class="rw-dot"></span> LIVE</div>
+            <div class="rw-brand-badge">PROMETHEA</div>
+            <div class="rw-bottom-bar">
+              <span class="rw-look" id="lookNum">LOOK 01</span>
+              <span class="rw-city">Paris · SS'25</span>
+              <span class="rw-brand-footer">PROMETHEA</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="hero-content">
       <span class="hero-tag">SS '25 Collection</span>
       <h1 class="hero-title">
@@ -1000,13 +1265,13 @@
     <div class="marquee-track">
       <span>New Arrivals</span><span class="dot">✦</span>
       <span>Limited Drops</span><span class="dot">✦</span>
-      <span>LUVMEX SS'25</span><span class="dot">✦</span>
+      <span>PROMETHEA SS'25</span><span class="dot">✦</span>
       <span>Free Returns</span><span class="dot">✦</span>
       <span>Premium Quality</span><span class="dot">✦</span>
       <span>Culture-Driven</span><span class="dot">✦</span>
       <span>New Arrivals</span><span class="dot">✦</span>
       <span>Limited Drops</span><span class="dot">✦</span>
-      <span>LUVMEX SS'25</span><span class="dot">✦</span>
+      <span>PROMETHEA SS'25</span><span class="dot">✦</span>
       <span>Free Returns</span><span class="dot">✦</span>
       <span>Premium Quality</span><span class="dot">✦</span>
       <span>Culture-Driven</span><span class="dot">✦</span>
@@ -1165,7 +1430,7 @@
             <button class="add-to-cart">Notify Me</button>
           </div>
         </div>
-        <div class="product-name">LMX Bomber Jacket</div>
+        <div class="product-name">Promethea Bomber Jacket</div>
         <div class="product-meta">
           <span class="product-price">$165</span>
           <div class="product-colors">
@@ -1235,7 +1500,7 @@
             <button class="add-to-cart">Add to Cart</button>
           </div>
         </div>
-        <div class="product-name">LMX Utility Shorts</div>
+        <div class="product-name">Promethea Utility Shorts</div>
         <div class="product-meta">
           <span class="product-price">$62</span>
           <div class="product-colors">
@@ -1307,7 +1572,7 @@
       <div class="section-label">Our Story</div>
       <h2 class="section-title">Born from<br>the streets,<br>built for all.</h2>
       <p class="story-body">
-        LUVMEX was born out of a love for culture, creativity, and community.
+        PROMETHEA was born out of a love for culture, creativity, and community.
         We design pieces that bridge heritage and modernity — each drop is a
         statement, not just a garment. From the block to the runway, we make
         clothes that mean something.
@@ -1337,7 +1602,7 @@
   <!-- Instagram -->
   <section class="instagram" style="padding-bottom:0">
     <div style="text-align:center;margin-bottom:48px">
-      <div class="section-label">Follow @luvmex</div>
+      <div class="section-label">Follow @promethea</div>
       <div class="section-title" style="margin-bottom:0">As seen on the 'gram</div>
     </div>
     <div class="ig-grid">
@@ -1365,7 +1630,7 @@
   <footer>
     <div class="footer-top">
       <div class="footer-brand">
-        <a href="#" class="nav-logo">LUV<span>MEX</span></a>
+        <a href="#" class="nav-logo">PROMET<span>HEA</span></a>
         <p class="footer-desc">Premium streetwear rooted in culture.<br>Made for those who move with intention.</p>
         <div class="footer-socials">
           <a href="#" class="social-icon">𝕏</a>
@@ -1408,7 +1673,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span class="footer-copy">© 2025 LUVMEX. All rights reserved.</span>
+      <span class="footer-copy">© 2025 PROMETHEA. All rights reserved.</span>
       <div class="footer-legal">
         <a href="#">Privacy Policy</a>
         <a href="#">Terms of Service</a>
@@ -1427,6 +1692,14 @@
         tab.classList.add('active');
       });
     });
+
+    // Runway look counter
+    let look = 1;
+    setInterval(() => {
+      look = look >= 12 ? 1 : look + 1;
+      const el = document.getElementById('lookNum');
+      if (el) el.textContent = 'LOOK ' + String(look).padStart(2, '0');
+    }, 3200);
   </script>
 
 </body>
