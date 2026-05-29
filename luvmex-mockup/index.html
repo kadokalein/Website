@@ -178,7 +178,7 @@
     }
     .hero-content {
       position: relative; z-index: 2;
-      padding: 0 80px 88px; max-width: 680px;
+      padding: 0 clamp(24px,5.5vw,80px) 88px; max-width: 680px;
     }
     .hero-eyebrow {
       font-family: 'Barlow Condensed', sans-serif;
@@ -288,7 +288,7 @@
     .ticker-track span.sep { color:var(--d3);padding:0; }
 
     /* ── SHARED SECTION ── */
-    section { padding: 88px 80px; }
+    section { padding: 88px clamp(20px, 5.5vw, 80px); }
     .sec-label { font-size:9px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--g2);margin-bottom:8px; }
     .sec-title { font-family:'Barlow Condensed',sans-serif;font-size:clamp(38px,4.5vw,60px);font-weight:800;letter-spacing:-0.5px;text-transform:uppercase;color:var(--white);line-height:1;margin-bottom:48px; }
     .see-all { font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--g3);text-decoration:none;border-bottom:1px solid var(--g1);padding-bottom:1px;transition:color .12s,border-color .12s; }
@@ -297,10 +297,10 @@
     /* ── CATEGORIES ── */
     /* ── COLLECTIONS (full-width banners) ── */
     .cats { background: var(--black); padding-top: 72px; padding-left: 0; padding-right: 0; }
-    .cats .sec-label { padding: 0 80px; }
-    .cats .sec-title { padding: 0 80px; margin-bottom: 24px; }
+    .cats .sec-label { padding: 0 clamp(20px, 5.5vw, 80px); }
+    .cats .sec-title { padding: 0 clamp(20px, 5.5vw, 80px); margin-bottom: 24px; }
     .coll-banner {
-      position: relative; width: 100%; height: 70vh; min-height: 480px;
+      position: relative; width: 100%; height: clamp(260px, 60vw, 70vh);
       overflow: hidden; cursor: pointer; background: var(--d1);
     }
     .coll-banner + .coll-banner { margin-top: 2px; }
@@ -325,7 +325,7 @@
     }
     .coll-banner-info {
       position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
-      padding: 48px 64px;
+      padding: clamp(16px, 3.5vh, 48px) clamp(16px, 4.5vw, 64px);
       display: flex; align-items: flex-end; justify-content: space-between;
     }
     .coll-banner-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--g3); margin-bottom: 8px; }
@@ -398,7 +398,7 @@
     .editorial { background:var(--d1);padding:0;display:grid;grid-template-columns:1fr 1fr;min-height:560px; }
     .ed-visual { position:relative;overflow:hidden; }
     .ed-visual img { position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;background:var(--d2); }
-    .ed-text { padding:72px 64px;display:flex;flex-direction:column;justify-content:center; }
+    .ed-text { padding:clamp(32px,5vh,72px) clamp(20px,4.5vw,64px);display:flex;flex-direction:column;justify-content:center; }
     .ed-season { font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:600;letter-spacing:5px;text-transform:uppercase;color:var(--g2);margin-bottom:16px; }
     .ed-headline { font-family:'Barlow Condensed',sans-serif;font-size:clamp(52px,5vw,80px);font-weight:800;line-height:.9;text-transform:uppercase;color:var(--white);margin-bottom:24px; }
     .ed-headline i { font-style:italic;font-weight:700;color:var(--g3); }
@@ -406,9 +406,9 @@
 
     /* ── LOOKBOOK ── */
     .lookbook { background:var(--black);padding:80px 0; }
-    .lookbook-hd { padding:0 80px 36px;display:flex;justify-content:space-between;align-items:flex-end; }
+    .lookbook-hd { padding:0 clamp(20px,5.5vw,80px) 36px;display:flex;justify-content:space-between;align-items:flex-end; }
     .lookbook-hd .sec-title { margin-bottom:0; }
-    .lb-scroll { display:flex;gap:2px;padding:0 80px;overflow-x:auto;scrollbar-width:none; }
+    .lb-scroll { display:flex;gap:2px;padding:0 clamp(20px,5.5vw,80px);overflow-x:auto;scrollbar-width:none; }
     .lb-scroll::-webkit-scrollbar { display:none; }
     .lb-item { flex-shrink:0;width:260px;overflow:hidden;position:relative; }
     .lb-fill { aspect-ratio:2/3;background:var(--d1);position:relative;overflow:hidden; }
@@ -417,7 +417,7 @@
     .lb-num { position:absolute;bottom:12px;right:14px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.2); }
 
     /* ── STATEMENT ── */
-    .statement { background:var(--white);padding:100px 80px;display:flex;gap:80px;align-items:center; }
+    .statement { background:var(--white);padding:100px clamp(20px,5.5vw,80px);display:flex;gap:clamp(24px,5vw,80px);align-items:center; }
     .stmt-num { font-family:'Barlow Condensed',sans-serif;font-size:120px;font-weight:800;color:rgba(0,0,0,0.06);line-height:1;flex-shrink:0;user-select:none; }
     .stmt-text { flex:1; }
     .stmt-label { font-size:9px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:#999;margin-bottom:12px; }
@@ -428,7 +428,7 @@
     .btn-solid-dark:hover { background:#222; }
 
     /* ── NEWSLETTER ── */
-    .newsletter { background:var(--d1);border-top:1px solid var(--border);padding:72px 80px;text-align:center; }
+    .newsletter { background:var(--d1);border-top:1px solid var(--border);padding:72px clamp(20px,5.5vw,80px);text-align:center; }
     .newsletter .sec-title { font-size:clamp(32px,3.5vw,48px);margin-bottom:12px; }
     .nl-sub { font-size:12px;color:var(--g2);letter-spacing:.5px;margin-bottom:36px; }
     .nl-form { display:flex;max-width:420px;margin:0 auto; }
@@ -440,7 +440,7 @@
     /* ── SHOPIFY STATUS ── */
     .shopify-status {
       background: var(--d2); border: 1px solid var(--border);
-      margin: 0 80px 0; padding: 14px 20px;
+      margin: 0 clamp(20px,5.5vw,80px); padding: 14px 20px;
       display: flex; align-items: center; gap: 10px;
       font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--g2);
     }
@@ -449,7 +449,7 @@
     .shopify-status.connected { color:var(--g3); }
 
     /* ── FOOTER ── */
-    footer { background:var(--black);border-top:1px solid var(--border);padding:60px 80px 36px; }
+    footer { background:var(--black);border-top:1px solid var(--border);padding:60px clamp(20px,5.5vw,80px) 36px; }
     .ft-top { display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:52px; }
     .ft-brand-name { font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:8px;text-transform:uppercase;color:var(--white);margin-bottom:14px; }
     .ft-desc { font-size:12px;color:var(--g2);line-height:1.8;margin-bottom:24px; }
@@ -1333,7 +1333,7 @@
     </div>
   </footer>
 
-  <div class="tag">Design Mockup</div>
+
 
   <script>
     /* ─────────────────────────────────────────────
