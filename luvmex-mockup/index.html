@@ -73,6 +73,8 @@
     }
     .nav-l, .nav-r { display: flex; align-items: center; gap: 24px; }
     .nav-r { justify-content: flex-end; }
+    .nav-logo-img { display: flex; align-items: center; flex-shrink: 0; }
+    .nav-logo-img img { height: 34px; width: auto; display: block; }
     .nav-l a, .nav-r a, .nav-r button {
       font-size: 10px; font-weight: 500; letter-spacing: 2.5px;
       text-transform: uppercase; color: var(--g3);
@@ -1004,12 +1006,13 @@
   <!-- Nav -->
   <nav>
     <div class="nav-l">
-      <a href="#products" onclick="event.preventDefault();filterSection('Women')">Women</a>
-      <a href="#products" onclick="event.preventDefault();filterSection('Men')">Men</a>
+      <a href="index.html" class="nav-logo-img"><img src="logo.svg" alt="Promethea logo"></a>
       <a href="#">New</a>
+      <a href="men.html">Men</a>
+      <a href="#products" onclick="event.preventDefault();filterSection('Women')">Women</a>
       <a href="#">Sale</a>
     </div>
-    <a href="#" class="nav-logo">Promethea</a>
+    <a href="index.html" class="nav-logo">Promethea</a>
     <div class="nav-r">
       <a href="#">Search</a>
       <a href="#">Account</a>
@@ -1031,9 +1034,9 @@
       <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
     </div>
     <nav class="mobile-menu-nav">
-      <a href="#products" onclick="event.preventDefault();filterSection('Women');toggleMobileMenu()">Women</a>
-      <a href="#products" onclick="event.preventDefault();filterSection('Men');toggleMobileMenu()">Men</a>
       <a href="#" onclick="toggleMobileMenu()">New</a>
+      <a href="men.html" onclick="toggleMobileMenu()">Men</a>
+      <a href="#products" onclick="event.preventDefault();filterSection('Women');toggleMobileMenu()">Women</a>
       <a href="#" onclick="toggleMobileMenu()">Sale</a>
       <a href="#" onclick="toggleMobileMenu()">Search</a>
       <a href="#" onclick="toggleMobileMenu()">Account</a>
@@ -1090,7 +1093,7 @@
     <div class="sec-title">Collections</div>
 
     <!-- Men banner — background images from images/background/, products from men/tops + men/bottoms -->
-    <div class="coll-banner" id="collMen" onclick="filterSection('Men')">
+    <div class="coll-banner" id="collMen" onclick="window.location.href='men.html'" style="cursor:pointer">
       <div class="coll-banner-imgs count-1" id="collMenImgs">
         <div class="coll-loading">Loading…</div>
       </div>
@@ -1716,31 +1719,35 @@
 
     /* Render a collection banner from image data */
     async function loadCollectionBanner(imgContainerId, countId, folders, bgFolders) {
-      // Load background images first (for the visual banner)
+      // Load background images
       let bgImgs = [];
       for (const f of bgFolders) {
         const imgs = await ImageDB.allFrom(f);
         bgImgs = bgImgs.concat(imgs);
       }
 
-      // Count total product images across product folders
+      // Count total product images
       let productCount = 0;
       for (const f of folders) {
         const imgs = await ImageDB.allFrom(f);
         productCount += imgs.length;
       }
 
+      // Set background image as full-cover CSS background on the banner container
       const container = document.getElementById(imgContainerId);
-      if (!container) return;
-
-      if (bgImgs.length === 0) bgImgs = ['tshirt-dark.svg', 'tshirt-back.svg'];
-
-      // Show up to 4 images in the banner
-      const show = bgImgs.slice(0, 4);
-      container.className = `coll-banner-imgs count-${show.length}`;
-      container.innerHTML = show.map(src =>
-        `<img src="${src}" alt="" loading="lazy">`
-      ).join('');
+      if (container) {
+        const banner = container.closest('.coll-banner');
+        if (banner && bgImgs.length > 0) {
+          // Filter to real image files (skip SVG placeholders if real photos available)
+          const realPhotos = bgImgs.filter(s => !s.endsWith('.svg'));
+          const bgSrc = (realPhotos.length > 0 ? realPhotos[0] : bgImgs[0]);
+          banner.style.backgroundImage = `url('${bgSrc}')`;
+          banner.style.backgroundSize = 'cover';
+          banner.style.backgroundPosition = 'center top';
+        }
+        // Hide the old image grid — background is now a CSS property
+        container.style.display = 'none';
+      }
 
       const countEl = document.getElementById(countId);
       if (countEl) countEl.textContent = productCount + ' Styles';
@@ -1755,16 +1762,16 @@
       });
     }
 
-    /* Load Men banner: bg from images/background, count from men/tops + men/bottoms */
+    /* Load Men banner: bg from images/background (full-cover), count from men folders */
     loadCollectionBanner('collMenImgs', 'collMenCount',
       ['men/tops', 'men/bottoms'],
-      ['background', 'men/tops']
+      ['background']
     );
 
-    /* Load Accessories banner */
+    /* Load Accessories banner: bg from images/background (full-cover), count accessories */
     loadCollectionBanner('collAccImgs', 'collAccCount',
       ['accessories'],
-      ['background', 'accessories']
+      ['background']
     );
 
     /* Load products section images from folder when a tab is clicked */

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 96">
+  <!-- White diagonal arms (X shape) -->
+  <rect x="6" y="37" width="68" height="22" fill="white" transform="rotate(-52 40 48)"/>
+  <rect x="6" y="37" width="68" height="22" fill="white" transform="rotate(52 40 48)"/>
+
+  <!-- Blue vertical bar -->
+  <rect x="33" y="0" width="14" height="96" fill="#1847ee"/>
+
+  <!-- Red horizontal bar -->
+  <rect x="0" y="41" width="80" height="14" fill="#e01515"/>
+
+  <!-- Purple corner tips on the X arms -->
+  <line x1="7"  y1="5"  x2="27" y2="31" stroke="#8822cc" stroke-width="6" stroke-linecap="round"/>
+  <line x1="73" y1="5"  x2="53" y2="31" stroke="#8822cc" stroke-width="6" stroke-linecap="round"/>
+  <line x1="7"  y1="91" x2="27" y2="65" stroke="#8822cc" stroke-width="6" stroke-linecap="round"/>
+  <line x1="73" y1="91" x2="53" y2="65" stroke="#8822cc" stroke-width="6" stroke-linecap="round"/>
+</svg>
