@@ -22,8 +22,8 @@
   -->
   <script>
     window.SHOPIFY = {
-      domain: 'yp7neb-5u.myshopify.com',
-      storefrontToken: 'aeb72afa2a298385bd5f3f82883b9c9f',
+      domain: 'promethea3.myshopify.com',
+      storefrontToken: 'aeb72afa2a298385bd5f3f82883b9c9f', // ← replace with your Storefront API token from promethea3 Shopify Admin
       apiVersion: '2024-10',
     };
   </script>
@@ -1097,7 +1097,6 @@
       <p class="hero-desc">A new vision for contemporary fashion — sculpted from the streets, worn by those who define the moment.</p>
       <div class="hero-ctas">
         <a href="#products" class="btn-solid">Shop Now</a>
-        <a href="#lookbook" class="btn-line">View Lookbook</a>
       </div>
     </div>
   </section>
@@ -1133,9 +1132,7 @@
 
     <!-- Men banner — background images from images/background/, products from men/tops + men/bottoms -->
     <div class="coll-banner" id="collMen" onclick="filterSection('Men')">
-      <div class="coll-banner-imgs count-1" id="collMenImgs">
-        <div class="coll-loading">Loading…</div>
-      </div>
+      <div class="coll-banner-imgs count-1" id="collMenImgs" style="display:none"></div>
       <div class="coll-banner-veil"></div>
       <div class="coll-banner-info">
         <div>
@@ -1149,9 +1146,7 @@
 
     <!-- Accessories banner -->
     <div class="coll-banner" id="collAcc" onclick="filterSection('Accessories')">
-      <div class="coll-banner-imgs count-1" id="collAccImgs">
-        <div class="coll-loading">Loading…</div>
-      </div>
+      <div class="coll-banner-imgs count-1" id="collAccImgs" style="display:none"></div>
       <div class="coll-banner-veil"></div>
       <div class="coll-banner-info">
         <div>
@@ -1291,37 +1286,6 @@
     </div>
   </section>
 
-  <!-- Editorial -->
-  <section class="editorial">
-    <div class="ed-visual">
-      <img src="tshirt-dark.svg" alt="The New Silhouette">
-    </div>
-    <div class="ed-text">
-      <div class="ed-season">Spring / Summer 2025</div>
-      <h2 class="ed-headline">The New<br><i>Silhouette.</i></h2>
-      <p class="ed-body">Architectural forms meet street-level realism. The SS'25 collection redefines volume, proportion, and the relationship between body and garment.</p>
-      <a href="#products" class="btn-solid">Explore the Collection</a>
-    </div>
-  </section>
-
-  <!-- Lookbook -->
-  <section class="lookbook" id="lookbook">
-    <div class="lookbook-hd">
-      <div>
-        <div class="sec-label">SS'25</div>
-        <div class="sec-title">The Lookbook</div>
-      </div>
-      <a href="#" class="see-all">See All Looks</a>
-    </div>
-    <div class="lb-scroll">
-      <div class="lb-item"><div class="lb-fill"><img src="tshirt-dark.svg" alt="Look 01"></div><span class="lb-num">01</span></div>
-      <div class="lb-item"><div class="lb-fill"><img src="tshirt-back.svg" alt="Look 02"></div><span class="lb-num">02</span></div>
-      <div class="lb-item"><div class="lb-fill"><img src="tshirt.svg"      alt="Look 03"></div><span class="lb-num">03</span></div>
-      <div class="lb-item"><div class="lb-fill"><img src="tshirt-back.svg" alt="Look 04"></div><span class="lb-num">04</span></div>
-      <div class="lb-item"><div class="lb-fill"><img src="tshirt-dark.svg" alt="Look 05"></div><span class="lb-num">05</span></div>
-    </div>
-  </section>
-
   <!-- Statement -->
   <section class="statement">
     <div class="stmt-num">25</div>
@@ -1375,7 +1339,6 @@
     </div>
   </footer>
 
-  <div class="tag">Design Mockup</div>
 
   <script>
     /* ─────────────────────────────────────────────
@@ -1718,134 +1681,70 @@
     }
 
     /* ─────────────────────────────────────────────
-       IMAGE DATABASE — reads from /images/ folders via server API
-       Folder structure:
-         images/background/   → collection banner backgrounds
-         images/men/tops/     → men's tops
-         images/men/bottoms/  → men's bottoms
-         images/women/tops/   → women's tops
-         images/women/bottoms/→ women's bottoms
-         images/accessories/  → accessories
+       COLLECTION BANNERS — pulls background images + counts from Shopify
     ───────────────────────────────────────────── */
-    const ImageDB = {
-      _cache: {},
+    async function loadBannersFromShopify() {
+      if (!isConfigured) return;
+      try {
+        const data = await shopifyFetch(`{
+          products(first: 50) {
+            edges { node {
+              images(first: 1) { edges { node { url } } }
+            }}
+          }
+        }`);
+        const products = data.data.products.edges;
+        const count = products.length;
 
-      async load(folderPath) {
-        if (this._cache[folderPath]) return this._cache[folderPath];
-        try {
-          const res = await fetch(`/api/images/${folderPath}`);
-          if (!res.ok) throw new Error(res.status);
-          const data = await res.json();
-          this._cache[folderPath] = data;
-          return data;
-        } catch (e) {
-          console.warn('ImageDB: no server at /api/images — using placeholder SVGs');
-          // Fallback when opened as a plain file (no server)
-          const fallback = {
-            images: ['tshirt-dark.svg', 'tshirt-back.svg', 'tshirt.svg'],
-            subfolders: [],
-          };
-          this._cache[folderPath] = fallback;
-          return fallback;
+        // Use first product image as Men banner background
+        const img1 = products[0]?.node.images.edges[0]?.node.url;
+        if (img1) {
+          const menBanner = document.getElementById('collMenImgs')?.closest('.coll-banner');
+          if (menBanner) {
+            menBanner.style.backgroundImage = `url('${img1}')`;
+            menBanner.style.backgroundSize = 'cover';
+            menBanner.style.backgroundPosition = 'center top';
+          }
         }
-      },
+        const menCount = document.getElementById('collMenCount');
+        if (menCount) menCount.textContent = count + ' Styles';
 
-      async allFrom(folderPath) {
-        const data = await this.load(folderPath);
-        return data.images || [];
-      },
-    };
+        // Use second product image (or first) as Accessories banner background
+        const img2 = products[1]?.node.images.edges[0]?.node.url || img1;
+        if (img2) {
+          const accBanner = document.getElementById('collAccImgs')?.closest('.coll-banner');
+          if (accBanner) {
+            accBanner.style.backgroundImage = `url('${img2}')`;
+            accBanner.style.backgroundSize = 'cover';
+            accBanner.style.backgroundPosition = 'center top';
+          }
+        }
+        const accCount = document.getElementById('collAccCount');
+        if (accCount) accCount.textContent = count + ' Styles';
 
-    /* Render a collection banner from image data */
-    async function loadCollectionBanner(imgContainerId, countId, folders, bgFolders) {
-      // Load background images first (for the visual banner)
-      let bgImgs = [];
-      for (const f of bgFolders) {
-        const imgs = await ImageDB.allFrom(f);
-        bgImgs = bgImgs.concat(imgs);
+      } catch (e) {
+        console.warn('Banner load failed:', e);
       }
-
-      // Count total product images across product folders
-      let productCount = 0;
-      for (const f of folders) {
-        const imgs = await ImageDB.allFrom(f);
-        productCount += imgs.length;
-      }
-
-      const container = document.getElementById(imgContainerId);
-      if (!container) return;
-
-      if (bgImgs.length === 0) bgImgs = ['tshirt-dark.svg', 'tshirt-back.svg'];
-
-      // Show up to 4 images in the banner
-      const show = bgImgs.slice(0, 4);
-      container.className = `coll-banner-imgs count-${show.length}`;
-      container.innerHTML = show.map(src =>
-        `<img src="${src}" alt="" loading="lazy">`
-      ).join('');
-
-      const countEl = document.getElementById(countId);
-      if (countEl) countEl.textContent = productCount + ' Styles';
     }
 
-    /* Filter product grid by section (scroll to products) */
+    loadBannersFromShopify();
+
+    /* Filter product grid by section */
     function filterSection(section) {
       document.getElementById('products').scrollIntoView({ behavior: 'smooth' });
       const tabs = document.querySelectorAll('.ftab');
       tabs.forEach(t => {
-        t.classList.toggle('on', t.textContent === section || (section === 'Men' && t.textContent === 'Tops'));
+        t.classList.toggle('on', t.textContent === section);
       });
     }
 
-    /* Load Men banner: bg from images/background, count from men/tops + men/bottoms */
-    loadCollectionBanner('collMenImgs', 'collMenCount',
-      ['men/tops', 'men/bottoms'],
-      ['background', 'men/tops']
-    );
-
-    /* Load Accessories banner */
-    loadCollectionBanner('collAccImgs', 'collAccCount',
-      ['accessories'],
-      ['background', 'accessories']
-    );
-
-    /* Load products section images from folder when a tab is clicked */
-    async function loadFolderProducts(folder) {
-      const imgs = await ImageDB.allFrom(folder);
-      if (imgs.length === 0) return;
-      const cards = document.querySelectorAll('.prod-card');
-      imgs.forEach((src, i) => {
-        if (i < cards.length) {
-          const imgEl = cards[i].querySelector('img');
-          if (imgEl) imgEl.src = src;
-          // Also update ALL_PRODUCTS reference
-          const pid = cards[i].dataset.productId;
-          const p = ALL_PRODUCTS.find(x => x.id === pid);
-          if (p) p.img = src;
-        }
-      });
-    }
-
-    /* ── UI interactions ── */
+    /* ── Filter tab clicks ── */
     document.querySelectorAll('.ftab').forEach(t => {
       t.addEventListener('click', () => {
         document.querySelectorAll('.ftab').forEach(x => x.classList.remove('on'));
         t.classList.add('on');
-        const label = t.textContent.trim().toLowerCase();
-        if (label === 'men')         loadFolderProducts('men/tops');
-        else if (label === 'women')  loadFolderProducts('women/tops');
-        else if (label === 'tops')   loadFolderProducts('men/tops');
-        else if (label === 'bottoms')loadFolderProducts('men/bottoms');
-        else if (label === 'accessories') loadFolderProducts('accessories');
       });
     });
-
-    let look = 1;
-    setInterval(() => {
-      look = look >= 12 ? 1 : look + 1;
-      const el = document.getElementById('lookNum');
-      if (el) el.textContent = 'LOOK ' + String(look).padStart(2,'0');
-    }, 3200);
 
     /* ── 360° VIEWER ── */
     let vDragging = false;
@@ -2022,7 +1921,7 @@
       setTimeout(() => {
         splash.style.opacity = '0';
         setTimeout(() => { splash.style.display = 'none'; }, 700);
-      }, 1800);
+      }, 3000);
     });
   </script>
 </body>
