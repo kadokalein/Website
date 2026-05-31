@@ -144,6 +144,7 @@
 
     /* ── PRODUCT GRID ── */
     .prod-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; }
+    .loading-state { grid-column: 1/-1; padding: 80px 20px; text-align: center; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--g2); }
     .prod-card { cursor: pointer; position: relative; }
     .prod-img { position: relative; aspect-ratio: 3/4; overflow: hidden; background: var(--d1); margin-bottom: 12px; }
     .prod-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: transform .5s ease; }
@@ -456,162 +457,17 @@
     <p class="men-hero-sub">All pieces. Every drop. Organized by category.</p>
   </div>
 
-  <!-- T-SHIRTS -->
-  <section class="cat-section" id="tshirts">
+  <!-- Products — loaded from Shopify -->
+  <section class="cat-section" id="all-products">
     <div class="cat-hd">
       <div>
         <div class="cat-label">Men</div>
-        <div class="cat-title">T-Shirts</div>
+        <div class="cat-title">All Products</div>
       </div>
-      <span class="cat-count">3 styles</span>
+      <span class="cat-count" id="productCount">Loading…</span>
     </div>
-    <div class="prod-grid">
-      <div class="prod-card" data-product-id="1" data-variant-id="" data-price="48" data-name="Graphic Tee — Charcoal" data-swatches="#3a3836,#f5f0eb" onclick="openPDP(this)">
-        <div class="prod-img">
-          <img src="tshirt-dark.svg" alt="Graphic Tee Charcoal">
-          <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
-        </div>
-        <div class="prod-info">
-          <div class="prod-name">Graphic Tee — Charcoal</div>
-          <div class="prod-price">$48</div>
-          <div class="prod-swatches"><span class="swatch" style="background:#3a3836"></span><span class="swatch" style="background:#f5f0eb"></span></div>
-        </div>
-      </div>
-      <div class="prod-card" data-product-id="2" data-variant-id="" data-price="48" data-name="Claw Tee — Charcoal" data-swatches="#3a3836" onclick="openPDP(this)">
-        <div class="prod-img">
-          <img src="tshirt-back.svg" alt="Claw Tee">
-          <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
-        </div>
-        <div class="prod-info">
-          <div class="prod-name">Claw Tee — Charcoal</div>
-          <div class="prod-price">$48</div>
-          <div class="prod-swatches"><span class="swatch" style="background:#3a3836"></span></div>
-        </div>
-      </div>
-      <div class="prod-card" data-product-id="3" data-variant-id="" data-price="48" data-name="Graphic Tee — White" data-swatches="#f5f0eb,#3a3836" onclick="openPDP(this)">
-        <div class="prod-img">
-          <img src="tshirt.svg" alt="Graphic Tee White">
-          <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
-        </div>
-        <div class="prod-info">
-          <div class="prod-name">Graphic Tee — White</div>
-          <div class="prod-price">$48</div>
-          <div class="prod-swatches"><span class="swatch" style="background:#f5f0eb"></span><span class="swatch" style="background:#3a3836"></span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- HOODIES & SWEATSHIRTS -->
-  <section class="cat-section" id="hoodies">
-    <div class="cat-hd">
-      <div>
-        <div class="cat-label">Men</div>
-        <div class="cat-title">Hoodies &amp; Sweatshirts</div>
-      </div>
-      <span class="cat-count">1 style</span>
-    </div>
-    <div class="prod-grid">
-      <div class="prod-card" data-product-id="5" data-variant-id="" data-price="85" data-name="Script Crewneck" data-swatches="#0a0a18,#e8e0d5" onclick="openPDP(this)">
-        <div class="prod-img">
-          <img src="tshirt-dark.svg" alt="Script Crewneck">
-          <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
-        </div>
-        <div class="prod-info">
-          <div class="prod-name">Script Crewneck</div>
-          <div class="prod-price">$85</div>
-          <div class="prod-swatches"><span class="swatch" style="background:#0a0a18"></span><span class="swatch" style="background:#e8e0d5"></span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- OUTERWEAR -->
-  <section class="cat-section" id="outerwear">
-    <div class="cat-hd">
-      <div>
-        <div class="cat-label">Men</div>
-        <div class="cat-title">Outerwear</div>
-      </div>
-      <span class="cat-count">2 styles</span>
-    </div>
-    <div class="prod-grid">
-      <div class="prod-card" data-product-id="4" data-variant-id="" data-price="165" data-name="Oversize Bomber" data-swatches="#200a08" onclick="openPDP(this)">
-        <div class="prod-img">
-          <img src="tshirt.svg" alt="Oversize Bomber">
-          <span class="prod-flag flag-sold">Sold Out</span>
-          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Notify Me</button>
-        </div>
-        <div class="prod-info">
-          <div class="prod-name">Oversize Bomber</div>
-          <div class="prod-price">$165</div>
-          <div class="prod-swatches"><span class="swatch" style="background:#200a08"></span></div>
-        </div>
-      </div>
-      <div class="prod-card" data-product-id="7" data-variant-id="" data-price="128" data-name="Coach Jacket" data-swatches="#081a12,#111" onclick="openPDP(this)">
-        <div class="prod-img">
-          <img src="tshirt-dark.svg" alt="Coach Jacket">
-          <span class="prod-flag flag-new">New</span>
-          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
-        </div>
-        <div class="prod-info">
-          <div class="prod-name">Coach Jacket</div>
-          <div class="prod-price">$128</div>
-          <div class="prod-swatches"><span class="swatch" style="background:#081a12"></span><span class="swatch" style="background:#111"></span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SHORTS -->
-  <section class="cat-section" id="shorts">
-    <div class="cat-hd">
-      <div>
-        <div class="cat-label">Men</div>
-        <div class="cat-title">Shorts</div>
-      </div>
-      <span class="cat-count">1 style</span>
-    </div>
-    <div class="prod-grid">
-      <div class="prod-card" data-product-id="8" data-variant-id="" data-price="62" data-name="Utility Shorts" data-swatches="#2a1008,#0a0a0a" onclick="openPDP(this)">
-        <div class="prod-img">
-          <img src="tshirt.svg" alt="Utility Shorts">
-          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
-        </div>
-        <div class="prod-info">
-          <div class="prod-name">Utility Shorts</div>
-          <div class="prod-price">$62</div>
-          <div class="prod-swatches"><span class="swatch" style="background:#2a1008"></span><span class="swatch" style="background:#0a0a0a"></span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ACCESSORIES -->
-  <section class="cat-section" id="accessories">
-    <div class="cat-hd">
-      <div>
-        <div class="cat-label">Men</div>
-        <div class="cat-title">Accessories</div>
-      </div>
-      <span class="cat-count">1 style</span>
-    </div>
-    <div class="prod-grid">
-      <div class="prod-card" data-product-id="6" data-variant-id="" data-price="38" data-name="5-Panel Cap" data-swatches="#111,#f5f0eb" onclick="openPDP(this)">
-        <div class="prod-img">
-          <img src="tshirt.svg" alt="5-Panel Cap">
-          <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
-        </div>
-        <div class="prod-info">
-          <div class="prod-name">5-Panel Cap</div>
-          <div class="prod-price">$38 <s>$45</s></div>
-          <div class="prod-swatches"><span class="swatch" style="background:#111"></span><span class="swatch" style="background:#f5f0eb"></span></div>
-        </div>
-      </div>
+    <div class="prod-grid" id="shopifyGrid">
+      <div class="loading-state">Loading products…</div>
     </div>
   </section>
 
@@ -655,17 +511,99 @@
     let shopifyCheckoutUrl = null;
     let pdpCard = null;
     let selectedSize = null;
+    let ALL_PRODUCTS = [];
 
-    const ALL_PRODUCTS = [
-      { id:'1', name:'Graphic Tee — Charcoal', price:48,  img:'tshirt-dark.svg', swatches:'#3a3836,#f5f0eb', flag:'New Arrival' },
-      { id:'2', name:'Claw Tee — Charcoal',   price:48,  img:'tshirt-back.svg', swatches:'#3a3836',         flag:'New Arrival' },
-      { id:'3', name:'Graphic Tee — White',   price:48,  img:'tshirt.svg',      swatches:'#f5f0eb,#3a3836', flag:'New Arrival' },
-      { id:'4', name:'Oversize Bomber',        price:165, img:'tshirt.svg',      swatches:'#200a08',         flag:'Limited'     },
-      { id:'5', name:'Script Crewneck',        price:85,  img:'tshirt-dark.svg', swatches:'#0a0a18,#e8e0d5', flag:'New Arrival' },
-      { id:'6', name:'5-Panel Cap',            price:38,  img:'tshirt.svg',      swatches:'#111,#f5f0eb',    flag:'Sale'        },
-      { id:'7', name:'Coach Jacket',           price:128, img:'tshirt-dark.svg', swatches:'#081a12,#111',    flag:'New Arrival' },
-      { id:'8', name:'Utility Shorts',         price:62,  img:'tshirt.svg',      swatches:'#2a1008,#0a0a0a', flag:'New Arrival' },
-    ];
+    const isConfigured = window.SHOPIFY?.domain && window.SHOPIFY?.storefrontToken;
+
+    async function shopifyFetch(query) {
+      const r = await fetch(`https://${window.SHOPIFY.domain}/api/${window.SHOPIFY.apiVersion}/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Storefront-Access-Token': window.SHOPIFY.storefrontToken,
+        },
+        body: JSON.stringify({ query }),
+      });
+      if (!r.ok) throw new Error('Shopify ' + r.status);
+      return r.json();
+    }
+
+    async function loadShopifyProducts() {
+      const grid = document.getElementById('shopifyGrid');
+      const countEl = document.getElementById('productCount');
+      if (!isConfigured) {
+        grid.innerHTML = '<div class="loading-state">Store not configured.</div>';
+        countEl.textContent = '—';
+        return;
+      }
+      try {
+        const data = await shopifyFetch(`{
+          products(first: 50) {
+            edges { node {
+              id title handle
+              priceRange { minVariantPrice { amount } }
+              images(first: 3) { edges { node { url } } }
+              variants(first: 20) { edges { node {
+                id title availableForSale
+                selectedOptions { name value }
+              }}}
+              tags
+            }}
+          }
+        }`);
+        const nodes = data.data.products.edges.map(e => e.node);
+        ALL_PRODUCTS = nodes.map((p, i) => ({
+          id: String(i + 1),
+          shopifyId: p.id,
+          name: p.title,
+          price: parseFloat(p.priceRange.minVariantPrice.amount),
+          img: p.images.edges[0]?.node.url || '',
+          images: p.images.edges.map(e => e.node.url),
+          variants: p.variants.edges.map(e => e.node),
+          tags: p.tags,
+          flag: p.tags.some(t => /new/i.test(t)) ? 'New' : p.tags.some(t => /sale/i.test(t)) ? 'Sale' : '',
+        }));
+        countEl.textContent = ALL_PRODUCTS.length + ' styles';
+        if (ALL_PRODUCTS.length === 0) {
+          grid.innerHTML = '<div class="loading-state">No products found in your Shopify store.</div>';
+          return;
+        }
+        grid.innerHTML = ALL_PRODUCTS.map(p => {
+          const imgHtml = p.img
+            ? `<img src="${p.img}" alt="${p.name}" loading="lazy">`
+            : `<div style="width:100%;height:100%;background:var(--d2);display:flex;align-items:center;justify-content:center;color:var(--g1);font-size:10px;letter-spacing:2px">NO IMAGE</div>`;
+          const flagHtml = p.flag === 'New'
+            ? `<span class="prod-flag flag-new">New</span>`
+            : p.flag === 'Sale'
+            ? `<span class="prod-flag flag-sale" style="background:#e00;color:#fff">Sale</span>`
+            : '';
+          const firstVariant = p.variants[0];
+          return `
+            <div class="prod-card"
+              data-product-id="${p.id}"
+              data-variant-id="${firstVariant?.id || ''}"
+              data-price="${p.price}"
+              data-name="${p.name.replace(/"/g,'&quot;')}"
+              onclick="openPDP(this)">
+              <div class="prod-img">
+                ${imgHtml}${flagHtml}
+                <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
+              </div>
+              <div class="prod-info">
+                <div class="prod-name">${p.name}</div>
+                <div class="prod-price">$${p.price.toFixed(2)}</div>
+                <div class="prod-swatches"></div>
+              </div>
+            </div>`;
+        }).join('');
+      } catch(err) {
+        console.error('Shopify load error:', err);
+        grid.innerHTML = '<div class="loading-state">Could not load products — please refresh.</div>';
+        countEl.textContent = '—';
+      }
+    }
+
+    loadShopifyProducts();
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -730,33 +668,46 @@
       const pid = card.dataset.productId;
       const name = card.dataset.name;
       const price = parseFloat(card.dataset.price);
-      const img = card.querySelector('img').src;
-      const swatches = (card.dataset.swatches || '').split(',').filter(Boolean);
+      const imgEl = card.querySelector('img');
+      const img = imgEl ? imgEl.src : '';
       const prod = ALL_PRODUCTS.find(p => p.id === pid);
 
       document.getElementById('pdpName').textContent = name;
       document.getElementById('pdpBreadcrumb').textContent = name;
       document.getElementById('pdpPrice').textContent = '$' + price.toFixed(2);
-      document.getElementById('pdpImg').src = img;
-      document.getElementById('pdpImg').alt = name;
-      if (prod) document.getElementById('pdpFlag').textContent = prod.flag;
+      const pdpImg = document.getElementById('pdpImg');
+      pdpImg.src = img; pdpImg.alt = name;
+      const flagEl = document.getElementById('pdpFlag');
+      if (flagEl) flagEl.textContent = prod?.flag || '';
 
-      const thumbSrcs = img.includes('dark') ? ['tshirt-dark.svg','tshirt-back.svg','tshirt.svg'] : ['tshirt.svg','tshirt-dark.svg','tshirt-back.svg'];
+      // Thumbnails from real Shopify images
+      const thumbSrcs = prod?.images?.length > 0 ? prod.images : (img ? [img] : []);
       document.getElementById('pdpThumbs').innerHTML = thumbSrcs.map((src, i) =>
         `<div class="pdp-thumb${i===0?' active':''}" onclick="switchThumb(this,'${src}')"><img src="${src}" alt=""></div>`
       ).join('');
 
-      document.getElementById('pdpColors').innerHTML = swatches.map((c, i) =>
-        `<div class="pdp-swatch${i===0?' active':''}" style="background:${c}" onclick="selectColor(this)"></div>`
-      ).join('');
+      document.getElementById('pdpColors').innerHTML = '';
 
-      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
-      document.getElementById('pdpAddBtn').textContent = 'Select a size';
+      // Build size buttons from real variants
+      const variants = prod?.variants || [];
+      const sizeGrid = document.querySelector('.pdp-sizes .size-grid');
+      if (sizeGrid && variants.length > 0) {
+        sizeGrid.innerHTML = variants.map(v => {
+          const sizeOpt = v.selectedOptions?.find(o => o.name.toLowerCase() === 'size');
+          const label = sizeOpt ? sizeOpt.value : v.title;
+          const avail = v.availableForSale;
+          return `<button class="size-btn${avail ? '' : ' unavailable'}" data-size="${label}"
+            data-variant-id="${v.id}" onclick="selectSize(this)" ${avail ? '' : 'disabled'}>${label}</button>`;
+        }).join('');
+      } else {
+        document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+      }
+      document.getElementById('pdpAddBtn').textContent = variants.length > 0 ? 'Select a size' : 'Add to Bag';
 
       const related = ALL_PRODUCTS.filter(p => p.id !== pid).slice(0, 4);
       document.getElementById('relatedGrid').innerHTML = related.map(p => `
         <div class="related-card" onclick="openPDPById('${p.id}')">
-          <div class="r-img"><img src="${p.img}" alt="${p.name}"></div>
+          <div class="r-img">${p.img ? `<img src="${p.img}" alt="${p.name}">` : '<div style="width:100%;height:100%;background:var(--d2)"></div>'}</div>
           <div class="r-info">
             <div class="r-name">${p.name}</div>
             <div class="r-price">$${p.price.toFixed(2)}</div>

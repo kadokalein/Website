@@ -765,28 +765,16 @@
       animation: fireGlow 0.85s ease-in-out infinite alternate;
       z-index: 1; pointer-events: none;
     }
-    .flame {
-      position: absolute;
-      border-radius: 50% 50% 30% 30% / 60% 60% 40% 40%;
-      background: radial-gradient(ellipse at bottom, #fff 0%, #ffe033 16%, #ff7700 52%, rgba(255,20,0,0.35) 82%, transparent 100%);
-      animation: flameRise ease-in infinite;
-      z-index: 2; pointer-events: none;
-    }
     @keyframes fireGlow {
       from { transform: scale(0.82); opacity: 0.45; }
       to   { transform: scale(1.18); opacity: 1; }
     }
-    @keyframes flameRise {
-      0%   { transform: translateY(0) scaleX(1) rotate(0deg); opacity: 0.95; }
-      55%  { transform: translateY(-48%) scaleX(0.65) rotate(4deg); opacity: 0.65; }
-      100% { transform: translateY(-105%) scaleX(0.15) rotate(-6deg); opacity: 0; }
-    }
     #splashScreen .splash-name {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 13px; font-weight: 800;
-      letter-spacing: 12px; text-transform: uppercase;
-      color: rgba(255,255,255,0.55);
-      animation: splashFadeUp 0.7s ease 0.5s both;
+      font-size: clamp(40px, 8vw, 54px); font-weight: 800;
+      letter-spacing: 14px; text-transform: uppercase;
+      color: rgba(255,255,255,0.92);
+      animation: splashFadeUp 0.6s ease 0.1s both;
     }
     #splashScreen .splash-line {
       width: 1px; height: 0;
@@ -945,21 +933,12 @@
 
   <!-- Splash Screen -->
   <div id="splashScreen">
+    <div class="splash-name">Promethea</div>
+    <div class="splash-line"></div>
     <div class="splash-fire-wrap">
       <div class="fire-glow"></div>
-      <span class="flame" style="width:13px;height:36px;left:50%;margin-left:-7px;bottom:-10px;animation-duration:0.8s;animation-delay:0s;"></span>
-      <span class="flame" style="width:9px;height:26px;left:28%;margin-left:-5px;bottom:-6px;animation-duration:1.05s;animation-delay:0.18s;"></span>
-      <span class="flame" style="width:17px;height:44px;left:62%;margin-left:-9px;bottom:-12px;animation-duration:0.92s;animation-delay:0.32s;"></span>
-      <span class="flame" style="width:11px;height:30px;left:18%;margin-left:-6px;bottom:-4px;animation-duration:1.15s;animation-delay:0.08s;"></span>
-      <span class="flame" style="width:15px;height:40px;left:76%;margin-left:-8px;bottom:-9px;animation-duration:0.88s;animation-delay:0.45s;"></span>
-      <span class="flame" style="width:10px;height:24px;left:42%;margin-left:-5px;bottom:-5px;animation-duration:1.22s;animation-delay:0.62s;"></span>
-      <span class="flame" style="width:13px;height:34px;left:56%;margin-left:-7px;bottom:-7px;animation-duration:0.76s;animation-delay:0.28s;"></span>
-      <span class="flame" style="width:8px;height:20px;left:86%;margin-left:-4px;bottom:-3px;animation-duration:0.97s;animation-delay:0.52s;"></span>
-      <span class="flame" style="width:12px;height:28px;left:10%;margin-left:-6px;bottom:-5px;animation-duration:1.08s;animation-delay:0.7s;"></span>
       <img class="splash-logo" src="logo.svg" alt="Promethea">
     </div>
-    <div class="splash-line"></div>
-    <div class="splash-name">Promethea</div>
   </div>
 
   <!-- Cart drawer -->
