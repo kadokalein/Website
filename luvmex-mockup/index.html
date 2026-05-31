@@ -29,6 +29,12 @@
   </script>
 
   <style>
+    @font-face {
+      font-family: 'Cristone';
+      src: url('Cristone.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --black:   #000000;
@@ -187,9 +193,9 @@
     }
     .hero-eyebrow::before { content: ''; width: 28px; height: 1px; background: var(--g2); }
     .hero-title {
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: clamp(82px, 9.5vw, 136px); font-weight: 800;
-      line-height: 0.87; letter-spacing: -1px; text-transform: uppercase;
+      font-family: 'Cristone', 'Barlow Condensed', sans-serif;
+      font-size: clamp(52px, 7vw, 110px); font-weight: normal;
+      line-height: 1.0; letter-spacing: 1px; text-transform: none;
       color: var(--white); margin-bottom: 30px;
     }
     .hero-title .italic { font-style: italic; font-weight: 700; color: var(--g3); }
@@ -1041,14 +1047,14 @@
   </div>
 
   <!-- Announcement -->
-  <div class="ann">Complimentary shipping on orders over $150 &nbsp;·&nbsp; New collection in stores now</div>
-
   <!-- Nav -->
   <nav>
     <div class="nav-l">
-      <a href="#products" onclick="event.preventDefault();filterSection('Women')">Women</a>
-      <a href="#products" onclick="event.preventDefault();filterSection('Men')">Men</a>
+      <a href="index.html" class="nav-logo-img"><img src="logo.svg" alt="Promethea logo"></a>
       <a href="#">New</a>
+      <a href="men.html">Men</a>
+      <a href="women.html">Women</a>
+      <a href="accessories.html">Accessories</a>
       <a href="#">Sale</a>
     </div>
     <a href="#" class="nav-logo">Promethea</a>
@@ -1073,9 +1079,10 @@
       <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
     </div>
     <nav class="mobile-menu-nav">
-      <a href="#products" onclick="event.preventDefault();filterSection('Women');toggleMobileMenu()">Women</a>
-      <a href="#products" onclick="event.preventDefault();filterSection('Men');toggleMobileMenu()">Men</a>
       <a href="#" onclick="toggleMobileMenu()">New</a>
+      <a href="men.html" onclick="toggleMobileMenu()">Men</a>
+      <a href="women.html" onclick="toggleMobileMenu()">Women</a>
+      <a href="accessories.html" onclick="toggleMobileMenu()">Accessories</a>
       <a href="#" onclick="toggleMobileMenu()">Sale</a>
       <a href="#" onclick="toggleMobileMenu()">Search</a>
       <a href="#" onclick="toggleMobileMenu()">Account</a>
@@ -1093,7 +1100,7 @@
 
     <div class="hero-content">
       <div class="hero-eyebrow">Spring / Summer 2025</div>
-      <h1 class="hero-title">Wear Your<br><span class="italic">Culture.</span></h1>
+      <h1 class="hero-title">Forged With The Diving Spark</h1>
       <p class="hero-desc">A new vision for contemporary fashion — sculpted from the streets, worn by those who define the moment.</p>
       <div class="hero-ctas">
         <a href="#products" class="btn-solid">Shop Now</a>
@@ -1117,12 +1124,6 @@
       <span>Now In Stores</span><span class="sep">—</span>
       <span>Paris · New York · Tokyo</span><span class="sep">—</span>
     </div>
-  </div>
-
-  <!-- Shopify connection status (shown until credentials added) -->
-  <div class="shopify-status" id="shopifyStatus">
-    <span class="dot"></span>
-    <span id="shopifyStatusText">Shopify not connected — add your store credentials in the &lt;script&gt; config at the top of this file</span>
   </div>
 
   <!-- Collections — full-width banners, images pulled from /images/ folders -->
@@ -1672,11 +1673,7 @@
       }
     }
 
-    /* ── Update status banner ── */
     if (isConfigured) {
-      const s = document.getElementById('shopifyStatus');
-      s.classList.add('connected');
-      document.getElementById('shopifyStatusText').textContent = '✓ Connected to ' + S.domain;
       loadShopifyProducts();
     }
 
