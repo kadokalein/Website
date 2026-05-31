@@ -268,16 +268,31 @@
       align-items: center; justify-content: center; gap: 28px;
       transition: opacity 0.7s ease;
     }
-    #splashScreen .splash-logo {
-      height: 72px; width: auto;
+    .splash-fire-wrap {
+      position: relative; display: inline-flex;
+      align-items: center; justify-content: center;
       animation: splashScale 1.2s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    #splashScreen .splash-logo {
+      height: 88px; width: auto; position: relative; z-index: 3;
+      filter: drop-shadow(0 0 10px rgba(255,120,0,0.9)) drop-shadow(0 0 26px rgba(255,50,0,0.55));
+    }
+    .fire-glow {
+      position: absolute; width: 160px; height: 160px; border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(255,90,0,0.45) 0%, rgba(255,30,0,0.18) 48%, transparent 72%);
+      animation: fireGlow 0.85s ease-in-out infinite alternate;
+      z-index: 1; pointer-events: none;
+    }
+    @keyframes fireGlow {
+      from { transform: scale(0.82); opacity: 0.45; }
+      to   { transform: scale(1.18); opacity: 1; }
     }
     #splashScreen .splash-name {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 13px; font-weight: 800;
-      letter-spacing: 12px; text-transform: uppercase;
-      color: rgba(255,255,255,0.55);
-      animation: splashFadeUp 0.7s ease 0.5s both;
+      font-size: clamp(40px, 8vw, 54px); font-weight: 800;
+      letter-spacing: 14px; text-transform: uppercase;
+      color: rgba(255,255,255,0.92);
+      animation: splashFadeUp 0.6s ease 0.1s both;
     }
     #splashScreen .splash-line {
       width: 1px; height: 0;
@@ -310,9 +325,12 @@
 
   <!-- Splash Screen -->
   <div id="splashScreen">
-    <img class="splash-logo" src="logo.svg" alt="Promethea">
-    <div class="splash-line"></div>
     <div class="splash-name">Promethea</div>
+    <div class="splash-line"></div>
+    <div class="splash-fire-wrap">
+      <div class="fire-glow"></div>
+      <img class="splash-logo" src="logo.svg" alt="Promethea">
+    </div>
   </div>
 
   <!-- Cart Drawer -->
@@ -414,7 +432,7 @@
       <a href="index.html" class="nav-logo-img"><img src="logo.svg" alt="Promethea logo"></a>
       <a href="#">New</a>
       <a href="men.html" style="color:var(--white)">Men</a>
-      <a href="#">Women</a>
+      <a href="women.html">Women</a>
       <a href="#">Sale</a>
     </div>
     <a href="index.html" class="nav-logo">Promethea</a>
@@ -440,7 +458,7 @@
     <nav class="mobile-menu-nav">
       <a href="#" onclick="toggleMobileMenu()">New</a>
       <a href="men.html" onclick="toggleMobileMenu()">Men</a>
-      <a href="#" onclick="toggleMobileMenu()">Women</a>
+      <a href="women.html" onclick="toggleMobileMenu()">Women</a>
       <a href="#" onclick="toggleMobileMenu()">Sale</a>
       <a href="#" onclick="toggleMobileMenu()">Search</a>
       <a href="#" onclick="toggleMobileMenu()">Account</a>
@@ -484,7 +502,7 @@
         </div>
       </div>
       <div class="ft-col"><h5>Shop</h5><ul>
-        <li><a href="#">Women</a></li><li><a href="men.html">Men</a></li>
+        <li><a href="women.html">Women</a></li><li><a href="men.html">Men</a></li>
         <li><a href="#">New Arrivals</a></li><li><a href="#">Sale</a></li>
       </ul></div>
       <div class="ft-col"><h5>Men's</h5><ul>
@@ -492,7 +510,7 @@
         <li><a href="#hoodies">Hoodies</a></li>
         <li><a href="#outerwear">Outerwear</a></li>
         <li><a href="#shorts">Shorts</a></li>
-        <li><a href="#accessories">Accessories</a></li>
+        <li><a href="accessories.html">Accessories</a></li>
       </ul></div>
       <div class="ft-col"><h5>Help</h5><ul>
         <li><a href="#">FAQ</a></li><li><a href="#">Shipping & Returns</a></li>
