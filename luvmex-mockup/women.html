@@ -550,32 +550,52 @@
       return res.json();
     }
 
+    /* Smart AI Categorizer */
+    function classifyProduct(p) {
+      const sid = p.shopifyId || p.id;
+      try { const c = localStorage.getItem('pcat_' + sid); if (c) return JSON.parse(c); } catch {}
+      const text = [p.title || '', p.productType || '', ...(p.tags || [])].join(' ').toLowerCase();
+      let page = 'men';
+      if (/\b(women|woman|female|feminine|ladies|girl|girls|womens)\b/.test(text)) page = 'women';
+      let category = 'tops';
+      if (/\b(shorts|pants|trousers|jeans|jogger|sweatpants|legging|skirt|bottoms?|cargo)\b/.test(text)) category = 'bottoms';
+      if (/\b(cap|hat|bag|backpack|socks?|belt|chain|necklace|bracelet|ring|watch|beanie|gloves?|scarf|wallet|keychain|pin|accessory|accessories|headband)\b/.test(text)) { category = 'accessories'; page = 'accessories'; }
+      const r = { page, category };
+      try { localStorage.setItem('pcat_' + sid, JSON.stringify(r)); } catch {}
+      return r;
+    }
+
     async function loadWomensProducts() {
       if (!isConfigured) return;
       try {
         const data = await shopifyFetch(`{
-          products(first: 50, query: "tag:women") {
+          products(first: 50) {
             edges { node {
-              id title handle
+              id title handle productType
               priceRange { minVariantPrice { amount currencyCode } }
-              variants(first: 1) { edges { node { id } } }
+              variants(first: 20) { edges { node { id title availableForSale selectedOptions { name value } } } }
               images(first: 3) { edges { node { url altText } } }
               tags
             }}
           }
         }`);
-        const products = data.data.products.edges.map(e => e.node);
-        if (products.length === 0) return;
+        const nodes = data.data.products.edges.map(e => e.node);
 
-        ALL_PRODUCTS = products.map((p, i) => ({
-          id: String(i+1),
-          name: p.title,
-          price: parseFloat(p.priceRange.minVariantPrice.amount),
-          img: p.images.edges[0]?.node.url || '',
-          swatches: '',
-          flag: 'New Arrival',
-          variantId: p.variants.edges[0]?.node.id || '',
-        }));
+        ALL_PRODUCTS = nodes.map((p, i) => {
+          const cat = classifyProduct({ shopifyId: p.id, title: p.title, productType: p.productType, tags: p.tags });
+          return {
+            id: String(i + 1), shopifyId: p.id, name: p.title, productType: p.productType,
+            price: parseFloat(p.priceRange.minVariantPrice.amount),
+            img: p.images.edges[0]?.node.url || '',
+            images: p.images.edges.map(e => e.node.url),
+            variants: p.variants.edges.map(e => e.node),
+            tags: p.tags, page: cat.page, category: cat.category,
+            flag: p.tags.some(t => /new/i.test(t)) ? 'New' : p.tags.some(t => /sale/i.test(t)) ? 'Sale' : '',
+          };
+        });
+
+        const womensProducts = ALL_PRODUCTS.filter(p => p.page === 'women');
+        if (womensProducts.length === 0) return;
 
         const area = document.getElementById('productArea');
         area.innerHTML = `
@@ -584,24 +604,27 @@
               <div class="cat-label">Women</div>
               <div class="cat-title">All Products</div>
             </div>
-            <span class="cat-count">${products.length} styles</span>
+            <span class="cat-count">${womensProducts.length} styles</span>
           </div>
           <div class="prod-grid" id="womenGrid"></div>
         `;
         area.style.padding = 'clamp(48px,6vh,80px) clamp(20px,5.5vw,80px)';
 
-        document.getElementById('womenGrid').innerHTML = ALL_PRODUCTS.map(p => `
-          <div class="prod-card" data-product-id="${p.id}" data-variant-id="${p.variantId}" data-price="${p.price}" data-name="${p.name}" data-swatches="${p.swatches}" onclick="openPDP(this)">
+        document.getElementById('womenGrid').innerHTML = womensProducts.map(p => {
+          const imgHtml = p.img ? `<img src="${p.img}" alt="${p.name}" loading="lazy">` : '<div style="width:100%;height:100%;background:var(--d2)"></div>';
+          const flagHtml = p.flag === 'New' ? `<span class="prod-flag flag-new">New</span>` : p.flag === 'Sale' ? `<span class="prod-flag" style="background:#e00;color:#fff">Sale</span>` : '';
+          return `
+          <div class="prod-card" data-product-id="${p.id}" data-variant-id="${p.variants[0]?.id||''}" data-price="${p.price}" data-name="${p.name.replace(/"/g,'&quot;')}" onclick="openPDP(this)">
             <div class="prod-img">
-              <img src="${p.img}" alt="${p.name}" loading="lazy">
-              <span class="prod-flag flag-new">New</span>
+              ${imgHtml}${flagHtml}
               <button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button>
             </div>
             <div class="prod-info">
               <div class="prod-name">${p.name}</div>
               <div class="prod-price">$${p.price.toFixed(2)}</div>
             </div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
       } catch(e) { console.warn('Women products load failed:', e); }
     }
 
