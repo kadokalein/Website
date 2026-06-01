@@ -1191,7 +1191,7 @@
     <div class="products-hd">
       <div>
         <div class="sec-label">Featured</div>
-        <div class="sec-title">New Arrivals</div>
+        <div class="sec-title">Promethea Merchandise</div>
       </div>
       <a href="#" class="see-all">See All</a>
     </div>
@@ -1560,7 +1560,7 @@
         grid.innerHTML = ALL_PRODUCTS.map(p => {
           const imgHtml = p.img ? `<img src="${p.img}" alt="${p.name}" loading="lazy">` : `<div style="width:100%;height:100%;background:var(--d1)"></div>`;
           const flagHtml = p.flag === 'New' ? `<span class="prod-flag flag-new">New</span>` : p.flag === 'Sale' ? `<span class="prod-flag" style="background:#e00;color:#fff;position:absolute;top:10px;left:10px;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:3px 8px;z-index:2">Sale</span>` : '';
-          return `<div class="prod-card reveal" data-product-id="${p.id}" data-variant-id="${p.variants[0]?.id||''}" data-price="${p.price}" data-name="${p.name.replace(/"/g,'&quot;')}" data-page="${p.page}" data-category="${p.category}" onclick="openPDP(this)">
+          return `<div class="prod-card" data-product-id="${p.id}" data-variant-id="${p.variants[0]?.id||''}" data-price="${p.price}" data-name="${p.name.replace(/"/g,'&quot;')}" data-page="${p.page}" data-category="${p.category}" onclick="openPDP(this)">
             <div class="prod-img">${imgHtml}${flagHtml}<button class="prod-add" onclick="event.stopPropagation();quickAdd(this)">Quick Add</button></div>
             <div class="prod-info"><div class="prod-name">${p.name}</div><div class="prod-price">$${p.price.toFixed(2)}</div></div>
           </div>`;
