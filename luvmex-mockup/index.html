@@ -945,7 +945,7 @@
   <div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
   <div class="cart-drawer" id="cartDrawer">
     <div class="cart-head">
-      <h3>Your Bag (<span id="cartCount">0</span>)</h3>
+      <h3>Cart (<span id="cartCount">0</span>)</h3>
       <button class="cart-close" onclick="closeCart()">×</button>
     </div>
     <div class="cart-items" id="cartItems">
@@ -954,7 +954,7 @@
     <div class="cart-foot">
       <div class="cart-total">Total <span id="cartTotal">$0.00</span></div>
       <button class="btn-checkout" id="checkoutBtn" onclick="proceedToCheckout()">
-        Checkout on Shopify
+        Checkout
       </button>
       <p class="shopify-note">Secure checkout powered by Shopify</p>
     </div>
@@ -970,7 +970,7 @@
     <nav class="pdp-nav">
       <button class="pdp-back" onclick="closePDP()">Back to Shop</button>
       <div class="pdp-nav-logo">Promethea</div>
-      <button class="pdp-nav-bag" onclick="closePDP();openCart()">Bag (<span id="pdpCartCount">0</span>)</button>
+      <button class="pdp-nav-bag" onclick="closePDP();openCart()">Cart (<span id="pdpCartCount">0</span>)</button>
     </nav>
 
     <!-- Main product area -->
@@ -1020,7 +1020,7 @@
           </div>
           <div class="pdp-acc-row" id="acc3">
             <button class="pdp-acc-btn" onclick="toggleAcc('acc3')">Shipping & Returns <span class="acc-icon">+</span></button>
-            <div class="pdp-acc-body">Free standard shipping on orders over $150. Delivery in 3–5 business days. Free returns within 30 days. Final sale items excluded.</div>
+            <div class="pdp-acc-body">Free standard shipping on orders over $100. Delivery in 3–5 business days. Free returns within 30 days. Final sale items excluded.</div>
           </div>
         </div>
       </div>
@@ -1104,16 +1104,16 @@
       <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
     </div>
     <nav class="mobile-menu-nav">
-      <a href="#" onclick="toggleMobileMenu()">New</a>
       <a href="men.html" onclick="toggleMobileMenu()">Men</a>
       <a href="women.html" onclick="toggleMobileMenu()">Women</a>
       <a href="accessories.html" onclick="toggleMobileMenu()">Accessories</a>
       <a href="#" onclick="toggleMobileMenu()">Sale</a>
-      <a href="#" onclick="toggleMobileMenu()">Search</a>
-      <a href="#" onclick="toggleMobileMenu()">Account</a>
+      <a href="#" onclick="toggleMobileMenu()">Youtube</a>
+      <a href="#" onclick="toggleMobileMenu()">Instagram</a>
+      <a href="#" onclick="toggleMobileMenu()">Youtube</a>
     </nav>
     <div class="mobile-menu-foot">
-      <button class="mobile-menu-bag" onclick="toggleMobileMenu();openCart()">Your Bag (<span id="mobileCartCount">0</span>)</button>
+      <button class="mobile-menu-bag" onclick="toggleMobileMenu();openCart()">Your Cart (<span id="mobileCartCount">0</span>)</button>
     </div>
   </div>
 
@@ -1124,9 +1124,9 @@
     <div class="hero-line"></div>
 
     <div class="hero-content">
-      <div class="hero-eyebrow">Spring / Summer 2025</div>
-      <h1 class="hero-title">Forged With The Diving Spark</h1>
-      <p class="hero-desc">A new vision for contemporary fashion — sculpted from the streets, worn by those who define the moment.</p>
+      <div class="hero-eyebrow">Spring / Summer Collection 2026</div>
+      <h1 class="hero-title">Dressed Like The Fall Was Worth It</h1>
+      <p class="hero-desc">A grounded more occult-like vision for fashion — sculpted for the streets, worn by those who are also bringers of light.</p>
       <div class="hero-ctas">
         <a href="#products" class="btn-solid">Shop Now</a>
       </div>
@@ -1136,25 +1136,24 @@
   <!-- Ticker -->
   <div class="ticker">
     <div class="ticker-track">
-      <span>New Arrivals</span><span class="sep">—</span>
-      <span>Promethea SS'25</span><span class="sep">—</span>
-      <span>Free Returns</span><span class="sep">—</span>
+      <span>PROMETHEA</span><span class="sep">—</span>
+      <span>Occult Couture</span><span class="sep">—</span>
+      <span>Spring / Summer 2026</span><span class="sep">—</span>
       <span>Limited Edition</span><span class="sep">—</span>
-      <span>Now In Stores</span><span class="sep">—</span>
-      <span>Paris · New York · Tokyo</span><span class="sep">—</span>
-      <span>New Arrivals</span><span class="sep">—</span>
-      <span>Promethea SS'25</span><span class="sep">—</span>
-      <span>Free Returns</span><span class="sep">—</span>
-      <span>Limited Edition</span><span class="sep">—</span>
-      <span>Now In Stores</span><span class="sep">—</span>
-      <span>Paris · New York · Tokyo</span><span class="sep">—</span>
+      <span>Custom Gallery Designs</span><span class="sep">—</span>
+      <span>Paris · Milan · Tokyo</span><span class="sep">—</span>
+      <span>Los Angeles · Miami · New York</span><span class="sep">—</span>
+      <span>London · Berlin · Copenhagen</span><span class="sep">—</span>
+      <span>NOW SHIPPING</span><span class="sep">—</span>
+      <span>Occult Couture</span><span class="sep">—</span>
+      <span>PROMETHEA</span><span class="sep">—</span>
     </div>
   </div>
 
   <!-- Collections — full-width banners, images pulled from /images/ folders -->
   <section class="cats">
     <div class="sec-label">Browse</div>
-    <div class="sec-title">Collections</div>
+    <div class="sec-title">Spring / Summer 2026 Collection</div>
 
     <!-- Men banner — background images from images/background/, products from men/tops + men/bottoms -->
     <div class="coll-banner" id="collMen" onclick="location.href='men.html'" style="cursor:pointer">
@@ -1176,7 +1175,6 @@
       <div class="coll-banner-veil"></div>
       <div class="coll-banner-info">
         <div>
-          <div class="coll-banner-label">New Arrivals</div>
           <div class="coll-banner-title">Accessories</div>
           <div class="coll-banner-count" id="collAccCount">— styles</div>
         </div>
@@ -1211,11 +1209,11 @@
 
   <!-- Statement -->
   <section class="statement">
-    <div class="stmt-num">25</div>
+    <div class="stmt-num">369</div>
     <div class="stmt-text">
       <div class="stmt-label">Our Story</div>
-      <h2 class="stmt-headline">Built from<br>the <i>streets.</i></h2>
-      <p class="stmt-body">Promethea was born out of a love for culture, creativity, and community. We design pieces that bridge heritage and modernity — each drop is a statement, not just a garment.</p>
+      <h2 class="stmt-headline">Forged Out<br>Of <i>The Flames.</i></h2>
+      <p class="stmt-body">Promethea was born out of a love for culture, creativity, and gnosis. We design pieces that bridge occult history and modernity — each drop is paying reverance to a archetype, not just a garment.</p>
       <a href="#" class="btn-solid-dark">Read More</a>
     </div>
   </section>
@@ -1244,11 +1242,11 @@
         </div>
       </div>
       <div class="ft-col"><h5>Shop</h5><ul>
-        <li><a href="#">Women</a></li><li><a href="#">Men</a></li>
-        <li><a href="#">New Arrivals</a></li><li><a href="#">Sale</a></li>
+        <li><a href="#">Men</a></li><li><a href="#">Women</a></li>
+        <li><a href="#">Accesories</a></li><li><a href="#">Sale</a></li>
       </ul></div>
       <div class="ft-col"><h5>Collections</h5><ul>
-        <li><a href="#">Graphic Tees</a></li><li><a href="#">Outerwear</a></li>
+        <li><a href="#">Hoodies</a></li><li><a href="#">Tops</a></li>
         <li><a href="#">Bottoms</a></li><li><a href="#">Accessories</a></li>
       </ul></div>
       <div class="ft-col"><h5>Help</h5><ul>
@@ -1257,7 +1255,7 @@
       </ul></div>
     </div>
     <div class="ft-bottom">
-      <span class="ft-copy">© 2025 Promethea. All rights reserved. Powered by Shopify.</span>
+      <span class="ft-copy">© 2026 Promethea. All rights reserved. Pending Patent.</span>
       <div class="ft-legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Cookies</a></div>
     </div>
   </footer>
