@@ -610,6 +610,7 @@
     let shopifyCheckoutUrl = null;
     let pdpCard = null;
     let selectedSize = null;
+    let selectedVariantId = null;
     let ALL_PRODUCTS = [];
 
     const isConfigured = window.SHOPIFY?.domain && window.SHOPIFY?.storefrontToken;
@@ -625,6 +626,24 @@
       });
       if (!r.ok) throw new Error('Shopify ' + r.status);
       return r.json();
+    }
+
+    async function createShopifyCart() {
+      if (!isConfigured) return;
+      const lines = cart.filter(i => i.variantId).map(i => ({ merchandiseId: i.variantId, quantity: 1 }));
+      if (!lines.length) return;
+      try {
+        if (shopifyCartId) {
+          const data = await shopifyFetch(`mutation { cartLinesAdd(cartId: "${shopifyCartId}", lines: [${lines.map(l => `{ merchandiseId: "${l.merchandiseId}", quantity: ${l.quantity} }`).join(',')}]) { cart { id checkoutUrl } } }`);
+          shopifyCheckoutUrl = data.data?.cartLinesAdd?.cart?.checkoutUrl || shopifyCheckoutUrl;
+          shopifyCartId = data.data?.cartLinesAdd?.cart?.id || shopifyCartId;
+        } else {
+          const data = await shopifyFetch(`mutation { cartCreate(input: { lines: [${lines.map(l => `{ merchandiseId: "${l.merchandiseId}", quantity: ${l.quantity} }`).join(',')}] }) { cart { id checkoutUrl } userErrors { message } } }`);
+          const c = data.data?.cartCreate?.cart;
+          if (c) { shopifyCartId = c.id; shopifyCheckoutUrl = c.checkoutUrl; }
+        }
+        saveCart();
+      } catch(e) { console.warn('Shopify cart error:', e); }
     }
 
     function classifyProduct(p) {
@@ -761,10 +780,19 @@
     function closeCart() { document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('cartOverlay').classList.remove('open'); }
 
     function saveCart() {
-      try { localStorage.setItem('promethea_cart', JSON.stringify(cart)); } catch {}
+      try {
+        localStorage.setItem('promethea_cart', JSON.stringify(cart));
+        if (shopifyCartId) localStorage.setItem('promethea_shopify_cart_id', shopifyCartId);
+        if (shopifyCheckoutUrl) localStorage.setItem('promethea_shopify_checkout_url', shopifyCheckoutUrl);
+      } catch {}
     }
     function loadCart() {
-      try { const s = localStorage.getItem('promethea_cart'); if (s) cart = JSON.parse(s); } catch {}
+      try {
+        const s = localStorage.getItem('promethea_cart');
+        if (s) cart = JSON.parse(s);
+        shopifyCartId = localStorage.getItem('promethea_shopify_cart_id') || null;
+        shopifyCheckoutUrl = localStorage.getItem('promethea_shopify_checkout_url') || null;
+      } catch {}
     }
 
     function renderCart() {
@@ -795,10 +823,11 @@
 
     function removeFromCart(i) { cart.splice(i, 1); renderCart(); }
 
-    function addToCart(name, price, img, size) {
-      cart.push({ name, price, img, size });
+    function addToCart(name, price, img, size, variantId) {
+      cart.push({ name, price, img, size, variantId: variantId || null });
       renderCart();
       showToast('Added to bag');
+      if (variantId) createShopifyCart();
     }
 
     function quickAdd(btn) {
@@ -806,7 +835,9 @@
       const name = card.dataset.name;
       const price = parseFloat(card.dataset.price);
       const img = card.querySelector('img')?.src || '';
-      addToCart(name, price, img, 'M');
+      const variantId = card.dataset.variantId || null;
+      addToCart(name, price, img, 'M', variantId);
+      openCart();
     }
 
     function openPDP(card) {
@@ -891,6 +922,7 @@
       document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       selectedSize = btn.dataset.size;
+      selectedVariantId = btn.dataset.variantId || null;
       document.getElementById('pdpAddBtn').textContent = `Add to Bag — Size ${selectedSize}`;
     }
 
@@ -904,19 +936,28 @@
       const name = document.getElementById('pdpName').textContent;
       const price = parseFloat(document.getElementById('pdpPrice').textContent.replace('$',''));
       const img = document.getElementById('pdpImg').src;
-      addToCart(name, price, img, selectedSize);
+      const variantId = selectedVariantId || pdpCard?.dataset?.variantId || null;
+      addToCart(name, price, img, selectedSize, variantId);
       openCart();
     }
 
     function buyNow() {
       if (!selectedSize) { showToast('Please select a size'); return; }
       addFromPDP();
-      proceedToCheckout();
+      setTimeout(proceedToCheckout, 400);
     }
 
     function proceedToCheckout() {
-      if (shopifyCheckoutUrl) { window.location.href = shopifyCheckoutUrl; return; }
-      showToast('Connecting to Shopify...');
+      if (shopifyCheckoutUrl) { window.open(shopifyCheckoutUrl, '_blank'); return; }
+      if (isConfigured && cart.some(i => i.variantId)) {
+        const btn = document.getElementById('checkoutBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
+        createShopifyCart().then(() => {
+          if (btn) { btn.disabled = false; btn.textContent = 'Checkout on Shopify'; }
+          if (shopifyCheckoutUrl) window.open(shopifyCheckoutUrl, '_blank');
+          else showToast('Could not connect to Shopify');
+        });
+      } else { showToast('Add items to your bag first'); }
     }
 
     function toggleAcc(id) { document.getElementById(id).classList.toggle('open'); }

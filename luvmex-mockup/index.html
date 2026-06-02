@@ -1463,15 +1463,12 @@
         variantId: pdpCard.dataset.variantId || null,
         name: pdpCard.dataset.name,
         price: parseFloat(pdpCard.dataset.price),
-        img: pdpCard.querySelector('img').src,
+        img: pdpCard.querySelector('img')?.src || '',
         size: selectedSize,
       };
       cart.push(item);
       renderCart();
       showToast('Added to bag — ' + item.name);
-      document.getElementById('pdpOverlay').classList.remove('open');
-      document.getElementById('pdpModal').classList.remove('open');
-      document.body.style.overflow = '';
       openCart();
       if (item.variantId) createShopifyCart();
     }
@@ -1523,10 +1520,19 @@
     }
 
     function saveCart() {
-      try { localStorage.setItem('promethea_cart', JSON.stringify(cart)); } catch {}
+      try {
+        localStorage.setItem('promethea_cart', JSON.stringify(cart));
+        if (shopifyCartId) localStorage.setItem('promethea_shopify_cart_id', shopifyCartId);
+        if (shopifyCheckoutUrl) localStorage.setItem('promethea_shopify_checkout_url', shopifyCheckoutUrl);
+      } catch {}
     }
     function loadCart() {
-      try { const s = localStorage.getItem('promethea_cart'); if (s) cart = JSON.parse(s); } catch {}
+      try {
+        const s = localStorage.getItem('promethea_cart');
+        if (s) cart = JSON.parse(s);
+        shopifyCartId = localStorage.getItem('promethea_shopify_cart_id') || null;
+        shopifyCheckoutUrl = localStorage.getItem('promethea_shopify_checkout_url') || null;
+      } catch {}
     }
 
     function renderCart() {
