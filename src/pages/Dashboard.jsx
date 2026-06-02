@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { COINS } from '../constants';
 import { useAuth } from '../hooks/useAuth';
 import { ADMIN_EMAIL, supabase } from '../lib/supabase';
+import { useCryptoScanner } from '../hooks/useCryptoScanner';
 import CoinCard from '../components/CoinCard';
 import TimeframeToggle from '../components/TimeframeToggle';
 
 export default function Dashboard() {
   const [timeframe, setTimeframe] = useState('1D');
+  const [mode, setMode] = useState('scanner'); // 'scanner' | 'watchlist'
   const { user } = useAuth();
 
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -15,14 +17,20 @@ export default function Dashboard() {
     ? 'Administrator'
     : (user?.user_metadata?.name || user?.email?.split('@')[0] || '');
 
+  const { topCoins, scanning, scanned, total, lastUpdated: scanUpdated, refresh: rescan } =
+    useCryptoScanner(timeframe, 6);
+
   async function handleSignOut() {
     if (supabase) await supabase.auth.signOut();
   }
 
+  const coinsToShow = mode === 'watchlist' ? COINS : topCoins;
+  const activeSignals = topCoins.filter(c => c.analysis?.entrySignal).length;
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
       <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        {/* Row 1: Logo + title + auth buttons */}
+        {/* Row 1: Logo + auth */}
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
             <img src="/Website/logo.svg" alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
@@ -34,7 +42,7 @@ export default function Dashboard() {
                 <span className="text-sm text-[#8b949e] hidden sm:block">
                   Welcome, <span className={isAdmin ? 'text-[#bc8cff] font-semibold' : 'text-white font-semibold'}>{displayName}</span>!
                 </span>
-                <span className="text-sm text-[#8b949e] sm:hidden">
+                <span className="text-sm sm:hidden">
                   <span className={isAdmin ? 'text-[#bc8cff] font-semibold' : 'text-white font-semibold'}>{displayName}</span>
                 </span>
                 {isAdmin && (
@@ -62,19 +70,93 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-        {/* Row 2: Timeframe toggle */}
-        <div className="max-w-7xl mx-auto">
+
+        {/* Row 2: Timeframe + Bitcoin toggle */}
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
           <TimeframeToggle value={timeframe} onChange={setTimeframe} />
+          <div className="w-px h-5 bg-[#30363d] flex-shrink-0" />
+          <button
+            onClick={() => setMode(m => m === 'scanner' ? 'watchlist' : 'scanner')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 ${
+              mode === 'watchlist'
+                ? 'bg-orange-500 text-white'
+                : 'text-orange-400 bg-orange-500/10 border border-orange-500/25 hover:border-orange-400/50'
+            }`}
+          >
+            Bitcoin
+          </button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+        {/* Scanner status banner */}
+        {mode === 'scanner' && (
+          <div className="mb-5 rounded-xl border border-[#30363d] bg-[#161b22] px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-white flex items-center gap-2">
+                  {scanning ? (
+                    <>
+                      <span className="inline-block w-3 h-3 rounded-full border-2 border-orange-400/30 border-t-orange-400 animate-spin flex-shrink-0" />
+                      Scanning {total} cryptos… {scanned}/{total}
+                    </>
+                  ) : topCoins.length > 0 ? (
+                    <>
+                      <span className="text-orange-400">▲</span>
+                      Top {topCoins.length} coins signaling an 8%+ run
+                      {activeSignals > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 text-[10px] font-semibold">
+                          {activeSignals} ACTIVE
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    'Scanning for run setups…'
+                  )}
+                </div>
+                <div className="text-[10px] text-[#484f58] mt-0.5">
+                  {scanning
+                    ? 'Analyzing ATR · RSI · MACD · Bollinger Bands · Volume across 25 coins'
+                    : scanUpdated
+                      ? `Scored by ATR · RSI · MACD · BB · Volume — updated ${scanUpdated.toLocaleTimeString()}`
+                      : 'Scored by ATR · RSI · MACD · Bollinger Bands · Volume'}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {scanning ? (
+                  <div className="w-20 h-1.5 bg-[#30363d] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-orange-500 rounded-full transition-all duration-300"
+                      style={{ width: `${total > 0 ? (scanned / total) * 100 : 0}%` }}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={rescan}
+                    className="text-[10px] text-[#484f58] hover:text-[#8b949e] transition-colors px-2 py-1 rounded border border-[#30363d] hover:border-[#484f58]">
+                    Rescan
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Coin grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {COINS.map((coin) => (
-            <CoinCard key={coin.symbol} {...coin} timeframe={timeframe} />
-          ))}
+          {mode === 'scanner' && scanning && topCoins.length === 0 ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-[#30363d] bg-[#161b22] min-h-[440px] animate-pulse" />
+            ))
+          ) : (
+            coinsToShow.map(coin => (
+              <CoinCard key={coin.symbol} symbol={coin.symbol} name={coin.name} color={coin.color} timeframe={timeframe} />
+            ))
+          )}
         </div>
 
+        {/* Guide */}
         <div className="mt-6 rounded-xl border border-[#30363d] bg-[#161b22] p-4">
           <h2 className="text-sm font-semibold text-white mb-3">Dashboard Guide</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-[#8b949e]">
@@ -94,11 +176,10 @@ export default function Dashboard() {
               <div>⑤ Volume ≥ 1.2× 20-day average</div>
             </div>
             <div className="space-y-1">
-              <div className="font-medium text-[#8b949e] mb-1">Entry Zones (limit order targets)</div>
-              <div className="text-[#58a6ff]">Conservative = Price − 1.5×ATR</div>
-              <div className="text-[#bc8cff]">Aggressive = Price − 2×ATR</div>
-              <div className="pt-1 text-[#484f58]">BB Width ⚠ = volatility compression, breakout likely</div>
-              <div className="text-[#484f58]">Tap any card to view chart &amp; details</div>
+              <div className="font-medium text-[#8b949e] mb-1">Scanner Mode</div>
+              <div>Scans 25 coins every 5 min for 8%+ run setups</div>
+              <div>Ranks by RSI, MACD crossover, volume spike &amp; BB position</div>
+              <div className="pt-1 text-orange-400/80">Tap <span className="font-semibold">Bitcoin</span> to switch to BTC · ETH · SOL · XRP · DOGE</div>
             </div>
           </div>
         </div>

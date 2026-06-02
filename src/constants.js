@@ -5,3 +5,32 @@ export const COINS = [
   { symbol: 'XRP',  name: 'XRP',      color: '#00AAE4' },
   { symbol: 'DOGE', name: 'Dogecoin', color: '#C3A634' },
 ];
+
+// Universe of coins scanned for run setups
+export const SCAN_UNIVERSE = [
+  { symbol: 'BTC',   name: 'Bitcoin',        color: '#F7931A' },
+  { symbol: 'ETH',   name: 'Ethereum',       color: '#627EEA' },
+  { symbol: 'SOL',   name: 'Solana',         color: '#9945FF' },
+  { symbol: 'XRP',   name: 'XRP',            color: '#00AAE4' },
+  { symbol: 'DOGE',  name: 'Dogecoin',       color: '#C3A634' },
+  { symbol: 'BNB',   name: 'BNB',            color: '#F3BA2F' },
+  { symbol: 'ADA',   name: 'Cardano',        color: '#0D9DE0' },
+  { symbol: 'AVAX',  name: 'Avalanche',      color: '#E84142' },
+  { symbol: 'MATIC', name: 'Polygon',        color: '#8247E5' },
+  { symbol: 'DOT',   name: 'Polkadot',       color: '#E6007A' },
+  { symbol: 'LINK',  name: 'Chainlink',      color: '#375BD2' },
+  { symbol: 'LTC',   name: 'Litecoin',       color: '#A0A0A0' },
+  { symbol: 'BCH',   name: 'Bitcoin Cash',   color: '#8DC351' },
+  { symbol: 'ATOM',  name: 'Cosmos',         color: '#6F7390' },
+  { symbol: 'NEAR',  name: 'NEAR Protocol',  color: '#00C08B' },
+  { symbol: 'UNI',   name: 'Uniswap',        color: '#FF007A' },
+  { symbol: 'AAVE',  name: 'Aave',           color: '#B6509E' },
+  { symbol: 'FIL',   name: 'Filecoin',       color: '#42C1CA' },
+  { symbol: 'GRT',   name: 'The Graph',      color: '#6F4CFF' },
+  { symbol: 'SAND',  name: 'The Sandbox',    color: '#04ADEF' },
+  { symbol: 'MANA',  name: 'Decentraland',   color: '#FF2D55' },
+  { symbol: 'AXS',   name: 'Axie Infinity',  color: '#0055D5' },
+  { symbol: 'VET',   name: 'VeChain',        color: '#15BDFF' },
+  { symbol: 'XLM',   name: 'Stellar',        color: '#9B59B6' },
+  { symbol: 'TRX',   name: 'TRON',           color: '#FF060A' },
+];
