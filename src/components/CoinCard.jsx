@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCoinData } from '../hooks/useCryptoData';
 import VolatilityBadge from './VolatilityBadge';
-import EntrySignal from './EntrySignal';
+import RunSignal from './RunSignal';
 import MetricRow from './MetricRow';
 
 // Card background tints based on volatility level (subtle but visible)
@@ -276,12 +276,8 @@ export default function CoinCard({ symbol, name, color, timeframe }) {
               />
             </div>
 
-            {/* ── Entry signal ── */}
-            <EntrySignal
-              conditions={data.conditions}
-              activeConditions={data.activeConditions}
-              entrySignal={data.entrySignal}
-            />
+            {/* ── Run signal (weighted scoring engine) ── */}
+            <RunSignal analysis={data} />
           </>
         ) : null}
       </div>

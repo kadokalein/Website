@@ -147,7 +147,6 @@ export function calcMACD(candles, fast = 12, slow = 26, signal = 9) {
   const fastEMA = calcEMA(closes, fast);
   const slowEMA = calcEMA(closes, slow);
 
-  // slowEMA[i] and fastEMA[i + (slow-fast)] correspond to the same bar
   const offset = slow - fast;
   const macdLine = slowEMA.map((s, i) => fastEMA[i + offset] - s);
 
@@ -165,15 +164,20 @@ export function calcMACD(candles, fast = 12, slow = 26, signal = 9) {
     if (prevM < prevS && currM >= currS) { isBullishCrossover = true; break; }
   }
 
-  const lastMACD = macdLine[macdLine.length - 1];
+  const lastMACD   = macdLine[macdLine.length - 1];
   const lastSignal = signalLine[signalLine.length - 1];
+  const lastHist   = lastMACD - lastSignal;
+  const prevHist   = signalLine.length >= 2
+    ? macdLine[macdLine.length - 2] - signalLine[signalLine.length - 2]
+    : lastHist;
 
   return {
     macd: lastMACD,
     signal: lastSignal,
-    histogram: lastMACD - lastSignal,
+    histogram: lastHist,
     status: lastMACD > lastSignal ? 'bullish' : lastMACD < lastSignal ? 'bearish' : 'neutral',
     isBullishCrossover,
+    isHistogramRising: lastHist > prevHist,
   };
 }
 
@@ -217,8 +221,18 @@ export function analyzeCandles(candles, interval = '1d') {
   // ROC, RSI, MACD, Volume
   const roc        = calcROC(candles, 14);
   const rsi        = calcRSI(candles, 14);
+  const rsiPrev    = calcRSI(candles.slice(0, -1), 14);
+  const rsiTrend   = rsi != null && rsiPrev != null
+    ? (rsi > rsiPrev ? 'rising' : rsi < rsiPrev ? 'falling' : 'flat')
+    : null;
   const macd       = calcMACD(candles);
   const volumeData = calcVolumeRatio(candles, 20);
+
+  // Detect if volume JUST crossed the 2× threshold this bar (state change)
+  const prevVol = candles.length >= 2 ? candles[candles.length - 2].volume : null;
+  const volumeJustSpiked = volumeData != null && prevVol != null
+    && volumeData.ratio >= 2.0
+    && (volumeData.avg > 0 ? prevVol / volumeData.avg < 2.0 : false);
 
   // Entry zones: price minus ATR multiples
   const conservativeEntry = currentPrice - 1.5 * currentATR;
@@ -255,8 +269,11 @@ export function analyzeCandles(candles, interval = '1d') {
     hv7, hv30, hv90,
     roc,
     rsi,
+    rsiPrev,
+    rsiTrend,
     macd,
     volume:            volumeData,
+    volumeJustSpiked,
     conservativeEntry,
     aggressiveEntry,
     conditions,

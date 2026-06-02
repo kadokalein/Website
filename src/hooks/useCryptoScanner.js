@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { analyzeCandles } from '../utils/indicators';
+import { computeRunScore } from '../utils/scoring';
 import { SCAN_UNIVERSE } from '../constants';
 
-const CC_BASE    = 'https://min-api.cryptocompare.com/data/v2';
-const LIMIT      = 500;
-const REFRESH_MS = 5 * 60 * 1000; // re-scan every 5 minutes
-const BATCH_SIZE = 5;
+const CC_BASE        = 'https://min-api.cryptocompare.com/data/v2';
+const LIMIT          = 500;
+const REFRESH_MS     = 5 * 60 * 1000;
+const BATCH_SIZE     = 5;
 const BATCH_DELAY_MS = 300;
 
 const TF_CONFIG = {
@@ -28,38 +29,7 @@ async function fetchCandles(symbol, timeframe) {
   return { candles, interval };
 }
 
-function scoreForRun(analysis) {
-  if (!analysis) return -Infinity;
-  // Base: conditions met (0–5), each worth 10 pts
-  let score = (analysis.activeConditions ?? 0) * 10;
-
-  // RSI bonus — more oversold = stronger bounce potential
-  if (analysis.rsi != null) {
-    if      (analysis.rsi < 25) score += 8;
-    else if (analysis.rsi < 30) score += 5;
-    else if (analysis.rsi < 35) score += 2;
-  }
-
-  // Bullish MACD crossover just happened
-  if (analysis.macd?.isBullishCrossover) score += 4;
-
-  // Volume spike = accumulation signal
-  const ratio = analysis.volume?.ratio ?? 0;
-  if      (ratio >= 2.5) score += 5;
-  else if (ratio >= 1.5) score += 3;
-  else if (ratio >= 1.2) score += 1;
-
-  // Price at/below BB lower band
-  if (analysis.conditions?.bbLower) score += 2;
-
-  // Low volatility = safer risk/reward before a breakout
-  if (analysis.volatility === 'low') score += 2;
-
-  // Prefer coins that HAVEN'T already run (not overbought)
-  if (analysis.rsi != null && analysis.rsi > 65) score -= 5;
-
-  return score;
-}
+const SIGNAL_ORDER = { 'BUY TRIGGERED': 0, 'WATCH': 1, 'LOW QUALITY': 2, 'NO SIGNAL': 3 };
 
 export function useCryptoScanner(timeframe, topN = 6) {
   const [state, setState] = useState({
@@ -79,17 +49,17 @@ export function useCryptoScanner(timeframe, topN = 6) {
     setState(prev => ({ ...prev, scanning: true, scanned: 0 }));
 
     const scored = [];
-    const symbols = SCAN_UNIVERSE;
 
-    for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+    for (let i = 0; i < SCAN_UNIVERSE.length; i += BATCH_SIZE) {
       if (abortRef.current) return;
 
-      const batch = symbols.slice(i, i + BATCH_SIZE);
+      const batch = SCAN_UNIVERSE.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async coin => {
           const { candles, interval } = await fetchCandles(coin.symbol, timeframeRef.current);
           const analysis = analyzeCandles(candles, interval);
-          return { ...coin, score: scoreForRun(analysis), analysis };
+          const runScore = computeRunScore(analysis);
+          return { ...coin, runScore, analysis };
         })
       );
 
@@ -97,24 +67,31 @@ export function useCryptoScanner(timeframe, topN = 6) {
         if (r.status === 'fulfilled') scored.push(r.value);
       }
 
-      setState(prev => ({ ...prev, scanned: Math.min(i + BATCH_SIZE, symbols.length) }));
+      setState(prev => ({ ...prev, scanned: Math.min(i + BATCH_SIZE, SCAN_UNIVERSE.length) }));
 
-      if (i + BATCH_SIZE < symbols.length) {
+      if (i + BATCH_SIZE < SCAN_UNIVERSE.length) {
         await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
       }
     }
 
     if (abortRef.current) return;
 
+    // Sort: first by signal tier (BUY TRIGGERED > WATCH > LOW QUALITY > NO SIGNAL),
+    // then by raw score within each tier.
     const topCoins = [...scored]
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => {
+        const sigA = SIGNAL_ORDER[a.runScore?.signal] ?? 3;
+        const sigB = SIGNAL_ORDER[b.runScore?.signal] ?? 3;
+        if (sigA !== sigB) return sigA - sigB;
+        return (b.runScore?.score ?? 0) - (a.runScore?.score ?? 0);
+      })
       .slice(0, topN);
 
     setState({
       topCoins,
       scanning: false,
-      scanned: symbols.length,
-      total: symbols.length,
+      scanned: SCAN_UNIVERSE.length,
+      total: SCAN_UNIVERSE.length,
       lastUpdated: new Date(),
     });
   }, [topN]);
