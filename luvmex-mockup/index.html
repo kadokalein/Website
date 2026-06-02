@@ -1696,8 +1696,8 @@
         const menCount = document.getElementById('collMenCount');
         if (menCount) menCount.textContent = count + ' Styles';
 
-        // Use second product image (or first) as Accessories banner background
-        const img2 = products[1]?.node.images.edges[0]?.node.url || img1;
+        // Use second product image as Accessories banner background
+        const img2 = products[1]?.node.images.edges[0]?.node.url || products[0]?.node.images.edges[0]?.node.url;
         if (img2) {
           const accBanner = document.getElementById('collAccImgs')?.closest('.coll-banner');
           if (accBanner) {
