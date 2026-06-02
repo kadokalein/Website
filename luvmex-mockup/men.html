@@ -58,7 +58,9 @@
       background: var(--white); color: var(--black);
       font-size: 8px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
     }
+    .cart-dot.has-items { background: #4ade80; }
 
     /* ── HAMBURGER ── */
     .nav-hamburger {
@@ -684,7 +686,9 @@
     function renderCart() {
       const total = cart.reduce((s,i) => s + i.price, 0);
       document.getElementById('cartCount').textContent = cart.length;
-      document.getElementById('navCartCount').textContent = cart.length;
+      const navDot = document.getElementById('navCartCount');
+      navDot.textContent = cart.length;
+      navDot.classList.toggle('has-items', cart.length > 0);
       const mb = document.getElementById('mobileCartCount');
       if (mb) mb.textContent = cart.length;
       const pb = document.getElementById('pdpCartCount');

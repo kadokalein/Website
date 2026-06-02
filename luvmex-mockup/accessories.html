@@ -38,7 +38,8 @@
     .nav-l a:hover, .nav-r a:hover, .nav-r button:hover { color: var(--white); }
     .nav-logo { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 9px; text-transform: uppercase; color: var(--white); text-decoration: none; text-align: center; }
     .nav-cart { position: relative; }
-    .cart-dot { position: absolute; top: -7px; right: -9px; width: 14px; height: 14px; border-radius: 50%; background: var(--white); color: var(--black); font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .cart-dot { position: absolute; top: -7px; right: -9px; width: 14px; height: 14px; border-radius: 50%; background: var(--white); color: var(--black); font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .cart-dot.has-items { background: #4ade80; }
     .nav-hamburger { display: none; flex-direction: column; justify-content: center; align-items: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 4px; flex-shrink: 0; }
     .nav-hamburger span { display: block; width: 20px; height: 1.5px; background: var(--g3); transition: all .22s; }
     .nav-hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); background: var(--white); }
@@ -400,6 +401,8 @@
     function renderCart() {
       const total = cart.reduce((s,i) => s + i.price, 0);
       ['cartCount','navCartCount','mobileCartCount','pdpCartCount'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = cart.length; });
+      const navDot = document.getElementById('navCartCount');
+      if (navDot) navDot.classList.toggle('has-items', cart.length > 0);
       document.getElementById('cartTotal').textContent = '$' + total.toFixed(2);
       const el = document.getElementById('cartItems');
       if (!cart.length) { el.innerHTML = '<div class="cart-empty">Your bag is empty.</div>'; return; }

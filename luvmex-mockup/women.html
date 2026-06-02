@@ -43,7 +43,8 @@
     .nav-l a:hover, .nav-r a:hover, .nav-r button:hover { color: var(--white); }
     .nav-logo { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 9px; text-transform: uppercase; color: var(--white); text-decoration: none; text-align: center; }
     .nav-cart { position: relative; }
-    .cart-dot { position: absolute; top: -7px; right: -9px; width: 14px; height: 14px; border-radius: 50%; background: var(--white); color: var(--black); font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .cart-dot { position: absolute; top: -7px; right: -9px; width: 14px; height: 14px; border-radius: 50%; background: var(--white); color: var(--black); font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .cart-dot.has-items { background: #4ade80; }
 
     /* ── HAMBURGER ── */
     .nav-hamburger { display: none; flex-direction: column; justify-content: center; align-items: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 4px; flex-shrink: 0; }
@@ -95,7 +96,14 @@
     .page-hero { padding: clamp(48px,8vh,96px) clamp(20px,5.5vw,80px) clamp(32px,5vh,64px); border-bottom: 1px solid var(--border); }
     .page-hero-label { font-size: 9px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; color: var(--g2); margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
     .page-hero-label::before { content: ''; width: 28px; height: 1px; background: var(--g2); }
-    .page-hero-title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(56px,8vw,120px); font-weight: 800; line-height: 0.88; text-transform: uppercase; letter-spacing: -1px; }
+    .page-hero-title {
+      font-family: 'Barlow Condensed', sans-serif; font-size: clamp(56px,8vw,120px);
+      font-weight: 800; line-height: 0.88; text-transform: uppercase; letter-spacing: -1px;
+      background: linear-gradient(90deg, #fefce8 0%, #fef08a 30%, #fbcfe8 70%, #f9a8d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     .page-hero-sub { font-size: 13px; font-weight: 300; color: var(--g2); margin-top: 20px; max-width: 480px; line-height: 1.8; }
 
     /* ── CATEGORY SECTION ── */
@@ -470,6 +478,8 @@
       ['cartCount','navCartCount','mobileCartCount','pdpCartCount'].forEach(id => {
         const el = document.getElementById(id); if (el) el.textContent = cart.length;
       });
+      const navDot = document.getElementById('navCartCount');
+      if (navDot) navDot.classList.toggle('has-items', cart.length > 0);
       document.getElementById('cartTotal').textContent = '$' + total.toFixed(2);
       const el = document.getElementById('cartItems');
       if (!cart.length) { el.innerHTML = '<div class="cart-empty">Your bag is empty.</div>'; return; }

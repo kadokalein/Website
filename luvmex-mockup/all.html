@@ -58,7 +58,9 @@
       background: var(--white); color: var(--black);
       font-size: 8px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
     }
+    .cart-dot.has-items { background: #4ade80; }
 
     /* ── HAMBURGER ── */
     .nav-hamburger {
@@ -129,7 +131,14 @@
     }
     .page-hero-label { font-size: 9px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; color: var(--g2); margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
     .page-hero-label::before { content: ''; width: 28px; height: 1px; background: var(--g2); }
-    .page-hero-title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(56px,8vw,120px); font-weight: 800; line-height: 0.88; text-transform: uppercase; letter-spacing: -1px; }
+    .page-hero-title {
+      font-family: 'Barlow Condensed', sans-serif; font-size: clamp(56px,8vw,120px);
+      font-weight: 800; line-height: 0.88; text-transform: uppercase; letter-spacing: -1px;
+      background: linear-gradient(90deg, #4ade80, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     .page-hero-sub { font-size: 13px; font-weight: 300; color: var(--g2); margin-top: 20px; max-width: 480px; line-height: 1.8; }
 
     /* ── CATEGORY SECTION ── */
@@ -751,7 +760,9 @@
     function renderCart() {
       const total = cart.reduce((s,i) => s + i.price, 0);
       document.getElementById('cartCount').textContent = cart.length;
-      document.getElementById('navCartCount').textContent = cart.length;
+      const navDot = document.getElementById('navCartCount');
+      navDot.textContent = cart.length;
+      navDot.classList.toggle('has-items', cart.length > 0);
       const mb = document.getElementById('mobileCartCount');
       if (mb) mb.textContent = cart.length;
       const pb = document.getElementById('pdpCartCount');
