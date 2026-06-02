@@ -126,25 +126,9 @@
 
     /* ── PAGE HERO ── */
     .men-hero {
-      position: relative;
       padding: clamp(48px,8vh,96px) clamp(20px,5.5vw,80px) clamp(32px,5vh,64px);
       border-bottom: 1px solid var(--border);
-      overflow: hidden;
-      min-height: 52vh;
     }
-    .men-hero-video {
-      position: absolute; inset: 0;
-      overflow: hidden; z-index: 0; pointer-events: none;
-    }
-    .men-hero-video video {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%; object-fit: cover;
-    }
-    .men-hero-video::after {
-      content: ''; position: absolute; inset: 0; z-index: 1;
-      background: rgba(0,0,0,0.5);
-    }
-    .men-hero-content { position: relative; z-index: 1; }
     .men-hero-label { font-size: 9px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; color: var(--g2); margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
     .men-hero-label::before { content: ''; width: 28px; height: 1px; background: var(--g2); }
     .men-hero-title {
@@ -500,16 +484,9 @@
 
   <!-- Page Hero -->
   <div class="men-hero">
-    <div class="men-hero-video">
-      <video autoplay muted loop playsinline>
-        <source src="mens-hero.mp4" type="video/mp4">
-      </video>
-    </div>
-    <div class="men-hero-content">
-      <div class="men-hero-label">Promethea SS'25</div>
-      <h1 class="men-hero-title">Men's<br>Collection</h1>
-      <p class="men-hero-sub">All pieces. Every drop. Organized by category.</p>
-    </div>
+    <div class="men-hero-label">Promethea SS'25</div>
+    <h1 class="men-hero-title">Men's<br>Collection</h1>
+    <p class="men-hero-sub">All pieces. Every drop. Organized by category.</p>
   </div>
 
   <!-- Products — loaded from Shopify -->

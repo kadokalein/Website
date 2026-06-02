@@ -337,8 +337,14 @@
       transition: transform .6s ease;
     }
     .coll-banner:hover .coll-banner-imgs img { transform: scale(1.04); }
+    .coll-banner-video {
+      position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+    }
+    .coll-banner-video video {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    }
     .coll-banner-veil {
-      position: absolute; inset: 0;
+      position: absolute; inset: 0; z-index: 1;
       background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.1) 55%, transparent 100%);
       pointer-events: none;
     }
@@ -1187,8 +1193,13 @@
     <div class="sec-label">Browse</div>
     <div class="sec-title">Spring / Summer 2026 Collection</div>
 
-    <!-- Men banner — background images from images/background/, products from men/tops + men/bottoms -->
+    <!-- Men banner -->
     <div class="coll-banner" id="collMen" onclick="location.href='men.html'" style="cursor:pointer">
+      <div class="coll-banner-video">
+        <video autoplay muted loop playsinline>
+          <source src="mens-hero.mp4" type="video/mp4">
+        </video>
+      </div>
       <div class="coll-banner-imgs count-1" id="collMenImgs" style="display:none"></div>
       <div class="coll-banner-veil"></div>
       <div class="coll-banner-info">
