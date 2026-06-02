@@ -133,15 +133,16 @@
       min-height: 52vh;
     }
     .men-hero-video {
-      position: absolute; inset: 0; width: 100%; height: 100%;
+      position: absolute; inset: 0;
       overflow: hidden; z-index: 0; pointer-events: none;
     }
     .men-hero-video video {
-      width: 100%; height: 100%; object-fit: cover; display: block;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: cover;
     }
     .men-hero-video::after {
-      content: ''; position: absolute; inset: 0;
-      background: rgba(0,0,0,0.48);
+      content: ''; position: absolute; inset: 0; z-index: 1;
+      background: rgba(0,0,0,0.5);
     }
     .men-hero-content { position: relative; z-index: 1; }
     .men-hero-label { font-size: 9px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; color: var(--g2); margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
