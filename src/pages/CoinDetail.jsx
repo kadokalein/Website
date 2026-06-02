@@ -28,7 +28,7 @@ function hv(v) { return v != null ? `${v.toFixed(0)}%` : 'N/A'; }
 
 export default function CoinDetail() {
   const { symbol } = useParams();
-  const [timeframe, setTimeframe] = useState('1D');
+  const [timeframe, setTimeframe] = useState('4H');
 
   const coin = findCoin(symbol);
   const { data, candles, loading, error, lastUpdated, refresh } = useCoinData(symbol, timeframe, 180_000);

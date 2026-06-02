@@ -8,7 +8,7 @@ import CoinCard from '../components/CoinCard';
 import TimeframeToggle from '../components/TimeframeToggle';
 
 export default function Dashboard() {
-  const [timeframe, setTimeframe] = useState('1D');
+  const [timeframe, setTimeframe] = useState('4H');
   const [mode, setMode] = useState('scanner'); // 'scanner' | 'watchlist'
   const { user } = useAuth();
 

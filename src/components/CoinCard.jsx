@@ -1,14 +1,15 @@
 import { Link } from 'react-router-dom';
 import { useCoinData } from '../hooks/useCryptoData';
+import { computeRunScore } from '../utils/scoring';
 import VolatilityBadge from './VolatilityBadge';
 import RunSignal from './RunSignal';
 import MetricRow from './MetricRow';
 
-// Card background tints based on volatility level (subtle but visible)
-const CARD_STYLE = {
-  low:    'bg-[#0d1a14] border-green-500/20',
-  medium: 'bg-[#161b22] border-[#30363d]',
-  high:   'bg-[#1a0d0d] border-red-500/20',
+const SIGNAL_CARD_STYLE = {
+  'BUY TRIGGERED': 'bg-[#071a0e] border-green-500/40',
+  'WATCH':         'bg-[#1a1a07] border-yellow-500/35',
+  'LOW QUALITY':   'bg-[#161b22] border-[#30363d]',
+  'NO SIGNAL':     'bg-[#161b22] border-[#30363d]',
 };
 
 const MACD_COLOR = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-yellow-400' };
@@ -61,7 +62,10 @@ function SkeletonRow() {
 export default function CoinCard({ symbol, name, color, timeframe }) {
   const { data, loading, error, lastUpdated, refresh } = useCoinData(symbol, timeframe);
 
-  const cardStyle = data ? (CARD_STYLE[data.volatility] ?? CARD_STYLE.medium) : 'bg-[#161b22] border-[#30363d]';
+  const runScore  = data ? computeRunScore(data) : null;
+  const cardStyle = runScore
+    ? (SIGNAL_CARD_STYLE[runScore.signal] ?? SIGNAL_CARD_STYLE['NO SIGNAL'])
+    : 'bg-[#161b22] border-[#30363d]';
 
   // Error state
   if (error && !data) {
