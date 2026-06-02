@@ -1693,16 +1693,6 @@
         const products = data.data.products.edges;
         const count = products.length;
 
-        // Use first product image as Men banner background
-        const img1 = products[0]?.node.images.edges[0]?.node.url;
-        if (img1) {
-          const menBanner = document.getElementById('collMenImgs')?.closest('.coll-banner');
-          if (menBanner) {
-            menBanner.style.backgroundImage = `url('${img1}')`;
-            menBanner.style.backgroundSize = 'cover';
-            menBanner.style.backgroundPosition = 'center top';
-          }
-        }
         const menCount = document.getElementById('collMenCount');
         if (menCount) menCount.textContent = count + ' Styles';
 
