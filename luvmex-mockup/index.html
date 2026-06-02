@@ -92,9 +92,9 @@
       letter-spacing: 9px; text-transform: uppercase;
       color: var(--white); text-decoration: none; text-align: center;
     }
-    .nav-cart { position: relative; }
+    .nav-cart { position: relative; padding-right: 20px; }
     .cart-dot {
-      position: absolute; top: -7px; right: -9px;
+      position: absolute; top: 50%; right: 0; transform: translateY(-50%);
       width: 14px; height: 14px; border-radius: 50%;
       background: var(--white); color: var(--black);
       font-size: 8px; font-weight: 700;
@@ -532,7 +532,7 @@
       font-size: 10px; font-weight: 600; letter-spacing: 2px;
       text-transform: uppercase; color: var(--g3);
       background: none; border: none; cursor: pointer;
-      position: relative; transition: color .12s;
+      position: relative; padding-right: 20px; transition: color .12s;
     }
     .pdp-nav-bag:hover { color: var(--white); }
     .pdp-main {
@@ -996,7 +996,7 @@
     <nav class="pdp-nav">
       <button class="pdp-back" onclick="closePDP()">Back to Shop</button>
       <div class="pdp-nav-logo">Promethea</div>
-      <button class="pdp-nav-bag" onclick="closePDP();openCart()">Cart (<span id="pdpCartCount">0</span>)</button>
+      <button class="pdp-nav-bag" onclick="closePDP();openCart()">Cart <span class="cart-dot" id="pdpCartCount">0</span></button>
     </nav>
 
     <!-- Main product area -->
@@ -1510,6 +1510,13 @@
       renderCart();
     }
 
+    function saveCart() {
+      try { localStorage.setItem('promethea_cart', JSON.stringify(cart)); } catch {}
+    }
+    function loadCart() {
+      try { const s = localStorage.getItem('promethea_cart'); if (s) cart = JSON.parse(s); } catch {}
+    }
+
     function renderCart() {
       const total = cart.reduce((s, i) => s + i.price, 0);
       document.getElementById('cartCount').textContent = cart.length;
@@ -1519,7 +1526,8 @@
       const mobileBadge = document.getElementById('mobileCartCount');
       if (mobileBadge) mobileBadge.textContent = cart.length;
       const pdpBadge = document.getElementById('pdpCartCount');
-      if (pdpBadge) pdpBadge.textContent = cart.length;
+      if (pdpBadge) { pdpBadge.textContent = cart.length; pdpBadge.classList.toggle('has-items', cart.length > 0); }
+      saveCart();
       document.getElementById('cartTotal').textContent = '$' + total.toFixed(2);
       const el = document.getElementById('cartItems');
       if (cart.length === 0) {
@@ -1651,6 +1659,8 @@
       }
     }
 
+    loadCart();
+    renderCart();
     if (isConfigured) {
       loadShopifyProducts();
     }

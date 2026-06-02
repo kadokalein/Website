@@ -51,9 +51,9 @@
       font-size: 18px; font-weight: 800; letter-spacing: 9px; text-transform: uppercase;
       color: var(--white); text-decoration: none; text-align: center;
     }
-    .nav-cart { position: relative; }
+    .nav-cart { position: relative; padding-right: 20px; }
     .cart-dot {
-      position: absolute; top: -7px; right: -9px;
+      position: absolute; top: 50%; right: 0; transform: translateY(-50%);
       width: 14px; height: 14px; border-radius: 50%;
       background: var(--white); color: var(--black);
       font-size: 8px; font-weight: 700;
@@ -181,7 +181,7 @@
     .pdp-back:hover { color: var(--white); }
     .pdp-back::before { content: '←'; font-size: 14px; }
     .pdp-nav-logo { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 8px; text-transform: uppercase; }
-    .pdp-nav-bag { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--g3); background: none; border: none; cursor: pointer; transition: color .12s; }
+    .pdp-nav-bag { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--g3); background: none; border: none; cursor: pointer; position: relative; padding-right: 20px; transition: color .12s; }
     .pdp-nav-bag:hover { color: var(--white); }
     .pdp-main { display: grid; grid-template-columns: 55% 45%; min-height: calc(100vh - 56px); }
     @media (max-width: 820px) { .pdp-main { grid-template-columns: 1fr; } }
@@ -356,7 +356,7 @@
     <nav class="pdp-nav">
       <button class="pdp-back" onclick="closePDP()">Back to Men</button>
       <div class="pdp-nav-logo">Promethea</div>
-      <button class="pdp-nav-bag" onclick="closePDP();openCart()">Bag (<span id="pdpCartCount">0</span>)</button>
+      <button class="pdp-nav-bag" onclick="closePDP();openCart()">Bag <span class="cart-dot" id="pdpCartCount">0</span></button>
     </nav>
     <div class="pdp-main">
       <div class="pdp-gallery">
@@ -662,6 +662,8 @@
       }
     }
 
+    loadCart();
+    renderCart();
     loadShopifyProducts();
 
     function showToast(msg) {
@@ -683,6 +685,13 @@
     function openCart()  { document.getElementById('cartDrawer').classList.add('open'); document.getElementById('cartOverlay').classList.add('open'); }
     function closeCart() { document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('cartOverlay').classList.remove('open'); }
 
+    function saveCart() {
+      try { localStorage.setItem('promethea_cart', JSON.stringify(cart)); } catch {}
+    }
+    function loadCart() {
+      try { const s = localStorage.getItem('promethea_cart'); if (s) cart = JSON.parse(s); } catch {}
+    }
+
     function renderCart() {
       const total = cart.reduce((s,i) => s + i.price, 0);
       document.getElementById('cartCount').textContent = cart.length;
@@ -692,7 +701,8 @@
       const mb = document.getElementById('mobileCartCount');
       if (mb) mb.textContent = cart.length;
       const pb = document.getElementById('pdpCartCount');
-      if (pb) pb.textContent = cart.length;
+      if (pb) { pb.textContent = cart.length; pb.classList.toggle('has-items', cart.length > 0); }
+      saveCart();
       document.getElementById('cartTotal').textContent = '$' + total.toFixed(2);
       const itemsEl = document.getElementById('cartItems');
       if (cart.length === 0) { itemsEl.innerHTML = '<div class="cart-empty">Your bag is empty.</div>'; return; }
