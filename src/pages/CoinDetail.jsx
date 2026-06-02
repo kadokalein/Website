@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCoinData } from '../hooks/useCryptoData';
-import { COINS } from '../constants';
+import { findCoin } from '../constants';
 import PriceChart from '../components/PriceChart';
 import VolatilityBadge from '../components/VolatilityBadge';
 import MetricRow from '../components/MetricRow';
@@ -30,7 +30,7 @@ export default function CoinDetail() {
   const { symbol } = useParams();
   const [timeframe, setTimeframe] = useState('1D');
 
-  const coin = COINS.find((c) => c.symbol === symbol);
+  const coin = findCoin(symbol);
   const { data, candles, loading, error, lastUpdated, refresh } = useCoinData(symbol, timeframe, 180_000);
 
   if (!coin) {

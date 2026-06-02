@@ -4,7 +4,7 @@ import {
   createChart, ColorType, LineStyle, CrosshairMode,
   CandlestickSeries, HistogramSeries, LineSeries,
 } from 'lightweight-charts';
-import { COINS } from '../constants';
+import { findCoin } from '../constants';
 import { useCoinData } from '../hooks/useCryptoData';
 import { calcBollingerBands } from '../utils/indicators';
 import TimeframeToggle from '../components/TimeframeToggle';
@@ -29,7 +29,7 @@ export default function ChartPage() {
   const [searchParams] = useSearchParams();
   const [timeframe, setTimeframe] = useState(searchParams.get('tf') || '1D');
 
-  const coin = COINS.find(c => c.symbol === symbol);
+  const coin = findCoin(symbol);
   const { data, candles, loading } = useCoinData(symbol, timeframe);
 
   const containerRef = useRef(null);
