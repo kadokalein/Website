@@ -82,7 +82,14 @@
     .page-hero { padding: clamp(48px,8vh,96px) clamp(20px,5.5vw,80px) clamp(32px,5vh,64px); border-bottom: 1px solid var(--border); }
     .page-hero-label { font-size: 9px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; color: var(--g2); margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
     .page-hero-label::before { content: ''; width: 28px; height: 1px; background: var(--g2); }
-    .page-hero-title { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(56px,8vw,120px); font-weight: 800; line-height: 0.88; text-transform: uppercase; letter-spacing: -1px; }
+    .page-hero-title {
+      font-family: 'Barlow Condensed', sans-serif; font-size: clamp(56px,8vw,120px);
+      font-weight: 800; line-height: 0.88; text-transform: uppercase; letter-spacing: -1px;
+      background: linear-gradient(90deg, #4ade80, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     .page-hero-sub { font-size: 13px; font-weight: 300; color: var(--g2); margin-top: 20px; max-width: 480px; line-height: 1.8; }
 
     .cat-section { padding: clamp(48px,6vh,80px) clamp(20px,5.5vw,80px); border-bottom: 1px solid var(--border); }
