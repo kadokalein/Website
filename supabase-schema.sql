@@ -36,3 +36,16 @@ create policy "Admin reads all payments" on payments
   for select using (
     (select email from auth.users where id = auth.uid()) = 'sk.8trboi247@live.com'
   );
+
+-- Watchlist table
+create table if not exists watchlist (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references auth.users on delete cascade not null,
+  symbol     text not null,
+  added_at   timestamptz default now(),
+  unique(user_id, symbol)
+);
+
+alter table watchlist enable row level security;
+create policy "Users manage own watchlist" on watchlist
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

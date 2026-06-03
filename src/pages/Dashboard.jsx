@@ -6,7 +6,6 @@ import { ADMIN_EMAIL, supabase } from '../lib/supabase';
 import { useCryptoScanner } from '../hooks/useCryptoScanner';
 import CoinCard from '../components/CoinCard';
 import TimeframeToggle from '../components/TimeframeToggle';
-
 export default function Dashboard() {
   const [timeframe, setTimeframe] = useState('4H');
   const [mode, setMode] = useState('scanner'); // 'scanner' | 'watchlist'
@@ -86,6 +85,12 @@ export default function Dashboard() {
           >
             Bitcoin
           </button>
+          <Link
+            to="/watchlist"
+            className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-yellow-900 bg-yellow-200/80 hover:bg-yellow-200 border border-yellow-300/40"
+          >
+            ☆ Watch
+          </Link>
         </div>
       </header>
 

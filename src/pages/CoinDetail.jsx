@@ -7,6 +7,7 @@ import VolatilityBadge from '../components/VolatilityBadge';
 import MetricRow from '../components/MetricRow';
 import EntrySignal from '../components/EntrySignal';
 import TimeframeToggle from '../components/TimeframeToggle';
+import WatchButton from '../components/WatchButton';
 
 const MACD_COLOR = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-yellow-400' };
 
@@ -65,6 +66,7 @@ export default function CoinDetail() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <WatchButton symbol={symbol} />
             <Link
               to={`/calculator/${symbol}`}
               className="px-3 py-1.5 rounded-md bg-[#21262d] border border-[#30363d] text-sm text-[#8b949e] hover:text-white hover:border-[#58a6ff]/50 transition-all"

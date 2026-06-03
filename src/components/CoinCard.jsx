@@ -3,6 +3,7 @@ import { useCoinData } from '../hooks/useCryptoData';
 import { computeRunScore } from '../utils/scoring';
 import VolatilityBadge from './VolatilityBadge';
 import RunSignal from './RunSignal';
+import WatchButton from './WatchButton';
 import MetricRow from './MetricRow';
 
 const SIGNAL_CARD_STYLE = {
@@ -108,8 +109,9 @@ export default function CoinCard({ symbol, name, color, timeframe }) {
             </div>
           </div>
 
-          {/* Live price */}
-          <div className="text-right">
+          {/* Live price + watch */}
+          <div className="flex flex-col items-end gap-1">
+            <WatchButton symbol={symbol} />
             {loading && !data ? (
               <div className="h-6 w-28 bg-[#30363d] rounded animate-pulse" />
             ) : (
