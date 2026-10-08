@@ -7,7 +7,7 @@ const CC_BASE        = 'https://min-api.cryptocompare.com/data/v2';
 const LIMIT          = 500;
 const REFRESH_MS     = 5 * 60 * 1000;
 const BATCH_SIZE     = 5;
-const BATCH_DELAY_MS = 300;
+const BATCH_DELAY_MS = 500;
 
 const TF_CONFIG = {
   '1H': { endpoint: 'histohour', aggregate: 1, interval: '1h' },
@@ -23,9 +23,12 @@ async function fetchCandles(symbol, timeframe) {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (json.Response === 'Error') throw new Error(json.Message ?? 'API error');
-  const candles = json.Data.Data
+  const rawData = json.Data?.Data ?? json.Data ?? [];
+  if (!Array.isArray(rawData)) throw new Error('Unexpected API response shape');
+  const candles = rawData
     .filter(k => k.close > 0)
     .map(k => ({ time: k.time * 1000, open: k.open, high: k.high, low: k.low, close: k.close, volume: k.volumefrom }));
+  if (candles.length < 30) throw new Error('Insufficient candle data');
   return { candles, interval };
 }
 
@@ -38,6 +41,7 @@ export function useCryptoScanner(timeframe, topN = 6) {
     scanned: 0,
     total: SCAN_UNIVERSE.length,
     lastUpdated: null,
+    fetchErrors: 0,
   });
 
   const timeframeRef = useRef(timeframe);
@@ -46,9 +50,10 @@ export function useCryptoScanner(timeframe, topN = 6) {
 
   const scan = useCallback(async () => {
     abortRef.current = false;
-    setState(prev => ({ ...prev, scanning: true, scanned: 0 }));
+    setState(prev => ({ ...prev, scanning: true, scanned: 0, fetchErrors: 0 }));
 
     const scored = [];
+    let errorCount = 0;
 
     for (let i = 0; i < SCAN_UNIVERSE.length; i += BATCH_SIZE) {
       if (abortRef.current) return;
@@ -64,10 +69,14 @@ export function useCryptoScanner(timeframe, topN = 6) {
       );
 
       for (const r of results) {
-        if (r.status === 'fulfilled') scored.push(r.value);
+        if (r.status === 'fulfilled') {
+          scored.push(r.value);
+        } else {
+          errorCount++;
+        }
       }
 
-      setState(prev => ({ ...prev, scanned: Math.min(i + BATCH_SIZE, SCAN_UNIVERSE.length) }));
+      setState(prev => ({ ...prev, scanned: Math.min(i + BATCH_SIZE, SCAN_UNIVERSE.length), fetchErrors: errorCount }));
 
       if (i + BATCH_SIZE < SCAN_UNIVERSE.length) {
         await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
@@ -76,8 +85,6 @@ export function useCryptoScanner(timeframe, topN = 6) {
 
     if (abortRef.current) return;
 
-    // Sort: first by signal tier (BUY TRIGGERED > WATCH > LOW QUALITY > NO SIGNAL),
-    // then by raw score within each tier.
     const topCoins = [...scored]
       .sort((a, b) => {
         const sigA = SIGNAL_ORDER[a.runScore?.signal] ?? 3;
@@ -93,6 +100,7 @@ export function useCryptoScanner(timeframe, topN = 6) {
       scanned: SCAN_UNIVERSE.length,
       total: SCAN_UNIVERSE.length,
       lastUpdated: new Date(),
+      fetchErrors: errorCount,
     });
   }, [topN]);
 

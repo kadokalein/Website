@@ -16,14 +16,16 @@ export default function Dashboard() {
     ? 'Administrator'
     : (user?.user_metadata?.name || user?.email?.split('@')[0] || '');
 
-  const { topCoins, scanning, scanned, total, lastUpdated: scanUpdated, refresh: rescan } =
+  const { topCoins, scanning, scanned, total, lastUpdated: scanUpdated, refresh: rescan, fetchErrors } =
     useCryptoScanner(timeframe, 6);
 
   async function handleSignOut() {
     if (supabase) await supabase.auth.signOut();
   }
 
-  const coinsToShow    = mode === 'watchlist' ? COINS : topCoins;
+  // If scan completed with 0 results (all API calls failed), fall back to the core 5 coins
+  const scanFailed = !scanning && topCoins.length === 0 && scanned > 0;
+  const coinsToShow    = mode === 'watchlist' ? COINS : (scanFailed ? COINS : topCoins);
   const buyTriggered   = topCoins.filter(c => c.runScore?.signal === 'BUY TRIGGERED').length;
   const watchCount     = topCoins.filter(c => c.runScore?.signal === 'WATCH').length;
 
@@ -107,6 +109,11 @@ export default function Dashboard() {
                       <span className="inline-block w-3 h-3 rounded-full border-2 border-orange-400/30 border-t-orange-400 animate-spin flex-shrink-0" />
                       Scanning {total} cryptos… {scanned}/{total}
                     </>
+                  ) : scanFailed ? (
+                    <span className="text-red-400">
+                      Scanner unavailable — showing core coins
+                      {fetchErrors > 0 && <span className="text-[#484f58] font-normal"> ({fetchErrors} errors)</span>}
+                    </span>
                   ) : topCoins.length > 0 ? (
                     <>
                       <span className="text-orange-400">▲</span>
@@ -157,6 +164,10 @@ export default function Dashboard() {
         {/* Coin grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {mode === 'scanner' && scanning && topCoins.length === 0 ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-[#30363d] bg-[#161b22] min-h-[440px] animate-pulse" />
+            ))
+          ) : coinsToShow.length === 0 && scanning ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="rounded-xl border border-[#30363d] bg-[#161b22] min-h-[440px] animate-pulse" />
             ))
