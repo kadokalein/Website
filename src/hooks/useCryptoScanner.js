@@ -2,35 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { analyzeCandles } from '../utils/indicators';
 import { computeRunScore } from '../utils/scoring';
 import { SCAN_UNIVERSE } from '../constants';
+import { fetchCandles } from '../utils/binanceApi';
 
-const CC_BASE        = 'https://min-api.cryptocompare.com/data/v2';
-const LIMIT          = 500;
 const REFRESH_MS     = 5 * 60 * 1000;
 const BATCH_SIZE     = 5;
-const BATCH_DELAY_MS = 500;
-
-const TF_CONFIG = {
-  '1H': { endpoint: 'histohour', aggregate: 1, interval: '1h' },
-  '4H': { endpoint: 'histohour', aggregate: 4, interval: '4h' },
-  '1D': { endpoint: 'histoday',  aggregate: 1, interval: '1d' },
-  '1W': { endpoint: 'histoday',  aggregate: 7, interval: '1w' },
-};
-
-async function fetchCandles(symbol, timeframe) {
-  const { endpoint, aggregate, interval } = TF_CONFIG[timeframe] ?? TF_CONFIG['1D'];
-  const url = `${CC_BASE}/${endpoint}?fsym=${symbol}&tsym=USD&limit=${LIMIT}&aggregate=${aggregate}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  if (json.Response === 'Error') throw new Error(json.Message ?? 'API error');
-  const rawData = json.Data?.Data ?? json.Data ?? [];
-  if (!Array.isArray(rawData)) throw new Error('Unexpected API response shape');
-  const candles = rawData
-    .filter(k => k.close > 0)
-    .map(k => ({ time: k.time * 1000, open: k.open, high: k.high, low: k.low, close: k.close, volume: k.volumefrom }));
-  if (candles.length < 30) throw new Error('Insufficient candle data');
-  return { candles, interval };
-}
+const BATCH_DELAY_MS = 200;
 
 const SIGNAL_ORDER = { 'BUY TRIGGERED': 0, 'WATCH': 1, 'LOW QUALITY': 2, 'NO SIGNAL': 3 };
 
