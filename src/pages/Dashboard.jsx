@@ -16,7 +16,7 @@ export default function Dashboard() {
     ? 'Administrator'
     : (user?.user_metadata?.name || user?.email?.split('@')[0] || '');
 
-  const { topCoins, scanning, scanned, total, lastUpdated: scanUpdated, refresh: rescan, fetchErrors } =
+  const { topCoins, scanning, scanned, total, lastUpdated: scanUpdated, refresh: rescan, fetchErrors, lastError } =
     useCryptoScanner(timeframe, 6);
 
   async function handleSignOut() {
@@ -112,7 +112,7 @@ export default function Dashboard() {
                   ) : scanFailed ? (
                     <span className="text-red-400">
                       Scanner unavailable — showing core coins
-                      {fetchErrors > 0 && <span className="text-[#484f58] font-normal"> ({fetchErrors} errors)</span>}
+                      {fetchErrors > 0 && <span className="text-[#484f58] font-normal"> ({fetchErrors}/{total} failed)</span>}
                     </span>
                   ) : topCoins.length > 0 ? (
                     <>
@@ -136,9 +136,11 @@ export default function Dashboard() {
                 <div className="text-[10px] text-[#484f58] mt-0.5">
                   {scanning
                     ? `Vol 35% · MACD 25% · RSI 20% · BB 10% · ATR 10% — analyzing ${total} coins`
-                    : scanUpdated
-                      ? `Vol 35% · MACD 25% · RSI 20% · BB 10% · ATR 10% — updated ${scanUpdated.toLocaleTimeString()}`
-                      : 'Scored by ATR · RSI · MACD · Bollinger Bands · Volume'}
+                    : scanFailed && lastError
+                      ? `Error: ${lastError}`
+                      : scanUpdated
+                        ? `Vol 35% · MACD 25% · RSI 20% · BB 10% · ATR 10% — updated ${scanUpdated.toLocaleTimeString()}`
+                        : 'Scored by ATR · RSI · MACD · Bollinger Bands · Volume'}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">

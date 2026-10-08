@@ -18,6 +18,7 @@ export function useCryptoScanner(timeframe, topN = 6) {
     total: SCAN_UNIVERSE.length,
     lastUpdated: null,
     fetchErrors: 0,
+    lastError: null,
   });
 
   const timeframeRef = useRef(timeframe);
@@ -26,10 +27,11 @@ export function useCryptoScanner(timeframe, topN = 6) {
 
   const scan = useCallback(async () => {
     abortRef.current = false;
-    setState(prev => ({ ...prev, scanning: true, scanned: 0, fetchErrors: 0 }));
+    setState(prev => ({ ...prev, scanning: true, scanned: 0, fetchErrors: 0, lastError: null }));
 
     const scored = [];
     let errorCount = 0;
+    let sampleError = null;
 
     for (let i = 0; i < SCAN_UNIVERSE.length; i += BATCH_SIZE) {
       if (abortRef.current) return;
@@ -49,6 +51,7 @@ export function useCryptoScanner(timeframe, topN = 6) {
           scored.push(r.value);
         } else {
           errorCount++;
+          if (!sampleError) sampleError = r.reason?.message ?? String(r.reason);
         }
       }
 
@@ -77,6 +80,7 @@ export function useCryptoScanner(timeframe, topN = 6) {
       total: SCAN_UNIVERSE.length,
       lastUpdated: new Date(),
       fetchErrors: errorCount,
+      lastError: sampleError,
     });
   }, [topN]);
 
