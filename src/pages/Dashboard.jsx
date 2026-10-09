@@ -93,6 +93,18 @@ export default function Dashboard() {
           >
             ☆ Watch
           </Link>
+          <Link
+            to="/paper"
+            className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-blue-300 bg-blue-500/10 border border-blue-500/25 hover:border-blue-400/50"
+          >
+            Paper
+          </Link>
+          <Link
+            to="/live"
+            className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-orange-300 bg-orange-500/10 border border-orange-500/25 hover:border-orange-400/50"
+          >
+            Live
+          </Link>
         </div>
       </header>
 
