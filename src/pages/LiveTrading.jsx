@@ -500,7 +500,7 @@ export default function LiveTrading() {
                       <div><span className="font-semibold text-white">Option B — Run a local proxy script.</span> Download the script below, then run it in Terminal with Node.js:</div>
                     </div>
                     <div className="rounded bg-[#0d1117] border border-[#30363d] px-3 py-2 font-mono text-[10px] text-green-300 mt-2 select-all whitespace-pre-wrap">
-                      {'node cors-proxy.js'}
+                      {'node ~/Downloads/cors-proxy.js'}
                     </div>
                     <a
                       href="/Website/cors-proxy.js"
