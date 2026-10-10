@@ -8,6 +8,14 @@ import { SCAN_UNIVERSE } from '../constants';
 
 const KEY_STORAGE   = 'pp_cb_keys_v1';
 const STATE_STORAGE = 'pp_live_state_v1';
+const PROXY_KEY     = 'pp_use_proxy_v1';
+
+function loadProxyPref() {
+  try { return localStorage.getItem(PROXY_KEY) === 'true'; } catch { return false; }
+}
+function saveProxyPref(v) {
+  try { localStorage.setItem(PROXY_KEY, String(v)); } catch { /* */ }
+}
 const POSITION_SIZE = 0.15;
 const STOP_LOSS     = -0.05;
 const TAKE_PROFIT   =  0.08;
@@ -53,7 +61,7 @@ export default function LiveTrading() {
   const [keyInput, setKeyInput]   = useState({ apiKey: '', apiSecret: '' });
   const [jsonPaste, setJsonPaste] = useState('');
   const [showSetup, setShowSetup] = useState(!loadKeys());
-  const [useProxy, setUseProxy]   = useState(false);
+  const [useProxy, setUseProxy]   = useState(() => loadProxyPref());
   const [accounts, setAccounts]   = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError]     = useState(null);
@@ -160,8 +168,9 @@ export default function LiveTrading() {
     }
   }, [client]);
 
+  // Auto-fetch only when proxy pref is already saved (safe to auto-load)
   useEffect(() => {
-    if (keys && !showSetup) fetchAccounts();
+    if (keys && !showSetup && loadProxyPref()) fetchAccounts();
   }, [keys, showSetup]);
 
   // Fetch recent orders from Coinbase
@@ -470,7 +479,7 @@ export default function LiveTrading() {
                 <div className="text-sm font-semibold text-white">Account Balances</div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
-                    onClick={() => setUseProxy(v => !v)}
+                    onClick={() => setUseProxy(v => { saveProxyPref(!v); return !v; })}
                     title="Route requests through a local proxy on localhost:8080 to bypass browser CORS restrictions"
                     className={`text-xs px-2 py-1 rounded border transition-colors ${
                       useProxy
@@ -512,7 +521,7 @@ export default function LiveTrading() {
                     <div className="text-[10px] text-[#8b949e] mt-1">Keep that Terminal window open, enable the proxy toggle below, then click "Retry load".</div>
                     <div className="pt-1 flex items-center gap-3">
                       <button
-                        onClick={() => { setUseProxy(v => !v); setAccountsError(null); }}
+                        onClick={() => { setUseProxy(v => { saveProxyPref(!v); return !v; }); setAccountsError(null); }}
                         className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
                           useProxy
                             ? 'bg-green-500/15 border-green-500/30 text-green-300'
