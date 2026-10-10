@@ -95,8 +95,16 @@ export default function LiveTrading() {
     setJsonPaste(raw);
     try {
       const obj = JSON.parse(raw);
-      if (obj.name && obj.privateKey) {
-        setKeyInput({ apiKey: obj.name.trim(), apiSecret: obj.privateKey.trim() });
+      // Try all known field name variants Coinbase uses across different key types
+      const name =
+        obj.name       || obj.keyName   || obj.key_name  ||
+        obj.apiKeyName || obj.api_key   || obj.apiKey    || '';
+      const secret =
+        obj.privateKey  || obj.private_key ||
+        obj.apiSecret   || obj.api_secret  ||
+        obj.secret      || '';
+      if (name || secret) {
+        setKeyInput({ apiKey: name.trim(), apiSecret: secret.trim() });
       }
     } catch { /* not JSON yet */ }
   }
@@ -414,6 +422,22 @@ export default function LiveTrading() {
                   onChange={e => handleJsonPaste(e.target.value)}
                   className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-[11px] text-[#8b949e] font-mono placeholder-[#30363d] focus:outline-none focus:border-[#58a6ff] resize-none"
                 />
+                {jsonPaste.length > 10 && (
+                  <div className="mt-1.5 rounded bg-[#0d1117] border border-[#30363d] px-2 py-1.5 text-[10px] space-y-0.5">
+                    <div>
+                      <span className="text-[#484f58]">Key name: </span>
+                      <span className={keyInput.apiKey ? 'text-green-400' : 'text-red-400'}>
+                        {keyInput.apiKey ? keyInput.apiKey.slice(0, 60) + (keyInput.apiKey.length > 60 ? '…' : '') : '— not detected'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#484f58]">Private key: </span>
+                      <span className={isEdKey(keyInput.apiSecret) ? 'text-green-400' : keyInput.apiSecret ? 'text-yellow-400' : 'text-red-400'}>
+                        {isEdKey(keyInput.apiSecret) ? '-----BEGIN… ✓ Ed25519 detected' : keyInput.apiSecret ? `"${keyInput.apiSecret.slice(0, 30)}…" (not a PEM key)` : '— not detected'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 text-[10px] text-[#484f58]">
