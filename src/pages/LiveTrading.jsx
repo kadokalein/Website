@@ -70,7 +70,7 @@ export default function LiveTrading() {
   const autoRef = useRef(autoEnabled);
   autoRef.current = autoEnabled;
 
-  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? 'http://localhost:8080/proxy' : null) : null;
+  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? 'http://localhost:8080' : null) : null;
 
   // Persist live positions
   useEffect(() => {
@@ -497,12 +497,19 @@ export default function LiveTrading() {
                     <div className="font-semibold text-white mt-2">Two ways to fix this:</div>
                     <div className="space-y-1.5 text-yellow-200/80">
                       <div><span className="font-semibold text-white">Option A — Use the Coinbase mobile app or website</span> to view balances and trade manually, while using this app only for signals and analysis.</div>
-                      <div><span className="font-semibold text-white">Option B — Run a local proxy</span> on your Mac. Make sure Node.js is installed, then run this in Terminal:</div>
+                      <div><span className="font-semibold text-white">Option B — Run a local proxy script.</span> Download the script below, then run it in Terminal with Node.js:</div>
                     </div>
                     <div className="rounded bg-[#0d1117] border border-[#30363d] px-3 py-2 font-mono text-[10px] text-green-300 mt-2 select-all whitespace-pre-wrap">
-                      {'npx local-cors-proxy --proxyUrl https://api.coinbase.com --port 8080'}
+                      {'node cors-proxy.js'}
                     </div>
-                    <div className="text-[10px] text-[#8b949e]">Keep that Terminal window open, then enable the proxy toggle below and click "Load" again.</div>
+                    <a
+                      href="/Website/cors-proxy.js"
+                      download="cors-proxy.js"
+                      className="inline-block mt-2 px-3 py-1.5 rounded text-xs font-medium bg-[#21262d] border border-[#30363d] text-white hover:bg-[#30363d] transition-colors"
+                    >
+                      ↓ Download cors-proxy.js
+                    </a>
+                    <div className="text-[10px] text-[#8b949e] mt-1">Keep that Terminal window open, enable the proxy toggle below, then click "Retry load".</div>
                     <div className="pt-1 flex items-center gap-3">
                       <button
                         onClick={() => { setUseProxy(v => !v); setAccountsError(null); }}
