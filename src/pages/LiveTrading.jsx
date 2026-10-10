@@ -53,6 +53,7 @@ export default function LiveTrading() {
   const [keyInput, setKeyInput]   = useState({ apiKey: '', apiSecret: '' });
   const [jsonPaste, setJsonPaste] = useState('');
   const [showSetup, setShowSetup] = useState(!loadKeys());
+  const [useProxy, setUseProxy]   = useState(false);
   const [accounts, setAccounts]   = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError]     = useState(null);
@@ -69,7 +70,7 @@ export default function LiveTrading() {
   const autoRef = useRef(autoEnabled);
   autoRef.current = autoEnabled;
 
-  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret) : null;
+  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? 'http://localhost:8080' : null) : null;
 
   // Persist live positions
   useEffect(() => {
@@ -467,9 +468,20 @@ export default function LiveTrading() {
             <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm font-semibold text-white">Account Balances</div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setUseProxy(v => !v)}
+                    title="Route requests through a local proxy on localhost:8080 to bypass browser CORS restrictions"
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${
+                      useProxy
+                        ? 'bg-green-500/15 border-green-500/30 text-green-400'
+                        : 'border-[#30363d] text-[#484f58] hover:text-[#8b949e]'
+                    }`}
+                  >
+                    {useProxy ? 'Proxy ✓' : 'Proxy off'}
+                  </button>
                   <button onClick={testConnection} className="text-xs text-[#58a6ff] hover:text-white px-2 py-1 rounded border border-[#58a6ff]/30 hover:border-[#58a6ff]">
-                    Test connection
+                    Test
                   </button>
                   <button onClick={fetchAccounts} disabled={accountsLoading} className="text-xs text-[#8b949e] hover:text-white px-2 py-1 rounded border border-[#30363d] disabled:opacity-40">
                     {accountsLoading ? '…' : 'Load'}
@@ -485,12 +497,30 @@ export default function LiveTrading() {
                     <div className="font-semibold text-white mt-2">Two ways to fix this:</div>
                     <div className="space-y-1.5 text-yellow-200/80">
                       <div><span className="font-semibold text-white">Option A — Use the Coinbase mobile app or website</span> to view balances and trade manually, while using this app only for signals and analysis.</div>
-                      <div><span className="font-semibold text-white">Option B — Run a local proxy</span> on your computer: install Node.js, then run the command below in Terminal. It forwards requests with CORS headers.</div>
+                      <div><span className="font-semibold text-white">Option B — Run a local proxy</span> on your Mac. Make sure Node.js is installed, then run this in Terminal:</div>
                     </div>
                     <div className="rounded bg-[#0d1117] border border-[#30363d] px-3 py-2 font-mono text-[10px] text-green-300 mt-2 select-all whitespace-pre-wrap">
-                      {'npx cors-anywhere --port 8080 --origin "*"'}
+                      {'npx local-cors-proxy --proxyUrl https://api.coinbase.com --port 8080'}
                     </div>
-                    <div className="text-[10px] text-[#8b949e]">After running that, reload this page and try again — the app will route through localhost:8080 automatically.</div>
+                    <div className="text-[10px] text-[#8b949e]">Keep that Terminal window open, then enable the proxy toggle below and click "Load" again.</div>
+                    <div className="pt-1 flex items-center gap-3">
+                      <button
+                        onClick={() => { setUseProxy(v => !v); setAccountsError(null); }}
+                        className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
+                          useProxy
+                            ? 'bg-green-500/15 border-green-500/30 text-green-300'
+                            : 'bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-white'
+                        }`}
+                      >
+                        {useProxy ? '✓ Proxy enabled (localhost:8080)' : 'Enable proxy (localhost:8080)'}
+                      </button>
+                      {useProxy && (
+                        <button onClick={fetchAccounts} disabled={accountsLoading}
+                          className="px-3 py-1.5 rounded text-xs font-medium bg-[#1f6feb] text-white hover:bg-[#388bfd] disabled:opacity-40">
+                          {accountsLoading ? 'Loading…' : 'Retry load'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : accountsError ? (

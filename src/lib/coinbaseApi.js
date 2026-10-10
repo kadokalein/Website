@@ -5,6 +5,7 @@
 // Keys are read from the caller and never sent to any server except api.coinbase.com.
 
 const BASE = 'https://api.coinbase.com/api/v3/brokerage';
+const COINBASE_HOST = 'api.coinbase.com';
 
 // ── Base64url helpers ──────────────────────────────────────────────────────────
 function b64url(obj) {
@@ -74,9 +75,9 @@ export function isEdKey(secret) {
 }
 
 // ── Core request ──────────────────────────────────────────────────────────────
-async function req(apiKey, apiSecret, method, path, body = null, params = null) {
+async function req(apiKey, apiSecret, method, path, body = null, params = null, baseUrl = BASE) {
   const bodyStr = body ? JSON.stringify(body) : '';
-  let url = BASE + path;
+  let url = baseUrl + path;
   if (params) url += '?' + new URLSearchParams(params).toString();
 
   let headers;
@@ -104,8 +105,11 @@ async function req(apiKey, apiSecret, method, path, body = null, params = null) 
 }
 
 // ── Public client ──────────────────────────────────────────────────────────────
-export function createCoinbaseClient(apiKey, apiSecret) {
-  const r = (m, p, b, q) => req(apiKey, apiSecret, m, p, b, q);
+// proxyBase: optional string like 'http://localhost:8080' to route through a local CORS proxy.
+// When set, requests go to proxyBase/api/v3/brokerage/... instead of api.coinbase.com/...
+export function createCoinbaseClient(apiKey, apiSecret, proxyBase = null) {
+  const baseUrl = proxyBase ? `${proxyBase}/api/v3/brokerage` : BASE;
+  const r = (m, p, b, q) => req(apiKey, apiSecret, m, p, b, q, baseUrl);
   return {
     getAccounts:     ()                                    => r('GET',  '/accounts'),
     placeMarketBuy:  (clientOrderId, productId, quoteSize) =>
