@@ -70,7 +70,7 @@ export default function LiveTrading() {
   const autoRef = useRef(autoEnabled);
   autoRef.current = autoEnabled;
 
-  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? 'http://localhost:8080' : null) : null;
+  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? 'http://localhost:8080/proxy' : null) : null;
 
   // Persist live positions
   useEffect(() => {
