@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { createCoinbaseClient } from '../lib/coinbaseApi';
+import { createCoinbaseClient, isEdKey } from '../lib/coinbaseApi';
 import { fetchCandles } from '../utils/binanceApi';
 import { analyzeCandles } from '../utils/indicators';
 import { computeRunScore } from '../utils/scoring';
@@ -51,6 +51,7 @@ function SignalBadge({ signal }) {
 export default function LiveTrading() {
   const [keys, setKeys]           = useState(() => loadKeys());
   const [keyInput, setKeyInput]   = useState({ apiKey: '', apiSecret: '' });
+  const [jsonPaste, setJsonPaste] = useState('');
   const [showSetup, setShowSetup] = useState(!loadKeys());
   const [accounts, setAccounts]   = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -80,6 +81,17 @@ export default function LiveTrading() {
     setTimeout(() => setActionStatus(null), 5000);
   };
 
+  // Auto-parse pasted JSON credentials file from Coinbase Developer Platform
+  function handleJsonPaste(raw) {
+    setJsonPaste(raw);
+    try {
+      const obj = JSON.parse(raw);
+      if (obj.name && obj.privateKey) {
+        setKeyInput({ apiKey: obj.name.trim(), apiSecret: obj.privateKey.trim() });
+      }
+    } catch { /* not JSON yet */ }
+  }
+
   // Save keys
   function handleSaveKeys(e) {
     e.preventDefault();
@@ -88,7 +100,9 @@ export default function LiveTrading() {
     saveKeys(trimmed);
     setKeys(trimmed);
     setShowSetup(false);
-    setStatus('API keys saved to localStorage (never sent to any server other than api.coinbase.com)');
+    setJsonPaste('');
+    const type = isEdKey(trimmed.apiSecret) ? 'Ed25519 (CDP)' : 'HMAC-SHA256 (legacy)';
+    setStatus(`${type} key saved — never sent to any server other than api.coinbase.com`);
   }
 
   function handleClearKeys() {
@@ -322,44 +336,92 @@ export default function LiveTrading() {
 
         {/* API Key setup */}
         <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <div className="text-sm font-semibold text-white">Coinbase API Keys</div>
-              <div className="text-[10px] text-[#484f58] mt-0.5">Create a read+trade scoped key at coinbase.com → Settings → API</div>
-            </div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-sm font-semibold text-white">Coinbase API Credentials</div>
             {keys && (
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-green-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" /> Keys saved
+                <span className="text-[10px] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                  <span className="text-green-400">{isEdKey(keys.apiSecret) ? 'Ed25519 key saved' : 'HMAC key saved'}</span>
                 </span>
                 <button onClick={() => setShowSetup(s => !s)} className="text-xs text-[#8b949e] hover:text-white px-2 py-1 rounded border border-[#30363d]">
                   {showSetup ? 'Hide' : 'Edit'}
                 </button>
-                <button onClick={handleClearKeys} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded border border-red-500/30">
-                  Remove
-                </button>
+                <button onClick={handleClearKeys} className="text-xs text-red-400 px-2 py-1 rounded border border-red-500/30">Remove</button>
               </div>
             )}
           </div>
 
           {showSetup && (
-            <form onSubmit={handleSaveKeys} className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                placeholder="API Key"
-                value={keyInput.apiKey}
-                onChange={e => setKeyInput(p => ({ ...p, apiKey: e.target.value }))}
-                className="flex-1 bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-white placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
-              />
-              <input
-                type="password"
-                placeholder="API Secret"
-                value={keyInput.apiSecret}
-                onChange={e => setKeyInput(p => ({ ...p, apiSecret: e.target.value }))}
-                className="flex-1 bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-white placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
-              />
-              <button type="submit" className="px-4 py-1.5 rounded-md bg-[#1f6feb] hover:bg-[#388bfd] text-white text-sm font-medium transition-colors">
-                Save Keys
+            <form onSubmit={handleSaveKeys} className="space-y-3 mt-3">
+
+              {/* How-to instructions */}
+              <div className="rounded-lg bg-[#0d1117] border border-[#30363d] p-3 text-[11px] text-[#8b949e] space-y-1.5">
+                <div className="font-semibold text-white text-xs">How to get your credentials (Ed25519 key)</div>
+                <div><span className="text-[#58a6ff]">1.</span> Go to <strong className="text-white">coinbase.com → Settings → API</strong></div>
+                <div><span className="text-[#58a6ff]">2.</span> Click <strong className="text-white">"Advanced API"</strong> (top right of that page) → Coinbase Developer Platform opens</div>
+                <div><span className="text-[#58a6ff]">3.</span> Click <strong className="text-white">"Create API key"</strong> → set permissions to <em>trade</em> and <em>view</em></div>
+                <div><span className="text-[#58a6ff]">4.</span> <strong className="text-white">Download the JSON file</strong> — it contains your <code className="text-green-300">name</code> and <code className="text-green-300">privateKey</code></div>
+                <div><span className="text-[#58a6ff]">5.</span> Paste the entire JSON content below — fields fill automatically</div>
+              </div>
+
+              {/* JSON paste shortcut */}
+              <div>
+                <label className="text-[10px] text-[#484f58] uppercase font-semibold tracking-widest block mb-1">
+                  Paste credentials JSON (easiest)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder={'{\n  "name": "organizations/.../apiKeys/...",\n  "privateKey": "-----BEGIN EC PRIVATE KEY-----\\n..."\n}'}
+                  value={jsonPaste}
+                  onChange={e => handleJsonPaste(e.target.value)}
+                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-[11px] text-[#8b949e] font-mono placeholder-[#30363d] focus:outline-none focus:border-[#58a6ff] resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 text-[10px] text-[#484f58]">
+                <div className="flex-1 h-px bg-[#30363d]" />
+                or enter manually
+                <div className="flex-1 h-px bg-[#30363d]" />
+              </div>
+
+              {/* Manual entry */}
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] text-[#484f58] uppercase font-semibold tracking-widest block mb-1">
+                    Key Name <span className="normal-case font-normal">(the <code>name</code> field — looks like <code>organizations/…/apiKeys/…</code>)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="organizations/{org_id}/apiKeys/{key_id}"
+                    value={keyInput.apiKey}
+                    onChange={e => setKeyInput(p => ({ ...p, apiKey: e.target.value }))}
+                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm text-white font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#484f58] uppercase font-semibold tracking-widest block mb-1">
+                    Private Key <span className="normal-case font-normal">(the <code>privateKey</code> field — starts with <code>-----BEGIN</code>)</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder={"-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----"}
+                    value={keyInput.apiSecret}
+                    onChange={e => setKeyInput(p => ({ ...p, apiSecret: e.target.value }))}
+                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-[11px] text-white font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] resize-none"
+                  />
+                </div>
+              </div>
+
+              {keyInput.apiKey && keyInput.apiSecret && (
+                <div className="text-[10px] text-[#484f58]">
+                  Detected: <span className="text-white font-semibold">{isEdKey(keyInput.apiSecret) ? 'Ed25519 / CDP key ✓' : 'HMAC / legacy key ✓'}</span>
+                </div>
+              )}
+
+              <button type="submit" disabled={!keyInput.apiKey || !keyInput.apiSecret}
+                className="w-full px-4 py-2 rounded-md bg-[#1f6feb] hover:bg-[#388bfd] disabled:opacity-40 text-white text-sm font-medium transition-colors">
+                Save Credentials
               </button>
             </form>
           )}
