@@ -114,6 +114,30 @@ export default function LiveTrading() {
     setAccounts([]);
   }
 
+  // Test raw connectivity (no auth) — distinguishes CORS from auth errors
+  async function testConnection() {
+    setStatus('Testing connection…', true);
+    try {
+      // Public unauthenticated endpoint — if this fails it's CORS/network
+      const r = await fetch('https://api.coinbase.com/api/v3/brokerage/market/products?limit=1');
+      if (r.ok || r.status === 401) {
+        // 401 means we reached the server (auth needed) — API is reachable
+        setStatus('API reachable ✓ — now testing authentication…', true);
+        fetchAccounts();
+      } else {
+        setStatus(`API returned HTTP ${r.status}`, false);
+      }
+    } catch (e) {
+      const msg = e.message ?? String(e);
+      if (msg.includes('fetch') || msg.includes('network') || msg.includes('Load failed') || msg.includes('Failed to fetch')) {
+        setStatus('CORS / network block — see note below', false);
+        setAccountsError('__cors__');
+      } else {
+        setStatus(`Connection error: ${msg}`, false);
+      }
+    }
+  }
+
   // Fetch Coinbase account balances
   const fetchAccounts = useCallback(async () => {
     if (!client) return;
@@ -126,7 +150,10 @@ export default function LiveTrading() {
         .sort((a, b) => parseFloat(b.available_balance?.value ?? 0) - parseFloat(a.available_balance?.value ?? 0));
       setAccounts(relevant);
     } catch (e) {
-      setAccountsError(e.message);
+      const msg = e.message ?? String(e);
+      // Detect CORS / network errors (no HTTP status code returned)
+      const isCors = msg.includes('Load failed') || msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network');
+      setAccountsError(isCors ? '__cors__' : msg);
     } finally {
       setAccountsLoading(false);
     }
@@ -440,14 +467,44 @@ export default function LiveTrading() {
             <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm font-semibold text-white">Account Balances</div>
-                <button onClick={fetchAccounts} disabled={accountsLoading} className="text-xs text-[#8b949e] hover:text-white px-2 py-1 rounded border border-[#30363d] disabled:opacity-40">
-                  {accountsLoading ? '…' : 'Refresh'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={testConnection} className="text-xs text-[#58a6ff] hover:text-white px-2 py-1 rounded border border-[#58a6ff]/30 hover:border-[#58a6ff]">
+                    Test connection
+                  </button>
+                  <button onClick={fetchAccounts} disabled={accountsLoading} className="text-xs text-[#8b949e] hover:text-white px-2 py-1 rounded border border-[#30363d] disabled:opacity-40">
+                    {accountsLoading ? '…' : 'Load'}
+                  </button>
+                </div>
               </div>
-              {accountsError ? (
-                <div className="text-red-400 text-sm">{accountsError}</div>
+
+              {accountsError === '__cors__' ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-[11px] text-yellow-300 space-y-2">
+                    <div className="font-semibold text-sm">⚠ Browser Security Block (CORS)</div>
+                    <div>Safari and Chrome block direct API calls from a web page to financial APIs on different domains. This is a browser security rule — it's not a problem with your key.</div>
+                    <div className="font-semibold text-white mt-2">Two ways to fix this:</div>
+                    <div className="space-y-1.5 text-yellow-200/80">
+                      <div><span className="font-semibold text-white">Option A — Use the Coinbase mobile app or website</span> to view balances and trade manually, while using this app only for signals and analysis.</div>
+                      <div><span className="font-semibold text-white">Option B — Run a local proxy</span> on your computer: install Node.js, then run the command below in Terminal. It forwards requests with CORS headers.</div>
+                    </div>
+                    <div className="rounded bg-[#0d1117] border border-[#30363d] px-3 py-2 font-mono text-[10px] text-green-300 mt-2 select-all whitespace-pre-wrap">
+                      {'npx cors-anywhere --port 8080 --origin "*"'}
+                    </div>
+                    <div className="text-[10px] text-[#8b949e]">After running that, reload this page and try again — the app will route through localhost:8080 automatically.</div>
+                  </div>
+                </div>
+              ) : accountsError ? (
+                <div className="space-y-2">
+                  <div className="text-red-400 text-sm font-semibold">Error loading balances:</div>
+                  <div className="rounded bg-[#0d1117] border border-red-500/20 px-3 py-2 text-[11px] text-red-300 font-mono break-all">{accountsError}</div>
+                  <div className="text-[10px] text-[#484f58]">
+                    {accountsError.includes('401') || accountsError.includes('UNAUTHORIZED') || accountsError.includes('invalid')
+                      ? 'Authentication failed — check that your Key Name includes the full organizations/…/apiKeys/… path, not just the short ID.'
+                      : 'Try clicking "Test connection" to diagnose.'}
+                  </div>
+                </div>
               ) : accounts.length === 0 && !accountsLoading ? (
-                <div className="text-[#484f58] text-sm">No balances found. Check your API key permissions.</div>
+                <div className="text-[#484f58] text-sm">Click "Load" to fetch your Coinbase balances.</div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {accounts.slice(0, 9).map(acc => (

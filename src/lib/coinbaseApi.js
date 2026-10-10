@@ -19,9 +19,31 @@ function b64urlBytes(buf) {
 
 // ── Ed25519 JWT signing (new CDP keys) ────────────────────────────────────────
 async function importEd25519(pem) {
-  const b64 = pem.replace(/-----BEGIN (?:EC |)PRIVATE KEY-----|-----END (?:EC |)PRIVATE KEY-----|\n|\r/g, '');
-  const der  = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  return crypto.subtle.importKey('pkcs8', der, { name: 'Ed25519' }, false, ['sign']);
+  // Normalize: handle literal \n strings (from JSON copy-paste), real newlines, Windows CRLF
+  const normalized = pem.replace(/\\n/g, '\n').replace(/\\r/g, '');
+  const b64 = normalized
+    .replace(/-----BEGIN (?:EC |)PRIVATE KEY-----|-----END (?:EC |)PRIVATE KEY-----/g, '')
+    .replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+
+  // Try PKCS#8 first (standard for Ed25519: "PRIVATE KEY" header)
+  try {
+    return await crypto.subtle.importKey('pkcs8', der, { name: 'Ed25519' }, false, ['sign']);
+  } catch { /* */ }
+
+  // Coinbase sometimes gives SEC1/EC format ("EC PRIVATE KEY").
+  // For Ed25519 the raw key is the last 32 bytes. Wrap it in a PKCS#8 envelope.
+  try {
+    // Ed25519 PKCS#8 DER prefix: SEQUENCE { INTEGER 0, SEQUENCE { OID 1.3.101.112 }, OCTET STRING { OCTET STRING <key> } }
+    const pkcs8prefix = new Uint8Array([0x30,0x2e,0x02,0x01,0x00,0x30,0x05,0x06,0x03,0x2b,0x65,0x70,0x04,0x22,0x04,0x20]);
+    // Extract last 32 bytes as raw Ed25519 seed
+    const rawKey = der.slice(-32);
+    const pkcs8 = new Uint8Array(pkcs8prefix.length + rawKey.length);
+    pkcs8.set(pkcs8prefix); pkcs8.set(rawKey, pkcs8prefix.length);
+    return await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'Ed25519' }, false, ['sign']);
+  } catch { /* */ }
+
+  throw new Error('Could not import private key. Make sure you pasted the full PEM from the downloaded JSON file.');
 }
 
 async function makeJWT(keyName, privatePEM, method, path) {
