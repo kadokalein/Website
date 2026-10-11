@@ -168,9 +168,9 @@ export default function LiveTrading() {
       setAccounts(relevant);
     } catch (e) {
       const msg = e.message ?? String(e);
-      // Detect CORS / network errors (no HTTP status code returned)
       const isCors = msg.includes('Load failed') || msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network');
-      setAccountsError(isCors ? '__cors__' : msg);
+      // Preserve actual error message so UI can show it alongside the CORS explanation
+      setAccountsError(isCors ? `__cors__:${msg}` : msg);
     } finally {
       setAccountsLoading(false);
     }
@@ -522,15 +522,28 @@ export default function LiveTrading() {
                 </div>
               </div>
 
-              {accountsError === '__cors__' ? (
+              {accountsError?.startsWith('__cors__') ? (
                 <div className="space-y-3">
                   <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-[11px] text-yellow-300 space-y-2">
-                    <div className="font-semibold text-sm">⚠ Browser Security Block (CORS)</div>
-                    <div>Safari and Chrome block direct API calls from a web page to financial APIs on different domains. This is a browser security rule — it's not a problem with your key.</div>
-                    <div className="font-semibold text-white mt-2">Two ways to fix this:</div>
+                    <div className="font-semibold text-sm">⚠ Browser Security Block (CORS / Mixed Content)</div>
+                    {accountsError.length > 8 && (
+                      <div className="rounded bg-black/30 px-2 py-1 font-mono text-[10px] text-[#8b949e]">
+                        Error: {accountsError.slice(8)}
+                      </div>
+                    )}
+                    {useProxy ? (
+                      <div className="rounded bg-orange-500/10 border border-orange-500/30 px-3 py-2 text-orange-300">
+                        <strong>Proxy is enabled but still blocked.</strong> Safari blocks HTTP (non-secure) requests from HTTPS pages — even to localhost.
+                        <br /><strong className="text-white">Fix: open this page in Chrome</strong>, which allows localhost requests from HTTPS pages.
+                        Or run the proxy with HTTPS (see below).
+                      </div>
+                    ) : (
+                      <div>Browsers block direct API calls to financial APIs on different domains. Enable the local proxy (Option B) or open in Chrome.</div>
+                    )}
+                    <div className="font-semibold text-white mt-2">Options:</div>
                     <div className="space-y-1.5 text-yellow-200/80">
-                      <div><span className="font-semibold text-white">Option A — Use the Coinbase mobile app or website</span> to view balances and trade manually, while using this app only for signals and analysis.</div>
-                      <div><span className="font-semibold text-white">Option B — Run a local proxy script.</span> Download the script below, then run it in Terminal with Node.js:</div>
+                      <div><span className="font-semibold text-white">Option A — Open in Chrome</span> — Chrome allows HTTPS pages to call http://localhost. Easiest fix if you have Chrome installed.</div>
+                      <div><span className="font-semibold text-white">Option B — Run a local proxy script</span> in Terminal (proxy must be running first):</div>
                     </div>
                     <div className="rounded bg-[#0d1117] border border-[#30363d] px-3 py-2 font-mono text-[10px] text-green-300 mt-2 select-all whitespace-pre-wrap">
                       {'node ~/Downloads/cors-proxy.js'}
@@ -542,7 +555,7 @@ export default function LiveTrading() {
                     >
                       ↓ Download cors-proxy.js
                     </a>
-                    <div className="text-[10px] text-[#8b949e] mt-1">Keep that Terminal window open, enable the proxy toggle below, then click "Retry load".</div>
+                    <div className="text-[10px] text-[#8b949e] mt-1">Keep Terminal open, enable proxy below, then click "Retry load".</div>
                     <div className="pt-1 flex items-center gap-3">
                       <button
                         onClick={() => { setUseProxy(v => { saveProxyPref(!v); return !v; }); setAccountsError(null); }}
@@ -554,12 +567,10 @@ export default function LiveTrading() {
                       >
                         {useProxy ? '✓ Proxy enabled (localhost:8080)' : 'Enable proxy (localhost:8080)'}
                       </button>
-                      {useProxy && (
-                        <button onClick={fetchAccounts} disabled={accountsLoading}
-                          className="px-3 py-1.5 rounded text-xs font-medium bg-[#1f6feb] text-white hover:bg-[#388bfd] disabled:opacity-40">
-                          {accountsLoading ? 'Loading…' : 'Retry load'}
-                        </button>
-                      )}
+                      <button onClick={fetchAccounts} disabled={accountsLoading}
+                        className="px-3 py-1.5 rounded text-xs font-medium bg-[#1f6feb] text-white hover:bg-[#388bfd] disabled:opacity-40">
+                        {accountsLoading ? 'Loading…' : 'Retry load'}
+                      </button>
                     </div>
                   </div>
                 </div>
