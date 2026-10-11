@@ -78,7 +78,8 @@ export default function LiveTrading() {
   const autoRef = useRef(autoEnabled);
   autoRef.current = autoEnabled;
 
-  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? 'http://localhost:8080' : null) : null;
+  const PROXY_URL = 'http://localhost:9999';
+  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? PROXY_URL : null) : null;
 
   // Persist live positions
   useEffect(() => {
@@ -161,6 +162,22 @@ export default function LiveTrading() {
     setAccountsLoading(true);
     setAccountsError(null);
     try {
+      // If proxy is enabled, verify it's our proxy (not some other service on the port)
+      if (useProxy) {
+        try {
+          const health = await fetch(`${PROXY_URL}/health`);
+          const hj = await health.json().catch(() => null);
+          if (!hj?.proxy?.includes('coinbase')) {
+            setAccountsError('Wrong service on port 9999 — make sure you ran cors-proxy.js (not some other app)');
+            setAccountsLoading(false);
+            return;
+          }
+        } catch {
+          setAccountsError(`__cors__:Proxy not running — start it with: node ~/Downloads/cors-proxy.js`);
+          setAccountsLoading(false);
+          return;
+        }
+      }
       const data = await client.getAccounts();
       const relevant = (data.accounts ?? [])
         .filter(a => parseFloat(a.available_balance?.value ?? 0) > 0)
@@ -504,7 +521,7 @@ export default function LiveTrading() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => setUseProxy(v => { saveProxyPref(!v); return !v; })}
-                    title="Route requests through a local proxy on localhost:8080 to bypass browser CORS restrictions"
+                    title="Route requests through a local proxy on localhost:9999 to bypass browser CORS restrictions"
                     className={`text-xs px-2 py-1 rounded border transition-colors ${
                       useProxy
                         ? 'bg-green-500/15 border-green-500/30 text-green-400'
@@ -565,7 +582,7 @@ export default function LiveTrading() {
                             : 'bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-white'
                         }`}
                       >
-                        {useProxy ? '✓ Proxy enabled (localhost:8080)' : 'Enable proxy (localhost:8080)'}
+                        {useProxy ? '✓ Proxy enabled (localhost:9999)' : 'Enable proxy (localhost:9999)'}
                       </button>
                       <button onClick={fetchAccounts} disabled={accountsLoading}
                         className="px-3 py-1.5 rounded text-xs font-medium bg-[#1f6feb] text-white hover:bg-[#388bfd] disabled:opacity-40">
