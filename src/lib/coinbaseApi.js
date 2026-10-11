@@ -92,11 +92,15 @@ async function importEd25519(pem) {
 
 async function makeJWT(keyName, privatePEM, method, path) {
   const key    = await importEd25519(privatePEM);
-  const header = b64url({ alg: 'EdDSA', kid: keyName });
+  const header = b64url({ alg: 'EdDSA', typ: 'JWT', kid: keyName });
   const now    = Math.floor(Date.now() / 1000);
-  const nonce  = crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+  const nonce  = (crypto.randomUUID?.() ?? crypto.getRandomValues(new Uint8Array(16))
+    .reduce((s, b) => s + b.toString(16).padStart(2, '0'), ''));
   const payload = b64url({
-    sub: keyName, iss: 'cdp', nbf: now, exp: now + 120,
+    sub: keyName,
+    iss: 'coinbase-cloud',   // Coinbase Advanced Trade API requires this exact issuer
+    nbf: now,
+    exp: now + 120,
     nonce,
     uri: `${method} api.coinbase.com${path}`,
   });
