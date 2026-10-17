@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-30 -30 260 260">
+  <rect width="200" height="200" fill="#000000"/>
+
+  <!-- White diagonal arms (X shape) — thick ribbon strokes -->
+  <line x1="52" y1="22" x2="108" y2="88"  stroke="white" stroke-width="16" stroke-linecap="square"/>
+  <line x1="148" y1="22" x2="92"  y2="88"  stroke="white" stroke-width="16" stroke-linecap="square"/>
+  <line x1="52" y1="178" x2="108" y2="112" stroke="white" stroke-width="16" stroke-linecap="square"/>
+  <line x1="148" y1="178" x2="92"  y2="112" stroke="white" stroke-width="16" stroke-linecap="square"/>
+
+  <!-- Inner vertical connectors (white) -->
+  <line x1="92"  y1="88"  x2="92"  y2="112" stroke="white" stroke-width="16" stroke-linecap="square"/>
+  <line x1="108" y1="88"  x2="108" y2="112" stroke="white" stroke-width="16" stroke-linecap="square"/>
+
+  <!-- Blue center cross -->
+  <line x1="18"  y1="100" x2="182" y2="100" stroke="#3B82F6" stroke-width="12" stroke-linecap="square"/>
+  <line x1="100" y1="18"  x2="100" y2="182" stroke="#3B82F6" stroke-width="12" stroke-linecap="square"/>
+
+  <!-- Purple caps — top-left arm -->
+  <line x1="38"  y1="22"  x2="62"  y2="22"  stroke="#8B5CF6" stroke-width="12" stroke-linecap="square"/>
+  <line x1="38"  y1="22"  x2="38"  y2="46"  stroke="#8B5CF6" stroke-width="12" stroke-linecap="square"/>
+
+  <!-- Red caps — top-right arm -->
+  <line x1="138" y1="22"  x2="162" y2="22"  stroke="#EF4444" stroke-width="12" stroke-linecap="square"/>
+  <line x1="162" y1="22"  x2="162" y2="46"  stroke="#EF4444" stroke-width="12" stroke-linecap="square"/>
+
+  <!-- Purple caps — bottom-right arm -->
+  <line x1="138" y1="178" x2="162" y2="178" stroke="#8B5CF6" stroke-width="12" stroke-linecap="square"/>
+  <line x1="162" y1="154" x2="162" y2="178" stroke="#8B5CF6" stroke-width="12" stroke-linecap="square"/>
+
+  <!-- Red caps — bottom-left arm -->
+  <line x1="38"  y1="178" x2="62"  y2="178" stroke="#EF4444" stroke-width="12" stroke-linecap="square"/>
+  <line x1="38"  y1="154" x2="38"  y2="178" stroke="#EF4444" stroke-width="12" stroke-linecap="square"/>
+
+  <!-- Center grid (dense intersection) -->
+  <rect x="84" y="84" width="32" height="32" fill="none" stroke="white" stroke-width="4"/>
+  <line x1="84" y1="100" x2="116" y2="100"  stroke="white" stroke-width="3"/>
+  <line x1="100" y1="84" x2="100" y2="116"  stroke="white" stroke-width="3"/>
+</svg>
