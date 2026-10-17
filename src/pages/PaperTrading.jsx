@@ -12,48 +12,61 @@ const START_BALANCE = 5000;
 const MAX_POSITIONS = 4;
 const SCAN_INTERVAL = 5 * 60 * 1000;  // rescan every 5 min
 const GECKO_TTL     = 10 * 60 * 1000; // CoinGecko cache 10 min
+const CHURN_COOLDOWN = 4 * 3600_000;  // 4h before re-buying a coin just sold
 
 // ─── Trading strategies ───────────────────────────────────────────────────────
 // Three tiers — the AI picks the best fit for each coin.
 // Goal: consistent 2–3 % per week via frequent small wins.
+// Scalp stop widened to -2.5% to absorb scan-interval slippage on volatile crypto.
 const STRATEGIES = {
-  MOMENTUM: { label: 'Momentum', size: 0.15, target: 0.08, stop: -0.05, maxDays: 14, color: 'text-green-400' },
-  SWING:    { label: 'Swing',    size: 0.10, target: 0.04, stop: -0.03, maxDays:  7, color: 'text-blue-400'  },
-  SCALP:    { label: 'Scalp',   size: 0.07, target: 0.025, stop: -0.02, maxDays:  3, color: 'text-yellow-400' },
+  MOMENTUM: { label: 'Momentum', size: 0.15, target: 0.08,  stop: -0.05,  maxDays: 14, color: 'text-green-400'  },
+  SWING:    { label: 'Swing',    size: 0.10, target: 0.04,  stop: -0.03,  maxDays:  7, color: 'text-blue-400'   },
+  SCALP:    { label: 'Scalp',    size: 0.07, target: 0.035, stop: -0.025, maxDays:  3, color: 'text-yellow-400' },
 };
 
-// Pick which strategy applies to this coin, returns null if no entry
+// Pick which strategy applies to this coin, returns null if no entry.
+// rsiTrend ('rising'|'falling'|'flat') is required to avoid catching falling knives.
 function pickStrategy(rs, analysis, gecko) {
   if (!rs || !analysis) return null;
-  const { rsi, macd, bb, currentPrice } = analysis;
+  const { rsi, rsiTrend, macd, bb, currentPrice } = analysis;
+  const change7d = gecko?.change7d ?? 0;
 
-  // Momentum — high-conviction breakout
+  // Momentum — high-conviction breakout, but not into a collapsing weekly chart
   if (rs.signal === 'BUY TRIGGERED') {
+    if (change7d < -15) return null; // avoid buying a coin already in freefall
     return { ...STRATEGIES.MOMENTUM, reason: rs.triggerReason ?? `Score ${rs.score}` };
   }
 
-  // Swing — watch signal with at least some bullish confirmation
+  // Swing — WATCH signal only when weekly trend is at worst mildly negative
   if (rs.signal === 'WATCH') {
-    const positiveContext = (gecko?.change7d ?? 0) > -10; // not collapsing on weekly
-    if (positiveContext || rs.score >= 65) {
+    const weeklyOk = change7d > -5; // tightened from -10 → weekly must not be in a downtrend
+    if (weeklyOk || rs.score >= 70) {
       const reason = `WATCH (score ${rs.score})` + (gecko?.change7d != null ? ` · 7d ${gecko.change7d >= 0 ? '+' : ''}${gecko.change7d.toFixed(1)}%` : '');
       return { ...STRATEGIES.SWING, reason };
     }
   }
 
-  // Scalp — deeply oversold at lower Bollinger Band, any non-bearish MACD
-  const nearLower = bb?.lower != null && currentPrice != null && currentPrice <= bb.lower * 1.05;
-  const oversold  = rsi != null && rsi < 38;
-  const notBear   = macd?.status !== 'bearish' || macd?.isHistogramRising;
+  // Scalp — three gates must all pass to avoid falling-knife entries:
+  //   1. RSI must ALREADY be curling upward (rsiTrend === 'rising') — not still falling
+  //   2. Price at or within 3% of lower BB (was 5% — tighter confirmation)
+  //   3. MACD improving toward zero or already bullish — not deep bearish
+  //   4. Weekly trend not in a downtrend (7d > -5%)
+  const nearLower    = bb?.lower != null && currentPrice != null && currentPrice <= bb.lower * 1.03;
+  const deepOversold = rsi != null && rsi < 38;
+  const rsiCurling   = rsiTrend === 'rising';   // must already be reversing, not still falling
+  const macdOk       = macd?.isBullishCrossover
+    || macd?.status === 'bullish'
+    || (macd?.isHistogramRising && macd?.histogram != null && macd.histogram > -0.001 * (currentPrice ?? 1));
+  const weeklyOk     = change7d > -5;            // weekly not in a downtrend
 
-  if (oversold && nearLower && notBear) {
-    const reason = `RSI ${rsi.toFixed(1)} + near lower BB` + (macd?.isBullishCrossover ? ' + MACD ↑' : '');
+  if (deepOversold && nearLower && rsiCurling && macdOk && weeklyOk) {
+    const reason = `RSI ${rsi.toFixed(1)} ↑ + near lower BB` + (macd?.isBullishCrossover ? ' + MACD ↑' : '');
     return { ...STRATEGIES.SCALP, reason };
   }
 
-  // Bonus scalp: strong oversold even without BB, confirmed MACD crossover
-  if (rsi != null && rsi < 32 && macd?.isBullishCrossover) {
-    return { ...STRATEGIES.SCALP, reason: `RSI ${rsi.toFixed(1)} + MACD crossover` };
+  // Bonus scalp: deeply oversold with confirmed MACD crossover AND RSI already curling
+  if (rsi != null && rsi < 32 && macd?.isBullishCrossover && rsiCurling) {
+    return { ...STRATEGIES.SCALP, reason: `RSI ${rsi.toFixed(1)} ↑ + MACD crossover` };
   }
 
   return null;
@@ -67,7 +80,7 @@ function saveState(s) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch { /* */ }
 }
 function fresh() {
-  return { cash: START_BALANCE, startBalance: START_BALANCE, holdings: {}, trades: [], autoEnabled: false };
+  return { cash: START_BALANCE, startBalance: START_BALANCE, holdings: {}, trades: [], autoEnabled: false, lastSoldAt: {} };
 }
 
 function formatUSD(v) {
@@ -146,13 +159,15 @@ export default function PaperTrading() {
           const analysis = analyzeCandles(candles, interval);
           const rs = computeRunScore(analysis);
           result[coin.symbol] = {
-            price:  analysis.currentPrice,
+            price:    analysis.currentPrice,
             rs,
-            rsi:    analysis.rsi,
-            macd:   analysis.macd,
-            bb:     analysis.bb,
-            volume: analysis.volume,
-            atrPct: analysis.atrPercentile,
+            rsi:      analysis.rsi,
+            rsiTrend: analysis.rsiTrend,
+            roc:      analysis.roc,
+            macd:     analysis.macd,
+            bb:       analysis.bb,
+            volume:   analysis.volume,
+            atrPct:   analysis.atrPercentile,
           };
         } catch { /* skip failed coins */ }
       }));
@@ -191,8 +206,9 @@ export default function PaperTrading() {
         if (pnlFrac >= strat.target)       reason = `Take profit ${pct(pnlPct)}`;
         else if (pnlFrac <= strat.stop)    reason = `Stop loss ${pct(pnlPct)}`;
         else if (daysHeld > strat.maxDays) reason = `Time limit (${strat.maxDays}d)`;
-        else if ((rs?.score ?? 0) < 15)    reason = `Score collapsed → ${rs?.score}`;
-        else if (rsi != null && rsi > 72 && h.strategy !== 'MOMENTUM') reason = `RSI overbought (${rsi.toFixed(0)})`;
+        // Raised from < 15 to < 20 — exit sooner when signal quality degrades
+        else if ((rs?.score ?? 0) < 20)    reason = `Score collapsed → ${rs?.score}`;
+        else if (rsi != null && rsi > 70 && h.strategy !== 'MOMENTUM') reason = `RSI overbought (${rsi.toFixed(0)})`;
 
         if (reason) {
           const proceeds = h.qty * price;
@@ -200,6 +216,8 @@ export default function PaperTrading() {
           p.cash += proceeds;
           p.trades.unshift({ id: `${sym}-${Date.now()}`, sym, side: 'SELL', price, qty: h.qty, entryPrice: h.entryPrice, gainLoss, pnlPct, strategy: h.strategy, reason, time: now });
           delete p.holdings[sym];
+          // Record sell time to prevent churning the same coin immediately after exit
+          p.lastSoldAt = { ...(p.lastSoldAt ?? {}), [sym]: Date.now() };
           log.push({ type: gainLoss >= 0 ? 'win' : 'loss', msg: `SELL ${sym} · ${reason} · ${gainLoss >= 0 ? '+' : ''}${formatUSD(gainLoss)}` });
         }
       }
@@ -209,9 +227,14 @@ export default function PaperTrading() {
       if (openCount < MAX_POSITIONS && p.cash >= 20) {
         // Score candidates and pick best non-held coins
         const candidates = Object.entries(snapshot)
-          .filter(([sym]) => !p.holdings[sym])
+          .filter(([sym]) => {
+            if (p.holdings[sym]) return false;
+            // Anti-churn: skip coins sold within the last 4 hours
+            const lastSold = p.lastSoldAt?.[sym] ?? 0;
+            return (Date.now() - lastSold) >= CHURN_COOLDOWN;
+          })
           .map(([sym, e]) => {
-            const strat = pickStrategy(e?.rs, { rsi: e?.rsi, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume }, gecko?.[sym]);
+            const strat = pickStrategy(e?.rs, { rsi: e?.rsi, rsiTrend: e?.rsiTrend, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume }, gecko?.[sym]);
             return { sym, e, strat };
           })
           .filter(c => c.strat !== null)
@@ -343,7 +366,7 @@ export default function PaperTrading() {
 
   // Best signals to show
   const signalRows = Object.entries(enriched)
-    .map(([sym, e]) => ({ sym, e, strat: pickStrategy(e?.rs, { rsi: e?.rsi, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume }, geckoData[sym]), gecko: geckoData[sym] }))
+    .map(([sym, e]) => ({ sym, e, strat: pickStrategy(e?.rs, { rsi: e?.rsi, rsiTrend: e?.rsiTrend, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume }, geckoData[sym]), gecko: geckoData[sym] }))
     .filter(r => r.strat !== null || (r.e?.rs?.score ?? 0) >= 50)
     .sort((a, b) => {
       const order = { MOMENTUM: 0, SWING: 1, SCALP: 2 };
