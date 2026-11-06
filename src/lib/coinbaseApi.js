@@ -18,9 +18,46 @@ function b64urlBytes(buf) {
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-// ── Ed25519 JWT signing (new CDP keys) ────────────────────────────────────────
+// ── DER encoding helpers (for SEC1 → PKCS8 conversion) ───────────────────────
 
-// Parse a DER length field; returns { len, bytesRead }
+function derLen(n) {
+  if (n < 0x80) return new Uint8Array([n]);
+  if (n < 0x100) return new Uint8Array([0x81, n]);
+  return new Uint8Array([0x82, (n >> 8) & 0xff, n & 0xff]);
+}
+function derTLV(tag, value) {
+  const l = derLen(value.length);
+  const out = new Uint8Array(1 + l.length + value.length);
+  out[0] = tag; out.set(l, 1); out.set(value, 1 + l.length);
+  return out;
+}
+function derSeq(...parts) {
+  const body = parts.reduce((a, b) => { const r = new Uint8Array(a.length + b.length); r.set(a); r.set(b, a.length); return r; }, new Uint8Array(0));
+  return derTLV(0x30, body);
+}
+
+// OIDs for key type detection and PKCS8 wrapping
+const OID_P256_BYTES    = [0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07]; // 1.2.840.10045.3.1.7
+const OID_ED25519_BYTES = [0x2b, 0x65, 0x70];                                 // 1.3.101.112
+const OID_EC_PUBKEY = new Uint8Array([0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01]);
+const OID_P256      = new Uint8Array([0x06, 0x08, ...OID_P256_BYTES]);
+
+// Detect whether a DER blob is P-256 (ES256) or Ed25519 (EdDSA)
+function detectKeyAlg(der) {
+  const p256 = OID_P256_BYTES;
+  const ed25519 = OID_ED25519_BYTES;
+  outer: for (let i = 0; i < der.length - p256.length; i++) {
+    for (let j = 0; j < p256.length; j++) { if (der[i + j] !== p256[j]) continue outer; }
+    return 'ES256';
+  }
+  outer2: for (let i = 0; i < der.length - ed25519.length; i++) {
+    for (let j = 0; j < ed25519.length; j++) { if (der[i + j] !== ed25519[j]) continue outer2; }
+    return 'EdDSA';
+  }
+  return 'ES256'; // default to P-256 (Coinbase CDP standard)
+}
+
+// Parse DER length field → { len, bytesRead }
 function derReadLen(buf, pos) {
   const first = buf[pos];
   if (first < 0x80) return { len: first, bytesRead: 1 };
@@ -30,82 +67,117 @@ function derReadLen(buf, pos) {
   return { len, bytesRead: 1 + n };
 }
 
-// Extract the raw 32-byte Ed25519 seed from a SEC1 "EC PRIVATE KEY" DER blob.
-// SEC1 ECPrivateKey ::= SEQUENCE { version INTEGER, privateKey OCTET STRING, ... }
-function extractSec1Seed(der) {
+// Extract the raw private key bytes from SEC1 "EC PRIVATE KEY" DER blob
+function extractSec1PrivKey(der) {
   let pos = 0;
   if (der[pos++] !== 0x30) throw new Error('Expected SEQUENCE');
-  const seqLen = derReadLen(der, pos); pos += seqLen.bytesRead + seqLen.len; // skip past entire seq to rewind
-  pos = 1 + derReadLen(der, 1).bytesRead; // rewind: just past the top SEQUENCE length
-  // Skip version INTEGER
+  const seqL = derReadLen(der, pos); pos += seqL.bytesRead;
+  // Skip version INTEGER (02 01 01)
   if (der[pos++] !== 0x02) throw new Error('Expected INTEGER');
-  const intLen = derReadLen(der, pos); pos += intLen.bytesRead + intLen.len;
+  const intL = derReadLen(der, pos); pos += intL.bytesRead + intL.len;
   // Read privateKey OCTET STRING
   if (der[pos++] !== 0x04) throw new Error('Expected OCTET STRING');
-  const keyLen = derReadLen(der, pos); pos += keyLen.bytesRead;
-  return der.slice(pos, pos + keyLen.len);
+  const keyL = derReadLen(der, pos); pos += keyL.bytesRead;
+  return der.slice(pos, pos + keyL.len);
 }
 
-async function importEd25519(pem) {
-  // Normalize: handle literal \n strings (from JSON copy-paste), real newlines, Windows CRLF
+// Import a PEM private key; returns { key: CryptoKey, alg: 'ES256' | 'EdDSA' }
+async function importPrivateKey(pem) {
   const normalized = pem.replace(/\\n/g, '\n').replace(/\\r/g, '');
   const b64 = normalized
     .replace(/-----BEGIN (?:EC |)PRIVATE KEY-----|-----END (?:EC |)PRIVATE KEY-----/g, '')
     .replace(/\s+/g, '');
   const der = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 
-  // Ed25519 PKCS#8 wrapper: wraps a 32-byte raw seed in the standard PKCS#8 DER envelope
-  const PKCS8_PREFIX = new Uint8Array([
-    0x30,0x2e, // SEQUENCE (46 bytes)
-      0x02,0x01,0x00, // INTEGER version=0
-      0x30,0x05,      // SEQUENCE (5 bytes) — AlgorithmIdentifier
-        0x06,0x03,0x2b,0x65,0x70, // OID 1.3.101.112 = Ed25519
-      0x04,0x22,      // OCTET STRING (34 bytes)
-        0x04,0x20,    // OCTET STRING (32 bytes) = the seed
-  ]);
-  function wrapSeed(seed) {
-    const pkcs8 = new Uint8Array(PKCS8_PREFIX.length + seed.length);
-    pkcs8.set(PKCS8_PREFIX); pkcs8.set(seed, PKCS8_PREFIX.length);
-    return pkcs8;
+  const alg = detectKeyAlg(der);
+
+  if (alg === 'ES256') {
+    // Try importing as PKCS8 directly first (some tools export it that way)
+    try {
+      const key = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+      return { key, alg };
+    } catch { /* */ }
+
+    // SEC1 → PKCS8: wrap the SEC1 blob in a PKCS8 AlgorithmIdentifier envelope
+    try {
+      const privBytes = extractSec1PrivKey(der);
+      const innerOctet = derTLV(0x04, privBytes);
+      const algId = derSeq(OID_EC_PUBKEY, OID_P256);
+      const pkcs8 = derSeq(new Uint8Array([0x02, 0x01, 0x00]), algId, derTLV(0x04, innerOctet));
+      const key = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+      return { key, alg };
+    } catch { /* */ }
+
+    // Last resort: treat raw 32-byte payload as the private scalar and rewrap
+    try {
+      const raw = der.slice(-32);
+      const innerOctet = derTLV(0x04, raw);
+      const algId = derSeq(OID_EC_PUBKEY, OID_P256);
+      const pkcs8 = derSeq(new Uint8Array([0x02, 0x01, 0x00]), algId, derTLV(0x04, innerOctet));
+      const key = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+      return { key, alg };
+    } catch { /* */ }
   }
 
-  // 1. Try raw PKCS#8 (standard "PRIVATE KEY" header, already in correct format)
+  // EdDSA path (fallback / legacy keys)
+  const PKCS8_ED_PREFIX = new Uint8Array([
+    0x30,0x2e, 0x02,0x01,0x00, 0x30,0x05, 0x06,0x03,0x2b,0x65,0x70, 0x04,0x22, 0x04,0x20,
+  ]);
+  function wrapEdSeed(seed) {
+    const p = new Uint8Array(PKCS8_ED_PREFIX.length + seed.length);
+    p.set(PKCS8_ED_PREFIX); p.set(seed, PKCS8_ED_PREFIX.length);
+    return p;
+  }
   try {
-    return await crypto.subtle.importKey('pkcs8', der, { name: 'Ed25519' }, false, ['sign']);
+    const key = await crypto.subtle.importKey('pkcs8', der, { name: 'Ed25519' }, false, ['sign']);
+    return { key, alg: 'EdDSA' };
   } catch { /* */ }
-
-  // 2. Coinbase CDP gives "EC PRIVATE KEY" (SEC1 format). Parse the DER properly
-  //    to extract the 32-byte seed from the OCTET STRING field.
   try {
-    const seed = extractSec1Seed(der);
-    return await crypto.subtle.importKey('pkcs8', wrapSeed(seed), { name: 'Ed25519' }, false, ['sign']);
+    const seed = extractSec1PrivKey(der);
+    const key = await crypto.subtle.importKey('pkcs8', wrapEdSeed(seed), { name: 'Ed25519' }, false, ['sign']);
+    return { key, alg: 'EdDSA' };
   } catch { /* */ }
-
-  // 3. Last resort: take the last 32 bytes (works when SEC1 has no trailing OID/pubkey)
   try {
     const seed = der.slice(-32);
-    return await crypto.subtle.importKey('pkcs8', wrapSeed(seed), { name: 'Ed25519' }, false, ['sign']);
+    const key = await crypto.subtle.importKey('pkcs8', wrapEdSeed(seed), { name: 'Ed25519' }, false, ['sign']);
+    return { key, alg: 'EdDSA' };
   } catch { /* */ }
 
   throw new Error('Could not import private key. Make sure you pasted the full PEM from the downloaded JSON file.');
 }
 
-async function makeJWT(keyName, privatePEM, method, path) {
-  const key    = await importEd25519(privatePEM);
-  const header = b64url({ alg: 'EdDSA', typ: 'JWT', kid: keyName });
-  const now    = Math.floor(Date.now() / 1000);
-  const nonce  = (crypto.randomUUID?.() ?? crypto.getRandomValues(new Uint8Array(16))
-    .reduce((s, b) => s + b.toString(16).padStart(2, '0'), ''));
+// makeJWT: nonce goes in the JWT header (Coinbase requirement), uri uses full API path
+async function makeJWT(keyName, privatePEM, method, apiPath) {
+  const { key, alg } = await importPrivateKey(privatePEM);
+  const now   = Math.floor(Date.now() / 1000);
+  const nonce = crypto.randomUUID?.() ??
+    crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+
+  const header  = b64url({ alg, typ: 'JWT', kid: keyName, nonce });
   const payload = b64url({
     sub: keyName,
-    iss: 'coinbase-cloud',   // Coinbase Advanced Trade API requires this exact issuer
+    iss: 'coinbase-cloud',
     nbf: now,
     exp: now + 120,
-    nonce,
-    uri: `${method} api.coinbase.com${path}`,
+    uri: `${method} ${COINBASE_HOST}${apiPath}`,
   });
   const msg = `${header}.${payload}`;
-  const sig = await crypto.subtle.sign('Ed25519', key, new TextEncoder().encode(msg));
+
+  let sig;
+  if (alg === 'ES256') {
+    // ECDSA with P-256 produces DER-encoded signature; Coinbase expects raw R||S (64 bytes)
+    const derSig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(msg)));
+    // Convert DER SEQUENCE { r INTEGER, s INTEGER } → 32-byte R || 32-byte S
+    let pos = 2; // skip 0x30 <len>
+    const rLen = derSig[pos + 1]; const r = derSig.slice(pos + 2, pos + 2 + rLen); pos += 2 + rLen;
+    const sLen = derSig[pos + 1]; const s = derSig.slice(pos + 2, pos + 2 + sLen);
+    const raw = new Uint8Array(64);
+    raw.set(r.length > 32 ? r.slice(r.length - 32) : r, 32 - Math.min(r.length, 32));
+    raw.set(s.length > 32 ? s.slice(s.length - 32) : s, 64 - Math.min(s.length, 32));
+    sig = raw;
+  } else {
+    sig = new Uint8Array(await crypto.subtle.sign('Ed25519', key, new TextEncoder().encode(msg)));
+  }
   return `${msg}.${b64urlBytes(sig)}`;
 }
 
@@ -133,7 +205,9 @@ async function req(apiKey, apiSecret, method, path, body = null, params = null, 
 
   let headers;
   if (isEdKey(apiSecret)) {
-    const jwt = await makeJWT(apiKey, apiSecret, method, path);
+    // JWT uri must use the full path as it appears on api.coinbase.com, not just the suffix
+    const apiPath = new URL(url.startsWith('http') ? url : `https://api.coinbase.com${url}`).pathname;
+    const jwt = await makeJWT(apiKey, apiSecret, method, apiPath);
     headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwt}` };
   } else {
     const timestamp = String(Math.floor(Date.now() / 1000));
