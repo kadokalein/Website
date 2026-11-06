@@ -10,7 +10,7 @@ import { SCAN_UNIVERSE } from '../constants';
 const STORAGE_KEY   = 'pp_paper_v2';
 const START_BALANCE = 5000;
 const MAX_POSITIONS = 4;
-const SCAN_INTERVAL = 5 * 60 * 1000;  // rescan every 5 min
+const SCAN_INTERVAL = 3 * 60 * 1000;  // rescan every 3 min
 const GECKO_TTL     = 10 * 60 * 1000; // CoinGecko cache 10 min
 const CHURN_COOLDOWN = 4 * 3600_000;  // 4h before re-buying a coin just sold
 
@@ -399,15 +399,21 @@ export default function PaperTrading() {
 
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
+          {/* Left: back link */}
+          <div className="flex items-center gap-2 flex-shrink-0 w-28 sm:w-36">
             <img src="/Website/logo.svg" alt="" className="w-6 h-6 rounded-full hidden sm:block" />
-            <Link to="/" className="text-[#8b949e] hover:text-white text-sm">← Dashboard</Link>
-            <span className="text-[#30363d]">|</span>
-            <span className="font-semibold text-sm">Paper Trading</span>
+            <Link to="/" className="text-[#8b949e] hover:text-white text-sm whitespace-nowrap">← Dashboard</Link>
+          </div>
+
+          {/* Center: page title */}
+          <div className="flex-1 flex items-center justify-center gap-2">
+            <span className="font-semibold text-sm text-white">Paper Trading</span>
             <span className="px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 text-[10px] font-semibold border border-blue-500/30">SIMULATED</span>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-2 flex-shrink-0 w-28 sm:w-36 justify-end">
             {scanning && (
               <div className="flex items-center gap-1.5 text-[10px] text-[#484f58]">
                 <span className="w-2.5 h-2.5 border border-t-orange-400 border-orange-400/20 rounded-full animate-spin" />

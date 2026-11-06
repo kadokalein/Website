@@ -32,19 +32,54 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
       <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        {/* Row 1: Logo + auth */}
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2 min-w-0">
+        {/* Mobile: two rows. Desktop: single row — Logo left | tabs center | auth right */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+
+          {/* Logo + Title — left */}
+          <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
             <img src="/Website/logo.svg" alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
             <span className="font-semibold text-white text-sm sm:text-base truncate">Promethea Programs</span>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+
+          {/* Tabs — centered (grows to fill middle) */}
+          <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:flex-1 sm:justify-center flex-wrap">
+            <TimeframeToggle value={timeframe} onChange={setTimeframe} />
+            <div className="w-px h-5 bg-[#30363d] flex-shrink-0 hidden sm:block" />
+            <button
+              onClick={() => setMode(m => m === 'scanner' ? 'watchlist' : 'scanner')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 ${
+                mode === 'watchlist'
+                  ? 'bg-orange-500 text-white'
+                  : 'text-orange-400 bg-orange-500/10 border border-orange-500/25 hover:border-orange-400/50'
+              }`}
+            >
+              Bitcoin
+            </button>
+            <Link
+              to="/watchlist"
+              className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-yellow-900 bg-yellow-200/80 hover:bg-yellow-200 border border-yellow-300/40"
+            >
+              ☆ Watch
+            </Link>
+            <Link
+              to="/paper"
+              className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-blue-300 bg-blue-500/10 border border-blue-500/25 hover:border-blue-400/50"
+            >
+              Paper
+            </Link>
+            <Link
+              to="/live"
+              className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-orange-300 bg-orange-500/10 border border-orange-500/25 hover:border-orange-400/50"
+            >
+              Live
+            </Link>
+          </div>
+
+          {/* Auth — right */}
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
             {user ? (
               <>
-                <span className="text-sm text-[#8b949e] hidden sm:block">
-                  Welcome, <span className={isAdmin ? 'text-[#bc8cff] font-semibold' : 'text-white font-semibold'}>{displayName}</span>!
-                </span>
-                <span className="text-sm sm:hidden">
+                <span className="text-sm text-[#8b949e]">
                   <span className={isAdmin ? 'text-[#bc8cff] font-semibold' : 'text-white font-semibold'}>{displayName}</span>
                 </span>
                 {isAdmin && (
@@ -71,44 +106,29 @@ export default function Dashboard() {
               </>
             )}
           </div>
-        </div>
 
-        {/* Row 2: Timeframe + Bitcoin toggle */}
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <TimeframeToggle value={timeframe} onChange={setTimeframe} />
-          <div className="w-px h-5 bg-[#30363d] flex-shrink-0" />
-          <button
-            onClick={() => setMode(m => m === 'scanner' ? 'watchlist' : 'scanner')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 ${
-              mode === 'watchlist'
-                ? 'bg-orange-500 text-white'
-                : 'text-orange-400 bg-orange-500/10 border border-orange-500/25 hover:border-orange-400/50'
-            }`}
-          >
-            Bitcoin
-          </button>
-          <Link
-            to="/watchlist"
-            className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-yellow-900 bg-yellow-200/80 hover:bg-yellow-200 border border-yellow-300/40"
-          >
-            ☆ Watch
-          </Link>
-          <Link
-            to="/paper"
-            className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-blue-300 bg-blue-500/10 border border-blue-500/25 hover:border-blue-400/50"
-          >
-            Paper
-          </Link>
-          <Link
-            to="/live"
-            className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-orange-300 bg-orange-500/10 border border-orange-500/25 hover:border-orange-400/50"
-          >
-            Live
-          </Link>
+          {/* Auth — mobile only (below tabs row handled by wrapping) */}
+          <div className="flex sm:hidden items-center gap-2 mt-2 flex-shrink-0">
+            {user ? (
+              <>
+                <span className={`text-sm font-semibold ${isAdmin ? 'text-[#bc8cff]' : 'text-white'}`}>{displayName}</span>
+                {isAdmin && (
+                  <Link to="/admin" className="px-3 py-1.5 rounded-lg bg-[#6e40c9] text-white text-xs font-medium">Admin</Link>
+                )}
+                <button onClick={handleSignOut} className="px-3 py-1.5 rounded-lg bg-[#21262d] border border-[#30363d] text-white text-xs font-medium">Sign out</button>
+              </>
+            ) : (
+              <>
+                <Link to="/subscribe?mode=signin" className="px-3 py-1.5 rounded-lg bg-[#1f6feb] text-white text-sm font-medium">Login</Link>
+                <Link to="/subscribe" className="px-3 py-1.5 rounded-lg bg-[#238636] text-white text-sm font-semibold">Subscribe</Link>
+              </>
+            )}
+          </div>
+
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <main className="w-full px-4 sm:px-6 py-6">
 
         {/* Scanner status banner */}
         {mode === 'scanner' && (
@@ -176,7 +196,7 @@ export default function Dashboard() {
         )}
 
         {/* Coin grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {mode === 'scanner' && scanning && topCoins.length === 0 ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="rounded-xl border border-[#30363d] bg-[#161b22] min-h-[440px] animate-pulse" />
