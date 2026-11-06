@@ -172,6 +172,12 @@ async function makeJWT(keyName, privatePEM, method, apiPath) {
     uri: `${method} ${COINBASE_HOST}${apiPath}`,
   });
   const msg = `${header}.${payload}`;
+  // Diagnostic — visible in browser DevTools Console, never includes key or signature
+  console.log('[Coinbase JWT]', {
+    alg,
+    header:  JSON.parse(atob(header.replace(/-/g, '+').replace(/_/g, '/') + '==')),
+    payload: JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/') + '==')),
+  });
 
   let sig;
   if (alg === 'ES256') {
@@ -235,8 +241,9 @@ async function req(apiKey, apiSecret, method, path, body = null, params = null, 
   let json = null;
   try { json = JSON.parse(text); } catch { /* */ }
   if (!res.ok) {
-    const msg = json?.message ?? json?.error_details ?? json?.error ?? json?.preview_failure_reason
-      ?? (text ? `HTTP ${res.status}: ${text.slice(0, 200)}` : `HTTP ${res.status}`);
+    const parts = [json?.error, json?.message, json?.error_details, json?.preview_failure_reason].filter(Boolean);
+    const msg = parts.length ? parts.join(' · ') : (text ? `HTTP ${res.status}: ${text.slice(0, 400)}` : `HTTP ${res.status}`);
+    console.error('[Coinbase API error]', res.status, json ?? text);
     throw new Error(msg);
   }
   return json;
