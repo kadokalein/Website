@@ -6,11 +6,18 @@ const https = require('https');
 const PORT = 9999;
 const TARGET_HOST = 'api.coinbase.com';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers':
+    'Content-Type, Authorization, CB-ACCESS-KEY, CB-ACCESS-SIGN, CB-ACCESS-TIMESTAMP',
+  // Required by Chrome 94+ Private Network Access: allows HTTPS pages on public domains
+  // (like github.io) to fetch http://localhost without being blocked as mixed content.
+  'Access-Control-Allow-Private-Network': 'true',
+};
+
 http.createServer((req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers',
-    'Content-Type, Authorization, CB-ACCESS-KEY, CB-ACCESS-SIGN, CB-ACCESS-TIMESTAMP');
+  Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
 
   // Health check — lets the app confirm THIS proxy is running
   if (req.url === '/health') {
@@ -20,7 +27,7 @@ http.createServer((req, res) => {
   }
 
   if (req.method === 'OPTIONS') {
-    res.writeHead(204);
+    res.writeHead(204, CORS_HEADERS);
     res.end();
     return;
   }
@@ -34,13 +41,13 @@ http.createServer((req, res) => {
   };
 
   const proxy = https.request(options, r => {
-    const headers = { ...r.headers, 'access-control-allow-origin': '*' };
+    const headers = { ...r.headers, ...CORS_HEADERS };
     res.writeHead(r.statusCode, headers);
     r.pipe(res);
   });
 
   proxy.on('error', e => {
-    res.writeHead(502, { 'Content-Type': 'text/plain' });
+    res.writeHead(502, { ...CORS_HEADERS, 'Content-Type': 'text/plain' });
     res.end(`Proxy error: ${e.message}`);
   });
 
