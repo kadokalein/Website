@@ -21,7 +21,7 @@ const CHURN_COOLDOWN = 4 * 3600_000;  // 4h before re-buying a coin just sold
 const STRATEGIES = {
   MOMENTUM: { label: 'Momentum', size: 0.15, target: 0.08,  stop: -0.05,  maxDays: 14, color: 'text-green-400'  },
   SWING:    { label: 'Swing',    size: 0.10, target: 0.04,  stop: -0.03,  maxDays:  7, color: 'text-blue-400'   },
-  SCALP:    { label: 'Scalp',    size: 0.07, target: 0.035, stop: -0.025, maxDays:  3, color: 'text-yellow-400' },
+  SCALP:    { label: 'Scalp',    size: 0.08, target: 0.025, stop: -0.015, maxDays:  1, color: 'text-yellow-400' },
 };
 
 // Pick which strategy applies to this coin, returns null if no entry.
@@ -66,22 +66,21 @@ function pickStrategy(rs, analysis, gecko) {
     return { ...STRATEGIES.SWING, reason: `Trend ↑ · EMA20>EMA50 · MACD bull · Score ${rs.score}` };
   }
 
-  // Scalp — mean-reversion: requires all five conditions to avoid falling-knife entries
-  const nearLower    = bb?.lower != null && currentPrice != null && currentPrice <= bb.lower * 1.03;
-  const deepOversold = rsi != null && rsi < 38;
-  const rsiCurling   = rsiTrend === 'rising'; // RSI must already be turning up, not still falling
+  // Scalp — mean-reversion: 3-of-4 conditions required (not all 5) to fire more often.
+  // Priority: RSI oversold + near lower BB is the core; MACD or RSI-curling confirms.
+  const nearLower    = bb?.lower != null && currentPrice != null && currentPrice <= bb.lower * 1.04;
+  const deepOversold = rsi != null && rsi < 42;
+  const rsiCurling   = rsiTrend === 'rising';
   const macdOk       = macd?.isBullishCrossover
     || macd?.status === 'bullish'
-    || (macd?.isHistogramRising && macd?.histogram != null && macd.histogram > -0.001 * (currentPrice ?? 1));
-  const weeklyOk     = change7d > -5;
+    || (macd?.isHistogramRising && macd?.histogram != null && macd.histogram > -0.002 * (currentPrice ?? 1));
+  const weeklyOk     = change7d > -8; // widened: allow mild weekly dip
 
-  if (deepOversold && nearLower && rsiCurling && macdOk && weeklyOk && ema50Ok && rs.score >= 30) {
-    const reason = `RSI ${rsi.toFixed(1)} ↑ + near lower BB` + (macd?.isBullishCrossover ? ' + MACD ↑' : '');
+  const scalp3of4 = [nearLower, deepOversold, rsiCurling || macdOk, weeklyOk].filter(Boolean).length >= 3;
+  if (scalp3of4 && ema50Ok && rs.score >= 25) {
+    const reason = `RSI ${rsi != null ? rsi.toFixed(1) : '?'}${rsiCurling ? ' ↑' : ''}`
+      + (nearLower ? ' + near BB' : '') + (macd?.isBullishCrossover ? ' + MACD ↑' : '');
     return { ...STRATEGIES.SCALP, reason };
-  }
-
-  if (rsi != null && rsi < 32 && macd?.isBullishCrossover && rsiCurling && ema50Ok) {
-    return { ...STRATEGIES.SCALP, reason: `RSI ${rsi.toFixed(1)} ↑ + MACD crossover` };
   }
 
   return null;

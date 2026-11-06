@@ -1,13 +1,36 @@
 // Multi-provider OHLCV fetcher.
-// Tries Binance → Bybit → Kraken in order. First to succeed wins.
-// Kraken is US-based and browser-accessible when exchange APIs are geo-blocked.
+// Tries Coinbase → Binance → Bybit → Kraken in order. First to succeed wins.
+// Coinbase is first: its market/candles endpoint is public (no auth), CORS-open, and reliable.
 
 const TF = {
-  '1H': { binance: '1h',  bybit: '60',  kraken: 60   },
-  '4H': { binance: '4h',  bybit: '240', kraken: 240  },
-  '1D': { binance: '1d',  bybit: 'D',   kraken: 1440 },
-  '1W': { binance: '1w',  bybit: 'W',   kraken: 10080 },
+  '1H': { binance: '1h',  bybit: '60',  kraken: 60,    coinbase: 'ONE_HOUR'  },
+  '4H': { binance: '4h',  bybit: '240', kraken: 240,   coinbase: 'FOUR_HOUR' },
+  '1D': { binance: '1d',  bybit: 'D',   kraken: 1440,  coinbase: 'ONE_DAY'   },
+  '1W': { binance: '1w',  bybit: 'W',   kraken: 10080, coinbase: 'ONE_WEEK'  },
 };
+
+const CB_SECONDS = { '1H': 3600, '4H': 14400, '1D': 86400, '1W': 604800 };
+
+async function fromCoinbase(symbol, timeframe) {
+  const gran = TF[timeframe]?.coinbase ?? 'FOUR_HOUR';
+  const secsPerBar = CB_SECONDS[timeframe] ?? 14400;
+  const end   = Math.floor(Date.now() / 1000);
+  const start = end - secsPerBar * 350;
+  const url = `https://api.coinbase.com/api/v3/brokerage/market/products/${symbol}-USD/candles`
+    + `?start=${start}&end=${end}&granularity=${gran}&limit=350`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Coinbase HTTP ${res.status}`);
+  const json = await res.json();
+  const list = json.candles ?? [];
+  if (list.length < 30) throw new Error('Coinbase: insufficient data');
+  // API returns newest-first; reverse to chronological order
+  return [...list].reverse().map(k => ({
+    time: Number(k.start) * 1000,
+    open: Number(k.open), high: Number(k.high),
+    low: Number(k.low),   close: Number(k.close),
+    volume: Number(k.volume),
+  }));
+}
 
 // Kraken uses non-standard pair names; try the simple form first
 function krakenPair(symbol) {
@@ -80,9 +103,10 @@ export async function fetchCandles(symbol, timeframe) {
   const errors = [];
 
   for (const [name, fn] of [
-    ['Binance', () => fromBinance(symbol, timeframe)],
-    ['Bybit',   () => fromBybit(symbol, timeframe)],
-    ['Kraken',  () => fromKraken(symbol, timeframe)],
+    ['Coinbase', () => fromCoinbase(symbol, timeframe)],
+    ['Binance',  () => fromBinance(symbol, timeframe)],
+    ['Bybit',    () => fromBybit(symbol, timeframe)],
+    ['Kraken',   () => fromKraken(symbol, timeframe)],
   ]) {
     try {
       const candles = await fn();
