@@ -25,47 +25,62 @@ const STRATEGIES = {
 };
 
 // Pick which strategy applies to this coin, returns null if no entry.
-// rsiTrend ('rising'|'falling'|'flat') is required to avoid catching falling knives.
+//
+// Two entry philosophies:
+//   1. Trend-following  — EMA20 > EMA50 (golden-cross context) + MACD bullish + dip to EMA20
+//   2. Mean-reversion   — RSI deeply oversold + curling up + near lower BB, ONLY in uptrend
+//
+// The EMA50 guard is the most critical filter: it blocks all entries when the coin is in
+// a structural downtrend (price > 6% below EMA50). This is the root cause of losses —
+// mean-reversion fails in downtrends because "oversold" keeps getting more oversold.
 function pickStrategy(rs, analysis, gecko) {
   if (!rs || !analysis) return null;
-  const { rsi, rsiTrend, macd, bb, currentPrice } = analysis;
+  const { rsi, rsiTrend, macd, bb, currentPrice, ema20, ema50, emaTrend } = analysis;
   const change7d = gecko?.change7d ?? 0;
 
-  // Momentum — high-conviction breakout, but not into a collapsing weekly chart
+  // EMA50 structural guard — block all entries in structural downtrends
+  const ema50Ok = ema50 == null || currentPrice == null || currentPrice >= ema50 * 0.94;
+
+  // Momentum — high-conviction breakout signal
   if (rs.signal === 'BUY TRIGGERED') {
-    if (change7d < -15) return null; // avoid buying a coin already in freefall
+    if (change7d < -15 || !ema50Ok) return null;
     return { ...STRATEGIES.MOMENTUM, reason: rs.triggerReason ?? `Score ${rs.score}` };
   }
 
-  // Swing — WATCH signal only when weekly trend is at worst mildly negative
-  if (rs.signal === 'WATCH') {
-    const weeklyOk = change7d > -5; // tightened from -10 → weekly must not be in a downtrend
+  // Swing path A — mean-reversion on WATCH signal (must be in EMA50 uptrend context)
+  if (rs.signal === 'WATCH' && ema50Ok) {
+    const weeklyOk = change7d > -5;
     if (weeklyOk || rs.score >= 70) {
-      const reason = `WATCH (score ${rs.score})` + (gecko?.change7d != null ? ` · 7d ${gecko.change7d >= 0 ? '+' : ''}${gecko.change7d.toFixed(1)}%` : '');
+      const reason = `WATCH (score ${rs.score})` + (gecko?.change7d != null
+        ? ` · 7d ${gecko.change7d >= 0 ? '+' : ''}${gecko.change7d.toFixed(1)}%` : '');
       return { ...STRATEGIES.SWING, reason };
     }
   }
 
-  // Scalp — three gates must all pass to avoid falling-knife entries:
-  //   1. RSI must ALREADY be curling upward (rsiTrend === 'rising') — not still falling
-  //   2. Price at or within 3% of lower BB (was 5% — tighter confirmation)
-  //   3. MACD improving toward zero or already bullish — not deep bearish
-  //   4. Weekly trend not in a downtrend (7d > -5%)
+  // Swing path B — trend-following: EMA20 above EMA50 (golden-cross context) + MACD bullish.
+  // Implements the "Moving Average crossover" strategy: buy a dip to EMA20 while EMA20 > EMA50.
+  // This fires even without RSI/BB signals — it catches trending coins, not just oversold ones.
+  if (emaTrend === 'up' && ema50Ok && ema20 != null && currentPrice != null
+      && currentPrice >= ema20 * 0.97 && currentPrice <= ema50 * 1.25
+      && macd?.status === 'bullish' && rs.score >= 40) {
+    return { ...STRATEGIES.SWING, reason: `Trend ↑ · EMA20>EMA50 · MACD bull · Score ${rs.score}` };
+  }
+
+  // Scalp — mean-reversion: requires all five conditions to avoid falling-knife entries
   const nearLower    = bb?.lower != null && currentPrice != null && currentPrice <= bb.lower * 1.03;
   const deepOversold = rsi != null && rsi < 38;
-  const rsiCurling   = rsiTrend === 'rising';   // must already be reversing, not still falling
+  const rsiCurling   = rsiTrend === 'rising'; // RSI must already be turning up, not still falling
   const macdOk       = macd?.isBullishCrossover
     || macd?.status === 'bullish'
     || (macd?.isHistogramRising && macd?.histogram != null && macd.histogram > -0.001 * (currentPrice ?? 1));
-  const weeklyOk     = change7d > -5;            // weekly not in a downtrend
+  const weeklyOk     = change7d > -5;
 
-  if (deepOversold && nearLower && rsiCurling && macdOk && weeklyOk) {
+  if (deepOversold && nearLower && rsiCurling && macdOk && weeklyOk && ema50Ok && rs.score >= 30) {
     const reason = `RSI ${rsi.toFixed(1)} ↑ + near lower BB` + (macd?.isBullishCrossover ? ' + MACD ↑' : '');
     return { ...STRATEGIES.SCALP, reason };
   }
 
-  // Bonus scalp: deeply oversold with confirmed MACD crossover AND RSI already curling
-  if (rsi != null && rsi < 32 && macd?.isBullishCrossover && rsiCurling) {
+  if (rsi != null && rsi < 32 && macd?.isBullishCrossover && rsiCurling && ema50Ok) {
     return { ...STRATEGIES.SCALP, reason: `RSI ${rsi.toFixed(1)} ↑ + MACD crossover` };
   }
 
@@ -168,6 +183,9 @@ export default function PaperTrading() {
             bb:       analysis.bb,
             volume:   analysis.volume,
             atrPct:   analysis.atrPercentile,
+            ema20:    analysis.ema20,
+            ema50:    analysis.ema50,
+            emaTrend: analysis.emaTrend,
           };
         } catch { /* skip failed coins */ }
       }));
@@ -234,7 +252,7 @@ export default function PaperTrading() {
             return (Date.now() - lastSold) >= CHURN_COOLDOWN;
           })
           .map(([sym, e]) => {
-            const strat = pickStrategy(e?.rs, { rsi: e?.rsi, rsiTrend: e?.rsiTrend, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume }, gecko?.[sym]);
+            const strat = pickStrategy(e?.rs, { rsi: e?.rsi, rsiTrend: e?.rsiTrend, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume, ema20: e?.ema20, ema50: e?.ema50, emaTrend: e?.emaTrend }, gecko?.[sym]);
             return { sym, e, strat };
           })
           .filter(c => c.strat !== null)
@@ -366,7 +384,7 @@ export default function PaperTrading() {
 
   // Best signals to show
   const signalRows = Object.entries(enriched)
-    .map(([sym, e]) => ({ sym, e, strat: pickStrategy(e?.rs, { rsi: e?.rsi, rsiTrend: e?.rsiTrend, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume }, geckoData[sym]), gecko: geckoData[sym] }))
+    .map(([sym, e]) => ({ sym, e, strat: pickStrategy(e?.rs, { rsi: e?.rsi, rsiTrend: e?.rsiTrend, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume, ema20: e?.ema20, ema50: e?.ema50, emaTrend: e?.emaTrend }, geckoData[sym]), gecko: geckoData[sym] }))
     .filter(r => r.strat !== null || (r.e?.rs?.score ?? 0) >= 50)
     .sort((a, b) => {
       const order = { MOMENTUM: 0, SWING: 1, SCALP: 2 };
@@ -505,6 +523,7 @@ export default function PaperTrading() {
                         <div className="text-[10px] text-[#484f58] mt-0.5">
                           Entry {formatPrice(h.entryPrice)} · {daysHeld}d held · Score {h.entryScore}
                           {gecko?.change7d != null && <span> · 7d {pct(gecko.change7d)}</span>}
+                          {e?.emaTrend && <span className={e.emaTrend === 'up' ? 'text-green-500/70' : 'text-red-500/70'}> · EMA {e.emaTrend === 'up' ? '↑' : '↓'}</span>}
                         </div>
                       </div>
                       <div className="text-right">
@@ -566,6 +585,7 @@ export default function PaperTrading() {
                       <div className="text-[9px] text-[#484f58] mt-0.5 leading-relaxed">
                         Score {e?.rs?.score ?? 0}/100 · RSI {e?.rsi?.toFixed(0) ?? '—'}
                         {e?.macd && <span> · MACD {e.macd.status}{e.macd.isBullishCrossover ? ' ↑' : ''}</span>}
+                        {e?.emaTrend && <span className={e.emaTrend === 'up' ? 'text-green-500/70' : 'text-red-500/70'}> · EMA {e.emaTrend === 'up' ? '↑' : '↓'}</span>}
                         {gecko && <span> · {tier} cap</span>}
                         {strat && <span className="text-[#6e7681]"> · {strat.reason}</span>}
                       </div>

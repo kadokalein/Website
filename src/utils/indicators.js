@@ -126,7 +126,7 @@ export function calcRSI(candles, period = 14) {
 
 // --- EMA helper (seeds with SMA of first `period` values) ---
 
-function calcEMA(data, period) {
+export function calcEMA(data, period) {
   if (data.length < period) return [];
   const k = 2 / (period + 1);
   let ema = data.slice(0, period).reduce((s, v) => s + v, 0) / period;
@@ -258,6 +258,22 @@ export function analyzeCandles(candles, interval = '1d') {
 
   const activeConditions = Object.values(conditions).filter(Boolean).length;
 
+  // EMA trend context — used to distinguish uptrends from downtrends before entry
+  const closePrices = candles.map(c => c.close);
+  const ema20arr    = calcEMA(closePrices, 20);
+  const ema50arr    = calcEMA(closePrices, 50);
+  const ema200arr   = calcEMA(closePrices, 200);
+  const ema20       = ema20arr.length  ? ema20arr[ema20arr.length - 1]  : null;
+  const ema50       = ema50arr.length  ? ema50arr[ema50arr.length - 1]  : null;
+  const ema200      = ema200arr.length ? ema200arr[ema200arr.length - 1]: null;
+  const prevEma20   = ema20arr.length  > 1 ? ema20arr[ema20arr.length - 2]  : null;
+  const prevEma50   = ema50arr.length  > 1 ? ema50arr[ema50arr.length - 2]  : null;
+  // 'up' = EMA20 above EMA50 (uptrend / golden cross context)
+  const emaTrend    = ema20 != null && ema50 != null ? (ema20 > ema50 ? 'up' : 'down') : null;
+  const emaGoldenCross = prevEma20 != null && prevEma50 != null
+    && ema20 != null && ema50 != null
+    && ema20 > ema50 && prevEma20 <= prevEma50;
+
   return {
     currentPrice,
     atr: currentATR,
@@ -279,5 +295,6 @@ export function analyzeCandles(candles, interval = '1d') {
     conditions,
     activeConditions,
     entrySignal:   activeConditions >= 3,
+    ema20, ema50, ema200, emaTrend, emaGoldenCross,
   };
 }
