@@ -92,34 +92,49 @@ async function importPrivateKey(pem) {
   const alg = detectKeyAlg(der);
 
   if (alg === 'ES256') {
-    // Try importing as PKCS8 directly first (some tools export it that way)
+    const pkcs8AlgId = derSeq(OID_EC_PUBKEY, OID_P256);
+    const pkcs8Version = new Uint8Array([0x02, 0x01, 0x00]); // INTEGER 0
+
+    // Helper: build minimal SEC1 ECPrivateKey from a 32-byte scalar, then wrap in PKCS8.
+    // PKCS8 PrivateKeyInfo → OCTET STRING must contain an ECPrivateKey (SEC1 SEQUENCE).
+    // SEC1 ECPrivateKey: SEQUENCE { INTEGER 1 (version), OCTET STRING { scalar } }
+    function sec1Pkcs8(scalar) {
+      const ecPrivKey = derSeq(
+        new Uint8Array([0x02, 0x01, 0x01]), // version 1
+        derTLV(0x04, scalar),               // private key scalar
+      );
+      return derSeq(pkcs8Version, pkcs8AlgId, derTLV(0x04, ecPrivKey));
+    }
+
+    // Attempt 1: already a standard PKCS8 blob
     try {
       const key = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
       return { key, alg };
     } catch { /* */ }
 
-    // SEC1 → PKCS8: wrap the SEC1 blob in a PKCS8 AlgorithmIdentifier envelope
+    // Attempt 2: SEC1 DER → extract 32-byte scalar → correct PKCS8 wrapping
     try {
-      const privBytes = extractSec1PrivKey(der);
-      const innerOctet = derTLV(0x04, privBytes);
-      const algId = derSeq(OID_EC_PUBKEY, OID_P256);
-      const pkcs8 = derSeq(new Uint8Array([0x02, 0x01, 0x00]), algId, derTLV(0x04, innerOctet));
+      const key = await crypto.subtle.importKey('pkcs8', sec1Pkcs8(extractSec1PrivKey(der)), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+      return { key, alg };
+    } catch { /* */ }
+
+    // Attempt 3: wrap the full SEC1 blob as the ECPrivateKey content
+    try {
+      const pkcs8 = derSeq(pkcs8Version, pkcs8AlgId, derTLV(0x04, der));
       const key = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
       return { key, alg };
     } catch { /* */ }
 
-    // Last resort: treat raw 32-byte payload as the private scalar and rewrap
+    // Attempt 4: last 32 bytes as scalar (for stripped/truncated exports)
     try {
-      const raw = der.slice(-32);
-      const innerOctet = derTLV(0x04, raw);
-      const algId = derSeq(OID_EC_PUBKEY, OID_P256);
-      const pkcs8 = derSeq(new Uint8Array([0x02, 0x01, 0x00]), algId, derTLV(0x04, innerOctet));
-      const key = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+      const key = await crypto.subtle.importKey('pkcs8', sec1Pkcs8(der.slice(-32)), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
       return { key, alg };
     } catch { /* */ }
+
+    throw new Error('Could not import P-256 private key. Paste the full PEM (-----BEGIN EC PRIVATE KEY-----) from the JSON file downloaded from Coinbase.');
   }
 
-  // EdDSA path (fallback / legacy keys)
+  // EdDSA path — only reached for keys that actually contain the Ed25519 OID
   const PKCS8_ED_PREFIX = new Uint8Array([
     0x30,0x2e, 0x02,0x01,0x00, 0x30,0x05, 0x06,0x03,0x2b,0x65,0x70, 0x04,0x22, 0x04,0x20,
   ]);
@@ -134,11 +149,6 @@ async function importPrivateKey(pem) {
   } catch { /* */ }
   try {
     const seed = extractSec1PrivKey(der);
-    const key = await crypto.subtle.importKey('pkcs8', wrapEdSeed(seed), { name: 'Ed25519' }, false, ['sign']);
-    return { key, alg: 'EdDSA' };
-  } catch { /* */ }
-  try {
-    const seed = der.slice(-32);
     const key = await crypto.subtle.importKey('pkcs8', wrapEdSeed(seed), { name: 'Ed25519' }, false, ['sign']);
     return { key, alg: 'EdDSA' };
   } catch { /* */ }
