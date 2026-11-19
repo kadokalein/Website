@@ -124,6 +124,71 @@ export function calcRSI(candles, period = 14) {
   return 100 - 100 / (1 + avgGain / avgLoss);
 }
 
+// Full RSI series — needed for Stochastic RSI
+export function calcRSISeries(candles, period = 14) {
+  if (candles.length < period + 2) return [];
+  const closes = candles.map((c) => c.close);
+  const changes = closes.slice(1).map((c, i) => c - closes[i]);
+
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 0; i < period; i++) {
+    if (changes[i] > 0) avgGain += changes[i];
+    else avgLoss += Math.abs(changes[i]);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+
+  const out = [avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss)];
+  for (let i = period; i < changes.length; i++) {
+    avgGain = (avgGain * (period - 1) + Math.max(0, changes[i])) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(0, -changes[i])) / period;
+    out.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+  }
+  return out;
+}
+
+// Stochastic RSI — applies stochastic formula to RSI series, then smooths.
+// Returns { k, d, oversold, overbought, bullishCross } or null.
+// Used by most profitable open-source crypto bots (Freqtrade BB_RSI, etc.)
+export function calcStochRSI(candles, rsiPeriod = 14, stochPeriod = 14, kSmooth = 3, dSmooth = 3) {
+  const rsiSeries = calcRSISeries(candles, rsiPeriod);
+  if (rsiSeries.length < stochPeriod + kSmooth + dSmooth) return null;
+
+  const rawStoch = [];
+  for (let i = stochPeriod - 1; i < rsiSeries.length; i++) {
+    const window = rsiSeries.slice(i - stochPeriod + 1, i + 1);
+    const lo = Math.min(...window);
+    const hi = Math.max(...window);
+    rawStoch.push(hi === lo ? 0.5 : (rsiSeries[i] - lo) / (hi - lo));
+  }
+
+  const kArr = [];
+  for (let i = kSmooth - 1; i < rawStoch.length; i++) {
+    const s = rawStoch.slice(i - kSmooth + 1, i + 1);
+    kArr.push((s.reduce((a, v) => a + v, 0) / kSmooth) * 100);
+  }
+
+  if (kArr.length < dSmooth) return null;
+  const dArr = [];
+  for (let i = dSmooth - 1; i < kArr.length; i++) {
+    const s = kArr.slice(i - dSmooth + 1, i + 1);
+    dArr.push(s.reduce((a, v) => a + v, 0) / dSmooth);
+  }
+
+  const k     = kArr[kArr.length - 1];
+  const d     = dArr[dArr.length - 1];
+  const prevK = kArr.length >= 2 ? kArr[kArr.length - 2] : k;
+  const prevD = dArr.length >= 2 ? dArr[dArr.length - 2] : d;
+
+  return {
+    k, d,
+    oversold:    k < 20,
+    overbought:  k > 80,
+    bullishCross: prevK < prevD && k >= d,
+    bearishCross: prevK > prevD && k <= d,
+  };
+}
+
 // --- EMA helper (seeds with SMA of first `period` values) ---
 
 export function calcEMA(data, period) {
@@ -195,7 +260,7 @@ export function calcVolumeRatio(candles, period = 20) {
 // Returns all indicator values for a candle series plus derived signals.
 
 export function analyzeCandles(candles, interval = '1d') {
-  if (!candles || candles.length < 50) return null;
+  if (!candles || candles.length < 40) return null;
 
   const barsPerYear = BARS_PER_YEAR[interval] ?? 365;
   const daysToBar = DAYS_TO_BARS[interval] ?? ((d) => d);
@@ -218,9 +283,10 @@ export function analyzeCandles(candles, interval = '1d') {
   const hv30 = calcHV(candles, daysToBar(30), barsPerYear);
   const hv90 = calcHV(candles, daysToBar(90), barsPerYear);
 
-  // ROC, RSI, MACD, Volume
+  // ROC, RSI, StochRSI, MACD, Volume
   const roc        = calcROC(candles, 14);
   const rsi        = calcRSI(candles, 14);
+  const stochRSI   = calcStochRSI(candles);
   const rsiPrev    = calcRSI(candles.slice(0, -1), 14);
   const rsiTrend   = rsi != null && rsiPrev != null
     ? (rsi > rsiPrev ? 'rising' : rsi < rsiPrev ? 'falling' : 'flat')
@@ -240,6 +306,10 @@ export function analyzeCandles(candles, interval = '1d') {
 
   // Swing high over last 20 bars — used to determine ATR support condition
   const recentHigh = Math.max(...candles.slice(-20).map((c) => c.high));
+  // Highest CLOSE of previous 20 bars (excluding the latest) — used for breakout detection
+  const prevRecentHigh = candles.length >= 21
+    ? Math.max(...candles.slice(-21, -1).map((c) => c.close))
+    : null;
 
   // Volatility classification driven by ATR percentile rank
   let volatility;
@@ -288,6 +358,7 @@ export function analyzeCandles(candles, interval = '1d') {
     rsiPrev,
     rsiTrend,
     macd,
+    stochRSI,
     volume:            volumeData,
     volumeJustSpiked,
     conservativeEntry,
@@ -296,5 +367,6 @@ export function analyzeCandles(candles, interval = '1d') {
     activeConditions,
     entrySignal:   activeConditions >= 3,
     ema20, ema50, ema200, emaTrend, emaGoldenCross,
+    prevRecentHigh,
   };
 }

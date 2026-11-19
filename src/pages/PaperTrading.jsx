@@ -9,77 +9,92 @@ import { SCAN_UNIVERSE } from '../constants';
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY   = 'pp_paper_v2';
 const START_BALANCE = 5000;
-const MAX_POSITIONS = 4;
+const MAX_POSITIONS = 6;
 const SCAN_INTERVAL = 3 * 60 * 1000;  // rescan every 3 min
 const GECKO_TTL     = 10 * 60 * 1000; // CoinGecko cache 10 min
 const CHURN_COOLDOWN = 4 * 3600_000;  // 4h before re-buying a coin just sold
 
 // ─── Trading strategies ───────────────────────────────────────────────────────
-// Three tiers — the AI picks the best fit for each coin.
-// Goal: consistent 2–3 % per week via frequent small wins.
-// Scalp stop widened to -2.5% to absorb scan-interval slippage on volatile crypto.
 const STRATEGIES = {
-  MOMENTUM: { label: 'Momentum', size: 0.15, target: 0.08,  stop: -0.05,  maxDays: 14, color: 'text-green-400'  },
-  SWING:    { label: 'Swing',    size: 0.10, target: 0.04,  stop: -0.03,  maxDays:  7, color: 'text-blue-400'   },
-  SCALP:    { label: 'Scalp',    size: 0.08, target: 0.025, stop: -0.015, maxDays:  1, color: 'text-yellow-400' },
+  MOMENTUM: { label: 'Momentum', size: 0.18, target: 0.08,  stop: -0.05,  maxDays: 14, color: 'text-green-400'  },
+  BREAKOUT: { label: 'Breakout', size: 0.15, target: 0.06,  stop: -0.03,  maxDays:  5, color: 'text-orange-400' },
+  SWING:    { label: 'Swing',    size: 0.12, target: 0.045, stop: -0.03,  maxDays:  7, color: 'text-blue-400'   },
+  DIP:      { label: 'Dip',      size: 0.10, target: 0.04,  stop: -0.025, maxDays:  3, color: 'text-purple-400' },
+  SCALP:    { label: 'Scalp',    size: 0.10, target: 0.025, stop: -0.015, maxDays:  1, color: 'text-yellow-400' },
 };
 
 // Pick which strategy applies to this coin, returns null if no entry.
 //
-// Two entry philosophies:
-//   1. Trend-following  — EMA20 > EMA50 (golden-cross context) + MACD bullish + dip to EMA20
-//   2. Mean-reversion   — RSI deeply oversold + curling up + near lower BB, ONLY in uptrend
+// Entry hierarchy (most selective → most frequent):
+//   1. MOMENTUM  — scanner "BUY TRIGGERED" (high score, volume spike, state change)
+//   2. BREAKOUT  — price closes above 20-bar prior high with volume (classic breakout)
+//   3. DIP       — Stochastic RSI < 25 with K crossing above D (FreqTrade-style mean-reversion)
+//   4. SWING A   — WATCH signal from scanner in uptrend context
+//   5. SWING B   — EMA20 > EMA50 golden-cross dip, MACD bullish
+//   6. SCALP     — 3-of-4 RSI/BB conditions, lowest bar
 //
-// The EMA50 guard is the most critical filter: it blocks all entries when the coin is in
-// a structural downtrend (price > 6% below EMA50). This is the root cause of losses —
-// mean-reversion fails in downtrends because "oversold" keeps getting more oversold.
+// EMA50 guard: blocks all entries when coin is > 6% below EMA50 (structural downtrend).
 function pickStrategy(rs, analysis, gecko) {
   if (!rs || !analysis) return null;
-  const { rsi, rsiTrend, macd, bb, currentPrice, ema20, ema50, emaTrend } = analysis;
+  const { rsi, rsiTrend, macd, bb, currentPrice, ema20, ema50, emaTrend, stochRSI, prevRecentHigh, volume } = analysis;
   const change7d = gecko?.change7d ?? 0;
 
-  // EMA50 structural guard — block all entries in structural downtrends
+  // EMA50 structural guard — block entries in structural downtrends
   const ema50Ok = ema50 == null || currentPrice == null || currentPrice >= ema50 * 0.94;
 
-  // Momentum — high-conviction breakout signal
+  // 1. MOMENTUM — scanner confirmed buy
   if (rs.signal === 'BUY TRIGGERED') {
     if (change7d < -15 || !ema50Ok) return null;
     return { ...STRATEGIES.MOMENTUM, reason: rs.triggerReason ?? `Score ${rs.score}` };
   }
 
-  // Swing path A — mean-reversion on WATCH signal (must be in EMA50 uptrend context)
+  // 2. BREAKOUT — close above 20-bar prior high with volume (trend-following breakout)
+  const isBreakingOut = prevRecentHigh != null && currentPrice != null
+    && currentPrice > prevRecentHigh * 1.005
+    && (volume?.ratio ?? 0) >= 1.3;
+  if (isBreakingOut && ema50Ok && rs.score >= 20) {
+    return { ...STRATEGIES.BREAKOUT, reason: `Breakout · Vol ${(volume.ratio).toFixed(1)}x · Score ${rs.score}` };
+  }
+
+  // 3. DIP — Stochastic RSI oversold bounce (fires 3–5× more than plain RSI oversold)
+  // Best mean-reversion strategy in ranging/dipping markets. Used in Freqtrade, Jesse, etc.
+  const stochOversold  = stochRSI?.k != null && stochRSI.k < 25;
+  const stochMomentum  = stochRSI?.bullishCross || (stochRSI?.k != null && stochRSI?.d != null && stochRSI.k > stochRSI.d);
+  if (stochOversold && stochMomentum && ema50Ok && rs.score >= 10) {
+    const reason = `StochRSI K=${stochRSI.k.toFixed(0)}${stochRSI.bullishCross ? '↑cross' : '↑'} · Score ${rs.score}`;
+    return { ...STRATEGIES.DIP, reason };
+  }
+
+  // 4. SWING path A — mean-reversion on WATCH signal
   if (rs.signal === 'WATCH' && ema50Ok) {
-    const weeklyOk = change7d > -5;
-    if (weeklyOk || rs.score >= 70) {
+    const weeklyOk = change7d > -8;
+    if (weeklyOk || rs.score >= 65) {
       const reason = `WATCH (score ${rs.score})` + (gecko?.change7d != null
         ? ` · 7d ${gecko.change7d >= 0 ? '+' : ''}${gecko.change7d.toFixed(1)}%` : '');
       return { ...STRATEGIES.SWING, reason };
     }
   }
 
-  // Swing path B — trend-following: EMA20 above EMA50 (golden-cross context) + MACD bullish.
-  // Implements the "Moving Average crossover" strategy: buy a dip to EMA20 while EMA20 > EMA50.
-  // This fires even without RSI/BB signals — it catches trending coins, not just oversold ones.
+  // 5. SWING path B — EMA golden-cross dip: EMA20 > EMA50, price dips to EMA20, MACD bullish
   if (emaTrend === 'up' && ema50Ok && ema20 != null && currentPrice != null
       && currentPrice >= ema20 * 0.97 && currentPrice <= ema50 * 1.25
-      && macd?.status === 'bullish' && rs.score >= 40) {
-    return { ...STRATEGIES.SWING, reason: `Trend ↑ · EMA20>EMA50 · MACD bull · Score ${rs.score}` };
+      && macd?.status === 'bullish' && rs.score >= 30) {
+    return { ...STRATEGIES.SWING, reason: `EMA cross dip · MACD bull · Score ${rs.score}` };
   }
 
-  // Scalp — mean-reversion: 3-of-4 conditions required (not all 5) to fire more often.
-  // Priority: RSI oversold + near lower BB is the core; MACD or RSI-curling confirms.
+  // 6. SCALP — 3-of-4 RSI/BB conditions (lowest bar, fires most often)
   const nearLower    = bb?.lower != null && currentPrice != null && currentPrice <= bb.lower * 1.04;
   const deepOversold = rsi != null && rsi < 42;
   const rsiCurling   = rsiTrend === 'rising';
   const macdOk       = macd?.isBullishCrossover
     || macd?.status === 'bullish'
     || (macd?.isHistogramRising && macd?.histogram != null && macd.histogram > -0.002 * (currentPrice ?? 1));
-  const weeklyOk     = change7d > -8; // widened: allow mild weekly dip
+  const weeklyOk     = change7d > -8;
 
   const scalp3of4 = [nearLower, deepOversold, rsiCurling || macdOk, weeklyOk].filter(Boolean).length >= 3;
-  if (scalp3of4 && ema50Ok && rs.score >= 25) {
-    const reason = `RSI ${rsi != null ? rsi.toFixed(1) : '?'}${rsiCurling ? ' ↑' : ''}`
-      + (nearLower ? ' + near BB' : '') + (macd?.isBullishCrossover ? ' + MACD ↑' : '');
+  if (scalp3of4 && ema50Ok && rs.score >= 15) {
+    const reason = `RSI ${rsi != null ? rsi.toFixed(1) : '?'}${rsiCurling ? '↑' : ''}`
+      + (nearLower ? ' BB↓' : '') + (macd?.isBullishCrossover ? ' MACD↑' : '');
     return { ...STRATEGIES.SCALP, reason };
   }
 
@@ -173,18 +188,20 @@ export default function PaperTrading() {
           const analysis = analyzeCandles(candles, interval);
           const rs = computeRunScore(analysis);
           result[coin.symbol] = {
-            price:    analysis.currentPrice,
+            price:         analysis.currentPrice,
             rs,
-            rsi:      analysis.rsi,
-            rsiTrend: analysis.rsiTrend,
-            roc:      analysis.roc,
-            macd:     analysis.macd,
-            bb:       analysis.bb,
-            volume:   analysis.volume,
-            atrPct:   analysis.atrPercentile,
-            ema20:    analysis.ema20,
-            ema50:    analysis.ema50,
-            emaTrend: analysis.emaTrend,
+            rsi:           analysis.rsi,
+            rsiTrend:      analysis.rsiTrend,
+            roc:           analysis.roc,
+            macd:          analysis.macd,
+            bb:            analysis.bb,
+            volume:        analysis.volume,
+            atrPct:        analysis.atrPercentile,
+            ema20:         analysis.ema20,
+            ema50:         analysis.ema50,
+            emaTrend:      analysis.emaTrend,
+            stochRSI:      analysis.stochRSI,
+            prevRecentHigh: analysis.prevRecentHigh,
           };
         } catch { /* skip failed coins */ }
       }));
@@ -206,26 +223,52 @@ export default function PaperTrading() {
     setPortfolio(prev => {
       const p = JSON.parse(JSON.stringify(prev));
 
-      // — Exits —
+      // — Update trailing stops & exits —
       for (const [sym, h] of Object.entries(p.holdings)) {
         const e = snapshot[sym];
         const price = e?.price;
         if (!price) continue;
 
-        const pnlFrac = (price - h.entryPrice) / h.entryPrice;
-        const pnlPct  = pnlFrac * 100;
+        const pnlFrac  = (price - h.entryPrice) / h.entryPrice;
+        const strat    = STRATEGIES[h.strategy] ?? STRATEGIES.SWING;
+
+        // Trailing stop logic:
+        //   • Once up 1 %: move stop to breakeven (never lose on a winner)
+        //   • Once at 60 % of target: trail at half-stop-distance below current price
+        if (pnlFrac >= 0.01) {
+          const breakeven = h.entryPrice * 1.001;
+          if (!h.trailingStop || h.trailingStop < breakeven) {
+            h.trailingStop = breakeven;
+          }
+        }
+        if (pnlFrac >= strat.target * 0.6) {
+          const trailDist = Math.abs(strat.stop) * 0.5;
+          const newTrail  = price * (1 - trailDist);
+          if (!h.trailingStop || newTrail > h.trailingStop) {
+            h.trailingStop = newTrail;
+          }
+        }
+      }
+
+      for (const [sym, h] of Object.entries(p.holdings)) {
+        const e = snapshot[sym];
+        const price = e?.price;
+        if (!price) continue;
+
+        const pnlFrac  = (price - h.entryPrice) / h.entryPrice;
+        const pnlPct   = pnlFrac * 100;
         const daysHeld = (Date.now() - new Date(h.entryTime)) / 86_400_000;
         const rs    = e?.rs;
         const rsi   = e?.rsi;
         const strat = STRATEGIES[h.strategy] ?? STRATEGIES.SWING;
         let reason  = null;
 
-        if (pnlFrac >= strat.target)       reason = `Take profit ${pct(pnlPct)}`;
-        else if (pnlFrac <= strat.stop)    reason = `Stop loss ${pct(pnlPct)}`;
-        else if (daysHeld > strat.maxDays) reason = `Time limit (${strat.maxDays}d)`;
-        // Raised from < 15 to < 20 — exit sooner when signal quality degrades
-        else if ((rs?.score ?? 0) < 20)    reason = `Score collapsed → ${rs?.score}`;
-        else if (rsi != null && rsi > 70 && h.strategy !== 'MOMENTUM') reason = `RSI overbought (${rsi.toFixed(0)})`;
+        if (pnlFrac >= strat.target)                                       reason = `Take profit ${pct(pnlPct)}`;
+        else if (h.trailingStop && price <= h.trailingStop)                reason = `Trailing stop ${pct(pnlPct)}`;
+        else if (pnlFrac <= strat.stop)                                    reason = `Stop loss ${pct(pnlPct)}`;
+        else if (daysHeld > strat.maxDays)                                 reason = `Time limit (${strat.maxDays}d)`;
+        else if ((rs?.score ?? 0) < 20)                                    reason = `Score collapsed → ${rs?.score}`;
+        else if (rsi != null && rsi > 72 && h.strategy !== 'MOMENTUM')    reason = `RSI overbought (${rsi.toFixed(0)})`;
 
         if (reason) {
           const proceeds = h.qty * price;
@@ -233,7 +276,6 @@ export default function PaperTrading() {
           p.cash += proceeds;
           p.trades.unshift({ id: `${sym}-${Date.now()}`, sym, side: 'SELL', price, qty: h.qty, entryPrice: h.entryPrice, gainLoss, pnlPct, strategy: h.strategy, reason, time: now });
           delete p.holdings[sym];
-          // Record sell time to prevent churning the same coin immediately after exit
           p.lastSoldAt = { ...(p.lastSoldAt ?? {}), [sym]: Date.now() };
           log.push({ type: gainLoss >= 0 ? 'win' : 'loss', msg: `SELL ${sym} · ${reason} · ${gainLoss >= 0 ? '+' : ''}${formatUSD(gainLoss)}` });
         }
@@ -251,7 +293,7 @@ export default function PaperTrading() {
             return (Date.now() - lastSold) >= CHURN_COOLDOWN;
           })
           .map(([sym, e]) => {
-            const strat = pickStrategy(e?.rs, { rsi: e?.rsi, rsiTrend: e?.rsiTrend, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume, ema20: e?.ema20, ema50: e?.ema50, emaTrend: e?.emaTrend }, gecko?.[sym]);
+            const strat = pickStrategy(e?.rs, { rsi: e?.rsi, rsiTrend: e?.rsiTrend, macd: e?.macd, bb: e?.bb, currentPrice: e?.price, volume: e?.volume, ema20: e?.ema20, ema50: e?.ema50, emaTrend: e?.emaTrend, stochRSI: e?.stochRSI, prevRecentHigh: e?.prevRecentHigh }, gecko?.[sym]);
             return { sym, e, strat };
           })
           .filter(c => c.strat !== null)
