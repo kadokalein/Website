@@ -1,34 +1,20 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useEffectEvent, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import AppNav from '../components/AppNav';
+import { Card, BTN } from '../desk/ui/atoms';
 import { createCoinbaseClient, isEdKey } from '../lib/coinbaseApi';
+import { KEY_STORAGE, PROXY_URL, loadKeys, saveKeys, loadProxyPref, saveProxyPref } from '../lib/coinbaseKeys';
 import { fetchCandles } from '../utils/binanceApi';
 import { analyzeCandles } from '../utils/indicators';
 import { computeRunScore } from '../utils/scoring';
 import { SCAN_UNIVERSE } from '../constants';
 
-const KEY_STORAGE   = 'pp_cb_keys_v1';
 const STATE_STORAGE = 'pp_live_state_v1';
-const PROXY_KEY     = 'pp_use_proxy_v1';
 
-function loadProxyPref() {
-  try { return localStorage.getItem(PROXY_KEY) === 'true'; } catch { return false; }
-}
-function saveProxyPref(v) {
-  try { localStorage.setItem(PROXY_KEY, String(v)); } catch { /* */ }
-}
 const POSITION_SIZE = 0.15;
-const STOP_LOSS     = -0.05;
-const TAKE_PROFIT   =  0.08;
-const EXIT_SCORE    = 25;
 const MAX_POSITIONS = 4;
 const PRICE_REFRESH = 90_000; // 90s between price checks
 
-function loadKeys() {
-  try { return JSON.parse(localStorage.getItem(KEY_STORAGE) ?? 'null'); } catch { return null; }
-}
-function saveKeys(k) {
-  try { localStorage.setItem(KEY_STORAGE, JSON.stringify(k)); } catch { /* */ }
-}
 function loadLiveState() {
   try { return JSON.parse(localStorage.getItem(STATE_STORAGE) ?? 'null'); } catch { return null; }
 }
@@ -68,18 +54,15 @@ export default function LiveTrading() {
 
   const [prices, setPrices]   = useState({});
   const [scores, setScores]   = useState({});
-  const [autoEnabled, setAutoEnabled] = useState(false);
-  const [autoLog, setAutoLog] = useState([]);
   const [livePositions, setLivePositions] = useState(() => loadLiveState()?.positions ?? {});
   const [liveOrders, setLiveOrders]       = useState([]);
   const [refreshing, setRefreshing]       = useState(false);
   const [actionStatus, setActionStatus]   = useState(null); // { msg, ok }
 
-  const autoRef = useRef(autoEnabled);
-  autoRef.current = autoEnabled;
-
-  const PROXY_URL = 'http://localhost:9999';
-  const client = keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? PROXY_URL : null) : null;
+  const client = useMemo(
+    () => (keys ? createCoinbaseClient(keys.apiKey, keys.apiSecret, useProxy ? PROXY_URL : null) : null),
+    [keys, useProxy],
+  );
 
   // Persist live positions
   useEffect(() => {
@@ -128,7 +111,6 @@ export default function LiveTrading() {
     localStorage.removeItem(KEY_STORAGE);
     setKeys(null);
     setShowSetup(true);
-    setAutoEnabled(false);
     setAccounts([]);
   }
 
@@ -157,7 +139,7 @@ export default function LiveTrading() {
   }
 
   // Fetch Coinbase account balances
-  const fetchAccounts = useCallback(async () => {
+  async function fetchAccounts() {
     if (!client) return;
     setAccountsLoading(true);
     setAccountsError(null);
@@ -191,11 +173,14 @@ export default function LiveTrading() {
     } finally {
       setAccountsLoading(false);
     }
-  }, [client]);
+  }
 
   // Auto-fetch only when proxy pref is already saved (safe to auto-load)
+  const autoLoadAccounts = useEffectEvent(() => {
+    if (loadProxyPref()) fetchAccounts();
+  });
   useEffect(() => {
-    if (keys && !showSetup && loadProxyPref()) fetchAccounts();
+    if (keys && !showSetup) autoLoadAccounts();
   }, [keys, showSetup]);
 
   // Fetch recent orders from Coinbase
@@ -226,96 +211,22 @@ export default function LiveTrading() {
     setPrices(p => ({ ...p, ...fp }));
     setScores(p => ({ ...p, ...fs }));
     setRefreshing(false);
-    return { freshPrices: fp, freshScores: fs };
   }, [livePositions]);
-
-  // AI auto-trade engine (REAL MONEY)
-  const runAI = useCallback(async (freshPrices, freshScores) => {
-    if (!autoRef.current || !client) return;
-    const log = [];
-    const now = new Date().toISOString();
-
-    // Check exits
-    for (const [symbol, pos] of Object.entries(livePositions)) {
-      const price = freshPrices[symbol] ?? prices[symbol];
-      if (!price) continue;
-      const pnlPct = ((price - pos.entryPrice) / pos.entryPrice) * 100;
-      const score  = freshScores[symbol]?.score ?? 0;
-      let reason = null;
-      if (pnlPct <= STOP_LOSS * 100)   reason = `Stop loss ${pnlPct.toFixed(1)}%`;
-      else if (pnlPct >= TAKE_PROFIT * 100) reason = `Take profit +${pnlPct.toFixed(1)}%`;
-      else if (score < EXIT_SCORE)          reason = `Score dropped to ${score}`;
-
-      if (reason) {
-        try {
-          const orderId = `live-sell-${symbol}-${Date.now()}`;
-          await client.placeMarketSell(orderId, `${symbol}-USDC`, String(parseFloat(pos.qty.toFixed(8))));
-          setLivePositions(p => { const n = { ...p }; delete n[symbol]; return n; });
-          log.push(`SOLD ${symbol}: ${reason}`);
-          setStatus(`SOLD ${symbol} — ${reason}`, true);
-        } catch (e) {
-          log.push(`SELL ${symbol} FAILED: ${e.message}`);
-          setStatus(`Sell ${symbol} failed: ${e.message}`, false);
-        }
-      }
-    }
-
-    // Check entries
-    const openPositions = Object.keys(livePositions).length;
-    if (openPositions < MAX_POSITIONS) {
-      // Find USD/USDC balance from accounts
-      const usdAccount = accounts.find(a =>
-        a.currency === 'USD' || a.currency === 'USDC' || a.currency === 'USDT'
-      );
-      const availableCash = parseFloat(usdAccount?.available_balance?.value ?? 0);
-      const spend = availableCash * POSITION_SIZE;
-
-      if (spend >= 5) {
-        const candidates = Object.entries(freshScores)
-          .filter(([sym, rs]) => rs?.signal === 'BUY TRIGGERED' && !livePositions[sym] && (freshPrices[sym] ?? 0) > 0)
-          .sort((a, b) => (b[1]?.score ?? 0) - (a[1]?.score ?? 0));
-
-        for (const [symbol, rs] of candidates) {
-          if (Object.keys(livePositions).length >= MAX_POSITIONS) break;
-          try {
-            const orderId = `live-buy-${symbol}-${Date.now()}`;
-            await client.placeMarketBuy(orderId, `${symbol}-USDC`, String(spend.toFixed(2)));
-            const price = freshPrices[symbol];
-            const qty = spend / price;
-            setLivePositions(p => ({
-              ...p,
-              [symbol]: { qty, entryPrice: price, entryTime: now, entryScore: rs?.score ?? 0 },
-            }));
-            log.push(`BOUGHT ${symbol} ~${formatUSD(spend)} — Score ${rs?.score}`);
-            setStatus(`BUY order placed: ${symbol} (${formatUSD(spend)})`, true);
-          } catch (e) {
-            log.push(`BUY ${symbol} FAILED: ${e.message}`);
-            setStatus(`Buy ${symbol} failed: ${e.message}`, false);
-          }
-        }
-      }
-    }
-
-    if (log.length) {
-      setAutoLog(prev => [...log.map(m => ({ msg: m, time: now })), ...prev].slice(0, 30));
-      fetchAccounts();
-      fetchOrders();
-    }
-  }, [client, livePositions, prices, accounts, fetchAccounts, fetchOrders]);
 
   // Periodic refresh
   useEffect(() => {
     if (!keys) return;
-    const timer = setInterval(async () => {
-      const { freshPrices, freshScores } = await refreshPrices();
-      if (autoRef.current) runAI(freshPrices, freshScores);
-    }, PRICE_REFRESH);
+    const timer = setInterval(() => { refreshPrices(); }, PRICE_REFRESH);
     return () => clearInterval(timer);
-  }, [keys, refreshPrices, runAI]);
+  }, [keys, refreshPrices]);
 
   // Initial load
-  useEffect(() => {
+  const initialLoad = useEffectEvent(() => {
     if (keys) { refreshPrices(); fetchOrders(); }
+  });
+  useEffect(() => {
+    const t = setTimeout(initialLoad, 0);
+    return () => clearTimeout(t);
   }, []);
 
   // Manual place market buy
@@ -357,33 +268,20 @@ export default function LiveTrading() {
     }
   }
 
-  const usdBalance = accounts.find(a => a.currency === 'USD' || a.currency === 'USDC' || a.currency === 'USDT');
-
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
-      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <img src="/Website/logo.svg" alt="" className="w-6 h-6 rounded-full flex-shrink-0 hidden sm:block" />
-            <Link to="/" className="text-[#8b949e] hover:text-white transition-colors text-sm">← Dashboard</Link>
-            <span className="text-[#30363d]">|</span>
-            <span className="font-semibold text-white text-sm">Live Trading</span>
-            <span className="px-2 py-0.5 rounded bg-red-500/15 text-red-400 text-[10px] font-semibold border border-red-500/30">REAL MONEY</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => refreshPrices().then(({ freshPrices, freshScores }) => runAI(freshPrices, freshScores))}
-              disabled={refreshing || !keys}
-              className="px-3 py-1.5 rounded-md text-xs bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition-colors disabled:opacity-40"
-            >
-              {refreshing ? 'Refreshing…' : 'Refresh'}
-            </button>
-            <Link to="/paper" className="px-3 py-1.5 rounded-md text-xs bg-blue-500/15 border border-blue-500/30 text-blue-300 hover:bg-blue-500/25 transition-colors">
-              Paper Trading
-            </Link>
-          </div>
-        </div>
-      </header>
+      <AppNav
+        badge={{ text: 'REAL MONEY', tone: 'red' }}
+        actions={(
+          <button
+            onClick={() => refreshPrices()}
+            disabled={refreshing || !keys}
+            className="px-3 py-1.5 rounded-md text-xs bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white transition-colors disabled:opacity-40"
+          >
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        )}
+      />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
@@ -391,7 +289,7 @@ export default function LiveTrading() {
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 flex gap-3">
           <span className="text-red-400 text-lg flex-shrink-0">⚠</span>
           <div className="text-sm text-red-300">
-            <strong>This page places real orders on Coinbase using your API key.</strong> Only enable auto-trading with money you can afford to lose.
+            <strong>This page places real orders on Coinbase using your API key.</strong> Only trade with money you can afford to lose.
             Your API keys are stored in <em>this browser's localStorage only</em> and are never sent to any server other than <code className="text-red-200">api.coinbase.com</code>.
           </div>
         </div>
@@ -615,38 +513,18 @@ export default function LiveTrading() {
               )}
             </div>
 
-            {/* Auto-trading controls */}
-            <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-white flex items-center gap-2">
-                  AI Auto-Trading
-                  {autoEnabled && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-orange-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse inline-block" />
-                      LIVE — real orders
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-[#484f58] mt-0.5">
-                  BUY TRIGGERED → 15% of cash · Stop {(STOP_LOSS*100).toFixed(0)}% · Target +{(TAKE_PROFIT*100).toFixed(0)}% · Max {MAX_POSITIONS} positions
-                </div>
+            {/* Automated trading removed */}
+            <Card className="p-4">
+              <div className="text-sm font-semibold text-white">Automated live trading is switched off</div>
+              <p className="text-[11px] text-[#8b949e] mt-1 leading-relaxed">
+                The old auto-trader used the scalping strategy that lost money to fees, so it has been removed. Live trading here is manual only.
+                The Trading Desk is proving its approach on the paper account first — check its record on the Portfolio page before risking real money.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <Link to="/desk" className={BTN}>Trading Desk</Link>
+                <Link to="/paper" className={BTN}>Portfolio</Link>
               </div>
-              <button
-                onClick={() => {
-                  if (!autoEnabled) {
-                    if (!confirm('Enable AI auto-trading with REAL money on Coinbase? The AI will place market orders automatically.')) return;
-                  }
-                  setAutoEnabled(v => !v);
-                }}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  autoEnabled
-                    ? 'bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25'
-                    : 'bg-orange-500/15 border border-orange-500/30 text-orange-400 hover:bg-orange-500/25'
-                }`}
-              >
-                {autoEnabled ? 'Stop AI' : 'Start AI'}
-              </button>
-            </div>
+            </Card>
 
             {/* Tracked positions */}
             <div className="rounded-xl border border-[#30363d] bg-[#161b22] overflow-hidden">
@@ -731,18 +609,6 @@ export default function LiveTrading() {
                 </div>
               )}
             </div>
-
-            {/* AI activity log */}
-            {autoLog.length > 0 && (
-              <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4">
-                <div className="text-xs font-semibold text-[#484f58] uppercase tracking-widest mb-2">AI Activity</div>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {autoLog.map((entry, i) => (
-                    <div key={i} className="text-[11px] text-[#8b949e] font-mono">{entry.msg}</div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Coinbase order history */}
             <div className="rounded-xl border border-[#30363d] bg-[#161b22] overflow-hidden">

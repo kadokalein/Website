@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, Cell,
 } from 'recharts';
 import { supabase, isSupabaseConfigured, ADMIN_EMAIL } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import AppNav from '../components/AppNav';
 
 // ─── demo data shown when Supabase is not yet configured ────────────────────
 const DEMO_SUBSCRIBERS = [
@@ -150,8 +150,7 @@ function AdminContent({ subscribers, payments }) {
 
 export default function Admin() {
   const { user, loading } = useAuth();
-  const [data, setData] = useState(null);
-  const [fetching, setFetching] = useState(false);
+  const [fetched, setFetched] = useState(null);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [loginErr, setLoginErr] = useState('');
   const [loginBusy, setLoginBusy] = useState(false);
@@ -160,16 +159,17 @@ export default function Admin() {
   const isAdmin = user?.email === ADMIN_EMAIL;
   const isDemo = !isSupabaseConfigured;
 
+  // Demo data needs no fetch; real data is loaded once the admin is signed in.
+  const data = isAdmin && isDemo ? { subscribers: DEMO_SUBSCRIBERS, payments: DEMO_PAYMENTS } : fetched;
+  const fetching = isAdmin && !isDemo && fetched === null;
+
   useEffect(() => {
-    if (!isAdmin) return;
-    if (isDemo) { setData({ subscribers: DEMO_SUBSCRIBERS, payments: DEMO_PAYMENTS }); return; }
-    setFetching(true);
+    if (!isAdmin || isDemo || !supabase) return;
     Promise.all([
       supabase.from('subscribers').select('*'),
       supabase.from('payments').select('*').order('paid_at'),
     ]).then(([s, p]) => {
-      setData({ subscribers: s.data || [], payments: p.data || [] });
-      setFetching(false);
+      setFetched({ subscribers: s.data || [], payments: p.data || [] });
     });
   }, [isAdmin, isDemo]);
 
@@ -177,6 +177,7 @@ export default function Admin() {
     e.preventDefault();
     setLoginErr(''); setLoginInfo('');
     if (loginForm.email !== ADMIN_EMAIL) { setLoginErr('Access denied: not the admin email.'); return; }
+    if (!supabase) { setLoginErr('Sign-in is not available: Supabase is not configured for this site.'); return; }
     setLoginBusy(true);
 
     const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email, password: loginForm.password });
@@ -206,32 +207,24 @@ export default function Admin() {
     setLoginBusy(false);
   }
 
-  async function handleSignOut() {
-    if (supabase) await supabase.auth.signOut();
-  }
-
   if (loading) return (
-    <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-[#30363d] border-t-[#58a6ff] rounded-full animate-spin" />
+    <div className="min-h-screen bg-[#0d1117] text-white">
+      <AppNav />
+      <div className="flex items-center justify-center py-24">
+        <div className="w-6 h-6 border-2 border-[#30363d] border-t-[#58a6ff] rounded-full animate-spin" />
+      </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
-      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <img src="/Website/logo.svg" alt="" className="w-6 h-6 rounded-full" />
-            <Link to="/" className="text-[#8b949e] hover:text-white text-sm">← Dashboard</Link>
-            <span className="text-[#30363d]">|</span>
-            <span className="text-white font-semibold text-sm">Admin</span>
-            {isDemo && <span className="text-[10px] bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 rounded px-1.5 py-0.5">Demo data</span>}
-          </div>
-          {isAdmin && <button onClick={handleSignOut} className="text-xs text-[#8b949e] hover:text-white">Sign out</button>}
-        </div>
-      </header>
+      <AppNav />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="flex items-center gap-2 mb-6">
+          <h1 className="text-white font-semibold text-sm">Admin</h1>
+          {isDemo && <span className="text-[10px] bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 rounded px-1.5 py-0.5">Demo data</span>}
+        </div>
         {!isAdmin ? (
           /* Admin login */
           <div className="max-w-sm mx-auto">

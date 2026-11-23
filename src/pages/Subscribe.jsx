@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useEffectEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase, isSupabaseConfigured, STRIPE_PAYMENT_LINK, ADMIN_EMAIL } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import AppNav from '../components/AppNav';
 
 const COUNTRIES = [
   'United States','United Kingdom','Canada','Australia','Germany','France','Japan',
@@ -19,7 +20,6 @@ const BTN_SOCIAL = 'w-full py-2.5 rounded-lg border border-[#30363d] bg-[#21262d
 
 export default function Subscribe() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState(searchParams.get('mode') === 'signin' ? 'signin' : 'signup');
   const [form, setForm] = useState({ name: '', email: '', password: '', country: '' });
@@ -29,10 +29,11 @@ export default function Subscribe() {
   const [subStatus, setSubStatus] = useState(null);
 
   // After Stripe redirect with ?payment_success=1
+  const onPaymentReturn = useEffectEvent((u) => { activateSubscription(u); });
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
     if (params.get('payment_success') === '1' && user) {
-      activateSubscription(user);
+      onPaymentReturn(user);
     }
   }, [user]);
 
@@ -123,7 +124,6 @@ export default function Subscribe() {
 
     // Redirect to Stripe Payment Link
     if (STRIPE_PAYMENT_LINK) {
-      const successUrl = `${window.location.origin}${window.location.pathname}#/subscribe?payment_success=1`;
       const params = new URLSearchParams({
         client_reference_id: user.id,
         prefilled_email: user.email,
@@ -137,31 +137,18 @@ export default function Subscribe() {
     setBusy(false);
   }
 
-  async function handleSignOut() {
-    if (supabase) await supabase.auth.signOut();
-  }
-
   if (loading) return (
-    <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-[#30363d] border-t-[#58a6ff] rounded-full animate-spin" />
+    <div className="min-h-screen bg-[#0d1117] text-white">
+      <AppNav />
+      <div className="flex items-center justify-center py-24">
+        <div className="w-6 h-6 border-2 border-[#30363d] border-t-[#58a6ff] rounded-full animate-spin" />
+      </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
-      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/Website/logo.svg" alt="" className="w-6 h-6 rounded-full" />
-            <Link to="/" className="text-[#8b949e] hover:text-white text-sm">← Dashboard</Link>
-          </div>
-          {user && (
-            <button onClick={handleSignOut} className="text-xs text-[#8b949e] hover:text-white">
-              Sign out
-            </button>
-          )}
-        </div>
-      </header>
+      <AppNav />
 
       <main className="max-w-md mx-auto px-4 py-12">
 
@@ -335,13 +322,6 @@ export default function Subscribe() {
               }
             </div>
           )}
-        </div>
-
-        {/* Admin shortcut */}
-        <div className="text-center mt-6">
-          <Link to="/admin" className="text-xs text-[#484f58] hover:text-[#8b949e] transition-colors">
-            Admin access →
-          </Link>
         </div>
       </main>
     </div>

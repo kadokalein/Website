@@ -1,5 +1,6 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { WatchlistProvider } from './context/WatchlistContext';
+import { DeskProvider } from './desk/DeskProvider';
 import Dashboard from './pages/Dashboard';
 import CoinDetail from './pages/CoinDetail';
 import Calculator from './pages/Calculator';
@@ -9,11 +10,13 @@ import ChartPage from './pages/ChartPage';
 import Watchlist from './pages/Watchlist';
 import PaperTrading from './pages/PaperTrading';
 import LiveTrading from './pages/LiveTrading';
+import TradingDesk from './pages/TradingDesk';
 
 export default function App() {
   return (
     <HashRouter>
       <WatchlistProvider>
+        <DeskProvider>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/coin/:symbol" element={<CoinDetail />} />
@@ -25,7 +28,10 @@ export default function App() {
           <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/paper" element={<PaperTrading />} />
           <Route path="/live" element={<LiveTrading />} />
+          <Route path="/desk" element={<TradingDesk />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </DeskProvider>
       </WatchlistProvider>
     </HashRouter>
   );
