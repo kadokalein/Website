@@ -21,24 +21,20 @@ function todaysCall(last, savedCount) {
   const brief = last.brief ?? {};
   const analyses = last.analyses ?? [];
   const approved = analyses.filter((a) => a.decision === 'BUY' || a.decision === 'SHORT');
-  if (approved.length > 0) {
-    return { tone: 'green', label: approved.length === 1 ? 'Trade approved' : `${approved.length} trades approved`, approved };
-  }
+  if (approved.length > 0) return { approved };
   const open = (last.scouts ?? []).filter((s) => s.verdict === 'OPEN' && !s.held);
-  if (open.length > 0 && analyses.length > 0) {
-    return { tone: 'yellow', label: 'No trade today', text: 'Candidates were found but none passed the Analyst.' };
-  }
+  if (open.length > 0 && analyses.length > 0) return { text: 'Candidates were found but none passed the Analyst.' };
   const phase = brief.regime?.phase;
   if (phase === 'bear' || phase === 'correction' || !brief.allowLong) {
     const why = brief.notes?.[0] ?? 'The Briefing is not allowing new trades right now.';
-    return { tone: 'grey', label: 'No trade today', text: `${why} Staying in cash is the plan working, not the bot being idle.` };
+    return { text: `No trade today. ${why} Staying in cash is the plan working, not the bot being idle.` };
   }
-  const saved = savedCount === 0 ? 'Nothing is close enough to save for later either.'
+  const saved = savedCount === 0 ? 'No coins are saved for later either.'
     : savedCount === 1 ? '1 coin is saved for later.' : `${savedCount} coins are saved for later.`;
-  return { tone: 'grey', label: 'No trade today', text: `Nothing has closed through its line. ${saved}` };
+  return { text: `No trade today — nothing has closed through its line. ${saved}` };
 }
 
-function CallBanner({ call, auto }) {
+function CallBanner({ call, time, auto }) {
   if (!call) {
     return (
       <Card className="p-4 sm:p-5">
@@ -51,25 +47,28 @@ function CallBanner({ call, auto }) {
     );
   }
   return (
-    <Card className={`p-4 sm:p-5 ${call.tone === 'green' ? 'border-green-500/40' : ''}`}>
+    <Card className={`p-4 sm:p-5 ${call.approved ? 'border-green-500/40' : ''}`}>
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <SectionLabel>Today&apos;s call</SectionLabel>
-        <Badge tone={call.tone}>{call.label}</Badge>
+        <span className="text-[11px] text-[#484f58]">as of {timeAgo(time)}</span>
         {!auto && <Badge tone="yellow" title="The desk keeps analysing and managing exits but opens no new trades">Auto paused</Badge>}
       </div>
       {call.approved ? (
         <ul className="space-y-3">
           {call.approved.map((a) => (
             <li key={a.sym}>
-              <p className="text-base sm:text-lg text-white leading-snug">Trade approved: {a.summary}</p>
+              <p className="text-base sm:text-lg text-white leading-snug">
+                <span className="inline-block align-middle mr-2"><Badge tone={a.decision === 'SHORT' ? 'red' : 'green'}>{a.decision}</Badge></span>
+                Trade approved: {a.summary}
+              </p>
               {a.note && <p className="text-sm text-[#8b949e] mt-1">{a.note}</p>}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-base sm:text-lg text-white leading-snug">{call.label === 'No trade today' ? 'No trade today. ' : ''}{call.text}</p>
+        <p className="text-base sm:text-lg text-white leading-snug">{call.text}</p>
       )}
-      <p className="text-[11px] text-[#484f58] mt-3">Paper trades only, in a simulated $5,000 account that charges real Coinbase fees.</p>
+      <p className="text-[11px] text-[#484f58] mt-3">Paper trades only, in a simulated $5,000 account that charges real Coinbase fees and slippage.</p>
     </Card>
   );
 }
@@ -128,11 +127,11 @@ export default function TradingDesk() {
         </div>
 
         <PipelineStrip targets={SECTIONS} />
-        <CallBanner call={call} auto={auto} />
+        <CallBanner call={call} time={state.last?.time} auto={auto} />
 
-        <section id={SECTIONS.briefing} className="scroll-mt-32"><BriefingPanel /></section>
-        <section id={SECTIONS.scout} className="scroll-mt-32"><ScoutBoard /></section>
-        <section id={SECTIONS.analyst} className="scroll-mt-32"><AnalystReports /></section>
+        <section id={SECTIONS.briefing} className="scroll-mt-36 lg:scroll-mt-20"><BriefingPanel /></section>
+        <section id={SECTIONS.scout} className="scroll-mt-36 lg:scroll-mt-20"><ScoutBoard /></section>
+        <section id={SECTIONS.analyst} className="scroll-mt-36 lg:scroll-mt-20"><AnalystReports /></section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
           <Activity log={state.log ?? []} />

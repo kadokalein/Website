@@ -189,6 +189,7 @@ export default function CandleChart({ candles, priceLines, segments, height = 36
       segmentSeriesRefs.current = [];
       barCountRef.current = 0;
       datasetRef.current = '';
+      needsRangeRef.current = false;
     };
   }, []);
 
