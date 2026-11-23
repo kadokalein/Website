@@ -1,0 +1,91 @@
+name: Deploy site to GitHub Pages
+
+# Builds the whole Vite site (the React app plus everything in public/, which
+# includes the Money Tracker at public/money/) and publishes dist/ to the
+# gh-pages branch. GitHub Pages serves that branch at /Website/
+# (Settings -> Pages -> Source: "Deploy from a branch", gh-pages, / (root)),
+# so no Pages setting has to change for this workflow to work.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed to push the build to the gh-pages branch
+
+# Never run two deploys at once; let a running one finish instead of cancelling
+# it halfway, and only keep the newest queued run.
+concurrency:
+  group: deploy-gh-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # The live site is always built from main. A manual run started from any
+    # other branch is skipped instead of publishing unmerged work.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          # The install and build steps do not need push access.
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Optional. All four end up in the public JavaScript bundle, so only
+          # browser-safe values belong here (never the Supabase service_role
+          # key or a Stripe secret key). Add them under Settings -> Secrets and
+          # variables -> Actions, as variables or as secrets with these names.
+          # Left unset, the site builds in demo mode with sign-in disabled.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PAYMENT_LINK: ${{ vars.VITE_STRIPE_PAYMENT_LINK || secrets.VITE_STRIPE_PAYMENT_LINK }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY || secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+
+      - name: Check the build output
+        run: |
+          test -f dist/index.html
+          test -f dist/money/index.html
+
+      - name: Check out gh-pages
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Publish dist/ to gh-pages
+        working-directory: gh-pages
+        run: |
+          # Replace the branch contents with this build, as one new commit on
+          # top of the existing history (no force-push, so a bad deploy can be
+          # undone by reverting that commit).
+          git rm -r -q --ignore-unmatch .
+          cp -a ../dist/. .
+          # Tells Pages to serve the files as they are, without running Jekyll.
+          touch .nojekyll
+          git add --all
+
+          if git diff --cached --quiet; then
+            echo "Build output is identical to what gh-pages already serves; nothing to publish." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "Deploy ${GITHUB_SHA}"
+          git push origin HEAD:gh-pages
+
+          echo "Pushed the build of ${GITHUB_SHA} to gh-pages. GitHub Pages picks it up in its own \"pages build and deployment\" run, usually within a minute or two." >> "$GITHUB_STEP_SUMMARY"
