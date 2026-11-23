@@ -121,7 +121,6 @@ export default function CandleChart({ candles, priceLines, segments, height = 36
           textColor: '#8b949e',
           fontFamily: 'ui-monospace, SFMono-Regular, monospace',
           fontSize: 11,
-          attributionLogo: false,
         },
         grid: {
           vertLines: { color: '#1c2128' },

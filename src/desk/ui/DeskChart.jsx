@@ -76,7 +76,8 @@ function buildOverlays({ frame, read, shown, plan, position }) {
   const priceLines = [];
   const segments = [];
   const legend = [];
-  const price = shown.length ? shown[shown.length - 1].close : null;
+  if (!shown.length) return { priceLines, segments, legend }; // nothing on screen, nothing to list
+  const price = shown[shown.length - 1].close;
 
   if (read) {
     const d = read.d1;

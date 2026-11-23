@@ -16,7 +16,7 @@ const LOG_DOT = { win: 'bg-[#3fb950]', loss: 'bg-[#f85149]', open: 'bg-[#58a6ff]
 const LOG_LABEL = { win: 'Winning trade', loss: 'Losing trade', open: 'Trade opened', watch: 'Saved for later', brief: 'Briefing' };
 
 // The desk's bottom line in plain language, from the last completed run.
-function todaysCall(last, savedCount) {
+function todaysCall(last, savedCount, holding) {
   if (!last) return null;
   const brief = last.brief ?? {};
   const analyses = last.analyses ?? [];
@@ -26,8 +26,11 @@ function todaysCall(last, savedCount) {
   if (open.length > 0 && analyses.length > 0) return { text: 'Candidates were found but none passed the Analyst.' };
   const phase = brief.regime?.phase;
   if (phase === 'bear' || phase === 'correction' || !brief.allowLong) {
-    const why = brief.notes?.[0] ?? 'The Briefing is not allowing new trades right now.';
-    return { text: `No trade today. ${why} Staying in cash is the plan working, not the bot being idle.` };
+    // In an uptrend the first note says longs are allowed; the veto that overrode it comes later.
+    const notes = brief.notes ?? [];
+    const why = (phase === 'bull' ? notes.find((n) => /holding off/i.test(n)) : notes[0]) ?? 'The Briefing is not allowing new trades right now.';
+    const plan = holding ? 'Opening nothing new' : 'Staying in cash';
+    return { text: `No trade today. ${why} ${plan} is the plan working, not the bot being idle.` };
   }
   const saved = savedCount === 0 ? 'No coins are saved for later either.'
     : savedCount === 1 ? '1 coin is saved for later.' : `${savedCount} coins are saved for later.`;
@@ -101,7 +104,8 @@ export default function TradingDesk() {
   const { state, status, actions } = useDesk();
   const auto = !!state.settings?.auto;
   const savedCount = useMemo(() => Object.keys(state.watch ?? {}).length, [state.watch]);
-  const call = useMemo(() => todaysCall(state.last, savedCount), [state.last, savedCount]);
+  const holding = useMemo(() => Object.keys(state.account?.positions ?? {}).length > 0, [state.account]);
+  const call = useMemo(() => todaysCall(state.last, savedCount, holding), [state.last, savedCount, holding]);
 
   const navActions = (
     <>
