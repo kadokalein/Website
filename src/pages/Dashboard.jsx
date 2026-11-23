@@ -1,27 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { COINS } from '../constants';
-import { useAuth } from '../hooks/useAuth';
-import { ADMIN_EMAIL, supabase } from '../lib/supabase';
 import { useCryptoScanner } from '../hooks/useCryptoScanner';
 import CoinCard from '../components/CoinCard';
 import TimeframeToggle from '../components/TimeframeToggle';
+import AppNav from '../components/AppNav';
+import { Card, BTN } from '../desk/ui/atoms';
+
 export default function Dashboard() {
   const [timeframe, setTimeframe] = useState('4H');
   const [mode, setMode] = useState('scanner'); // 'scanner' | 'watchlist'
-  const { user } = useAuth();
-
-  const isAdmin = user?.email === ADMIN_EMAIL;
-  const displayName = isAdmin
-    ? 'Administrator'
-    : (user?.user_metadata?.name || user?.email?.split('@')[0] || '');
-
   const { topCoins, scanning, scanned, total, lastUpdated: scanUpdated, refresh: rescan, fetchErrors, lastError } =
     useCryptoScanner(timeframe, 6);
-
-  async function handleSignOut() {
-    if (supabase) await supabase.auth.signOut();
-  }
 
   // If scan completed with 0 results (all API calls failed), fall back to the core 5 coins
   const scanFailed = !scanning && topCoins.length === 0 && scanned > 0;
@@ -31,18 +21,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
-      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        {/* Mobile: two rows. Desktop: single row — Logo left | tabs center | auth right */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
-
-          {/* Logo + Title — left */}
-          <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
-            <img src="/Website/logo.svg" alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
-            <span className="font-semibold text-white text-sm sm:text-base truncate">Promethea Programs</span>
-          </div>
-
-          {/* Tabs — centered (grows to fill middle) */}
-          <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:flex-1 sm:justify-center flex-wrap">
+      <AppNav
+        subRow={
+          <>
             <TimeframeToggle value={timeframe} onChange={setTimeframe} />
             <div className="w-px h-5 bg-[#30363d] flex-shrink-0 hidden sm:block" />
             <button
@@ -53,82 +34,21 @@ export default function Dashboard() {
                   : 'text-orange-400 bg-orange-500/10 border border-orange-500/25 hover:border-orange-400/50'
               }`}
             >
-              Bitcoin
+              Core 5
             </button>
-            <Link
-              to="/watchlist"
-              className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-yellow-900 bg-yellow-200/80 hover:bg-yellow-200 border border-yellow-300/40"
-            >
-              ☆ Watch
-            </Link>
-            <Link
-              to="/paper"
-              className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-blue-300 bg-blue-500/10 border border-blue-500/25 hover:border-blue-400/50"
-            >
-              Paper
-            </Link>
-            <Link
-              to="/live"
-              className="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 text-orange-300 bg-orange-500/10 border border-orange-500/25 hover:border-orange-400/50"
-            >
-              Live
-            </Link>
-          </div>
-
-          {/* Auth — right */}
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            {user ? (
-              <>
-                <span className="text-sm text-[#8b949e]">
-                  <span className={isAdmin ? 'text-[#bc8cff] font-semibold' : 'text-white font-semibold'}>{displayName}</span>
-                </span>
-                {isAdmin && (
-                  <Link to="/admin"
-                    className="px-3 py-1.5 rounded-lg bg-[#6e40c9] hover:bg-[#7d4fd4] text-white text-xs font-medium transition-colors">
-                    Admin
-                  </Link>
-                )}
-                <button onClick={handleSignOut}
-                  className="px-3 py-1.5 rounded-lg bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-white text-xs font-medium transition-colors">
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/subscribe?mode=signin"
-                  className="px-3 py-1.5 rounded-lg bg-[#1f6feb] hover:bg-[#388bfd] text-white text-sm font-medium transition-colors">
-                  Login
-                </Link>
-                <Link to="/subscribe"
-                  className="px-3 py-1.5 rounded-lg bg-[#238636] hover:bg-[#2ea043] text-white text-sm font-semibold transition-colors">
-                  Subscribe
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Auth — mobile only (below tabs row handled by wrapping) */}
-          <div className="flex sm:hidden items-center gap-2 mt-2 flex-shrink-0">
-            {user ? (
-              <>
-                <span className={`text-sm font-semibold ${isAdmin ? 'text-[#bc8cff]' : 'text-white'}`}>{displayName}</span>
-                {isAdmin && (
-                  <Link to="/admin" className="px-3 py-1.5 rounded-lg bg-[#6e40c9] text-white text-xs font-medium">Admin</Link>
-                )}
-                <button onClick={handleSignOut} className="px-3 py-1.5 rounded-lg bg-[#21262d] border border-[#30363d] text-white text-xs font-medium">Sign out</button>
-              </>
-            ) : (
-              <>
-                <Link to="/subscribe?mode=signin" className="px-3 py-1.5 rounded-lg bg-[#1f6feb] text-white text-sm font-medium">Login</Link>
-                <Link to="/subscribe" className="px-3 py-1.5 rounded-lg bg-[#238636] text-white text-sm font-semibold">Subscribe</Link>
-              </>
-            )}
-          </div>
-
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="w-full px-4 sm:px-6 py-6">
+
+        {/* Trading Desk call-out */}
+        <Card className="mb-5 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm text-[#8b949e]">
+            The scanner shows which coins look interesting right now. The Trading Desk decides whether any of them is actually worth a trade — and usually the answer is no.
+          </p>
+          <Link to="/desk" className={`${BTN} self-start sm:self-auto flex-shrink-0 whitespace-nowrap`}>Open Trading Desk</Link>
+        </Card>
 
         {/* Scanner status banner */}
         {mode === 'scanner' && (
@@ -237,7 +157,7 @@ export default function Dashboard() {
               <div className="text-yellow-400">🟡 WATCH — score 60–79, volume present</div>
               <div className="text-[#8b949e]">⚪ LOW QUALITY — score 40–59</div>
               <div className="text-[#484f58]">⬛ NO SIGNAL — score &lt;40</div>
-              <div className="pt-1 text-orange-400/80">Tap <span className="font-semibold">Bitcoin</span> for BTC · ETH · SOL · XRP · DOGE</div>
+              <div className="pt-1 text-orange-400/80">Tap <span className="font-semibold">Core 5</span> for BTC · ETH · SOL · XRP · DOGE</div>
             </div>
           </div>
         </div>

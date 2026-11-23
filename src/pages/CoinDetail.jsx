@@ -8,6 +8,8 @@ import MetricRow from '../components/MetricRow';
 import EntrySignal from '../components/EntrySignal';
 import TimeframeToggle from '../components/TimeframeToggle';
 import WatchButton from '../components/WatchButton';
+import AppNav from '../components/AppNav';
+import { CoinChip, BTN } from '../desk/ui/atoms';
 
 const MACD_COLOR = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-yellow-400' };
 
@@ -36,10 +38,11 @@ export default function CoinDetail() {
 
   if (!coin) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-[#0d1117] text-white">
+        <AppNav />
+        <div className="text-center py-24 px-4">
           <div className="text-[#8b949e] mb-4">Unknown coin: {symbol}</div>
-          <Link to="/" className="text-[#58a6ff] hover:underline">← Back to dashboard</Link>
+          <Link to="/" className="text-[#58a6ff] hover:underline">Browse coins in the scanner</Link>
         </div>
       </div>
     );
@@ -47,37 +50,29 @@ export default function CoinDetail() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <img src="/Website/logo.svg" alt="Promethea Programs" className="w-6 h-6 rounded-full flex-shrink-0 hidden sm:block" />
-            <Link to="/" className="text-[#8b949e] hover:text-white transition-colors text-sm flex items-center gap-1.5">
-              ← Dashboard
-            </Link>
-            <span className="text-[#30363d]">|</span>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{ backgroundColor: coin.color + '25', color: coin.color }}>
-                {coin.symbol.charAt(0)}
-              </div>
-              <span className="font-semibold text-white">{coin.symbol}</span>
-              <span className="text-[#8b949e] text-sm hidden sm:block">{coin.name}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+      <AppNav
+        actions={
+          <>
             <WatchButton symbol={symbol} />
             <Link
               to={`/calculator/${symbol}`}
-              className="px-3 py-1.5 rounded-md bg-[#21262d] border border-[#30363d] text-sm text-[#8b949e] hover:text-white hover:border-[#58a6ff]/50 transition-all"
+              className="px-3 py-1.5 rounded-md bg-[#21262d] border border-[#30363d] text-sm text-[#8b949e] hover:text-white hover:border-[#58a6ff]/50 transition-all whitespace-nowrap"
             >
               Calculator →
             </Link>
-          </div>
-        </div>
-      </header>
+            <Link to="/desk" className={`${BTN} whitespace-nowrap`}>Trading Desk</Link>
+          </>
+        }
+      />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+
+        {/* Coin heading */}
+        <h1 className="flex items-center gap-2 min-w-0">
+          <CoinChip sym={coin.symbol} />
+          <span className="font-semibold text-white">{coin.symbol}</span>
+          <span className="text-[#8b949e] text-sm truncate">{coin.name}</span>
+        </h1>
 
         {/* Price + badge row */}
         <div className="flex flex-wrap items-start justify-between gap-4">

@@ -5,6 +5,7 @@ import { useWatchlist } from '../context/WatchlistContext';
 import { findCoin } from '../constants';
 import CoinCard from '../components/CoinCard';
 import TimeframeToggle from '../components/TimeframeToggle';
+import AppNav from '../components/AppNav';
 
 export default function Watchlist() {
   const { user, loading: authLoading } = useAuth();
@@ -14,8 +15,11 @@ export default function Watchlist() {
   // Still determining auth state
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#30363d] border-t-[#58a6ff] rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0d1117] text-white">
+        <AppNav />
+        <div className="flex items-center justify-center py-24">
+          <div className="w-6 h-6 border-2 border-[#30363d] border-t-[#58a6ff] rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
@@ -24,14 +28,7 @@ export default function Watchlist() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0d1117] text-white">
-        <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src="/Website/logo.svg" alt="" className="w-6 h-6 rounded-full hidden sm:block" />
-              <Link to="/" className="text-[#8b949e] hover:text-white text-sm">← Dashboard</Link>
-            </div>
-          </div>
-        </header>
+        <AppNav />
         <main className="max-w-md mx-auto px-4 py-24 text-center">
           <div className="text-5xl mb-6">★</div>
           <h1 className="text-2xl font-bold text-white mb-3">Your Watchlist</h1>
@@ -52,9 +49,6 @@ export default function Watchlist() {
               Create account
             </Link>
           </div>
-          <Link to="/" className="block mt-6 text-xs text-[#484f58] hover:text-[#8b949e] transition-colors">
-            ← Back to dashboard
-          </Link>
         </main>
       </div>
     );
@@ -64,24 +58,15 @@ export default function Watchlist() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
-      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 mb-2">
-          <div className="flex items-center gap-3">
-            <img src="/Website/logo.svg" alt="" className="w-6 h-6 rounded-full hidden sm:block" />
-            <Link to="/" className="text-[#8b949e] hover:text-white text-sm">← Dashboard</Link>
-            <span className="text-[#30363d]">|</span>
-            <span className="text-white font-semibold text-sm flex items-center gap-1.5">
-              <span className="text-yellow-300">★</span> Watchlist
-            </span>
-          </div>
-          <span className="text-xs text-[#484f58]">{coins.length} coin{coins.length !== 1 ? 's' : ''}</span>
-        </div>
-        <div className="max-w-7xl mx-auto">
-          <TimeframeToggle value={timeframe} onChange={setTimeframe} />
-        </div>
-      </header>
+      <AppNav subRow={<TimeframeToggle value={timeframe} onChange={setTimeframe} />} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h1 className="text-white font-semibold text-sm flex items-center gap-1.5">
+            <span className="text-yellow-300">★</span> Watchlist
+          </h1>
+          <span className="text-xs text-[#484f58]">{coins.length} coin{coins.length !== 1 ? 's' : ''}</span>
+        </div>
         {listLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (

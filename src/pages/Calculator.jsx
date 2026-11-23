@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCoinData } from '../hooks/useCryptoData';
-import { COINS } from '../constants';
+import { COINS, findCoin } from '../constants';
 import PriceChart from '../components/PriceChart';
+import AppNav from '../components/AppNav';
 
 // ── Formatters ──────────────────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ function assessSignals(data, buyPrice) {
 
 // ── Target row ───────────────────────────────────────────────────────────────
 
-function TargetRow({ target, currentPrice, isEntry }) {
+function TargetRow({ target, currentPrice }) {
   const isStop = target.label === 'Stop Loss';
   const isEntry2 = target.label === 'Break-even';
   const hit = !isStop && !isEntry2 && currentPrice >= target.price;
@@ -138,7 +139,7 @@ export default function Calculator() {
   const [buyPriceInput, setBuyPriceInput] = useState('');
   const [amountInput, setAmountInput] = useState('');
 
-  const coin = COINS.find((c) => c.symbol === selectedSymbol) ?? COINS[0];
+  const coin = findCoin(selectedSymbol) ?? { symbol: selectedSymbol, name: selectedSymbol, color: '#8b949e' };
   const { data, candles, loading } = useCoinData(selectedSymbol, '1D');
 
   const buyPrice   = parseFloat(buyPriceInput.replace(/,/g, '')) || null;
@@ -158,23 +159,18 @@ export default function Calculator() {
   return (
     <div className="min-h-screen bg-[#0d1117] text-white">
 
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="text-[#8b949e] hover:text-white text-sm">← Dashboard</Link>
-            <span className="text-[#30363d]">|</span>
-            <span className="font-semibold text-white">Trade Calculator</span>
-          </div>
+      <AppNav />
+
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h1 className="font-semibold text-white">Trade Calculator</h1>
           {paramSymbol && (
             <Link to={`/coin/${paramSymbol}`} className="text-xs text-[#8b949e] hover:text-white">
-              ← {paramSymbol} detail
+              {paramSymbol} detail
             </Link>
           )}
         </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-4">
 
         {/* Inputs card */}
         <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-5">
@@ -182,7 +178,9 @@ export default function Calculator() {
 
           {/* Coin selector */}
           <div className="mb-4">
-            <label className="block text-xs text-[#8b949e] mb-1.5">Coin</label>
+            <label className="block text-xs text-[#8b949e] mb-1.5">
+              Coin <span className="text-[#484f58]">· {coin.name}</span>
+            </label>
             <div className="flex flex-wrap gap-2">
               {COINS.map((c) => (
                 <button

@@ -52,12 +52,23 @@ const BEARISH = [
   ['delist', 2], ['investigation', 1], ['fear', 1], ['capitulat', 2], ['halts withdrawals', 3], ['depeg', 3],
 ];
 
+// Whole-word matching, so "bank" is not a "ban" and "issues" is not "sues".
+// Stems (e.g. "liquidat") match any ending; other words allow plural/tense endings.
+const STEMS = new Set(['liquidat', 'accumulat', 'insolven', 'capitulat', 'recover']);
+const toMatcher = ([w, v]) => {
+  const esc = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tail = STEMS.has(w) ? '' : '(?:s|es|ed|d|ing|ned)?(?![a-z])';
+  return [w, v, new RegExp(`(?:^|[^a-z])${esc}${tail}`)];
+};
+const BULL_RX = BULLISH.map(toMatcher);
+const BEAR_RX = BEARISH.map(toMatcher);
+
 export function scoreHeadline(title) {
-  const t = ` ${String(title ?? '').toLowerCase()} `;
+  const t = String(title ?? '').toLowerCase();
   let score = 0;
   const hits = [];
-  for (const [w, v] of BULLISH) if (t.includes(w)) { score += v; hits.push(`+${w}`); }
-  for (const [w, v] of BEARISH) if (t.includes(w)) { score -= v; hits.push(`-${w}`); }
+  for (const [w, v, rx] of BULL_RX) if (rx.test(t)) { score += v; hits.push(`+${w}`); }
+  for (const [w, v, rx] of BEAR_RX) if (rx.test(t)) { score -= v; hits.push(`-${w}`); }
   return { score: Math.max(-4, Math.min(4, score)), hits };
 }
 
