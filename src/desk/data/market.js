@@ -1,61 +1,93 @@
-// Coinbase public market data for the Trading Desk (no API key, CORS-open).
-// Prices come only from Coinbase so that what the desk sees is what could be traded.
+// Market data for the Trading Desk, through the shared rate-limited Coinbase client.
+//
+// Daily candles only change once a day, so the desk keeps a saved copy of each
+// coin's closed daily candles and asks Coinbase again only after a new day has
+// closed. Live prices come from one request for all coins. A failed refresh
+// falls back to the saved copy instead of stopping the desk.
 
-const BASE = 'https://api.coinbase.com/api/v3/brokerage/market/products';
-const PAGE = 350; // Coinbase's per-request candle cap
+import { getCandles, getPrices, TF_MS } from '../../lib/coinbaseMarket';
+import { closedOnly } from '../chart/read';
 
-export const TF = {
-  '1D': { granularity: 'ONE_DAY', ms: 86_400_000 },
-  '4H': { granularity: 'FOUR_HOUR', ms: 14_400_000 },
-};
+export const TF = { '1D': { ms: TF_MS['1D'] }, '4H': { ms: TF_MS['4H'] } };
 
-async function getJson(url, timeoutMs = 12_000) {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { signal: ctl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  } finally {
-    clearTimeout(timer);
-  }
+const STORE_KEY = 'pp_desk_daily_v1';
+const KEEP_DAILY = 260;      // enough for the 200-day average plus the chart window
+const DAY = TF_MS['1D'];
+
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null') ?? {}; } catch { return {}; }
 }
 
-// Candles oldest-first, INCLUDING the still-forming last bar (callers strip it
-// with closedOnly before analysing). `bars` above 350 is fetched in pages.
-export async function fetchCandles(symbol, tf, bars = PAGE) {
-  const { granularity, ms } = TF[tf];
-  const secs = ms / 1000;
-  const byTime = new Map();
-  let end = Math.floor(Date.now() / 1000);
-  for (let remaining = bars; remaining > 0; remaining -= PAGE) {
-    const n = Math.min(PAGE, remaining);
-    const start = end - secs * (n - 1);
-    const json = await getJson(`${BASE}/${symbol}-USD/candles?start=${start}&end=${end}&granularity=${granularity}&limit=${PAGE}`);
-    const page = json.candles ?? [];
-    for (const k of page) {
-      const time = Number(k.start) * 1000;
-      byTime.set(time, { time, open: +k.open, high: +k.high, low: +k.low, close: +k.close, volume: +k.volume });
-    }
-    if (page.length < n / 2) break; // ran out of history
-    end = start - secs;
-  }
-  const out = [...byTime.values()].sort((a, b) => a.time - b.time);
-  if (out.length < 30) throw new Error(`${symbol}: not enough candles`);
-  return out;
+function saveStore(store) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch { /* storage full or private mode: keep in memory only */ }
 }
 
-// Run `fn` over items with at most `limit` in flight. Failures resolve to null.
-export async function mapLimit(items, limit, fn, onProgress) {
-  const out = new Array(items.length).fill(null);
-  let next = 0, done = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      try { out[i] = await fn(items[i], i); } catch { out[i] = null; }
-      onProgress?.(++done, items.length);
+const pack = (c) => [c.time, c.open, c.high, c.low, c.close, c.volume];
+const unpack = ([time, open, high, low, close, volume]) => ({ time, open, high, low, close, volume });
+
+let store = null; // sym → { fetchedAt, rows: closed daily candles (packed) }
+const lastTry = {}; // sym → { at, kind } of the last download attempt (this tab)
+const RETRY_MS = 10 * 60_000;
+const NOT_LISTED_RETRY_MS = 6 * 3_600_000;
+
+// Closed daily candles for every symbol, refreshing only what is out of date.
+// → { daily: { SYM: candle[] }, forming: { SYM: price }, stale: { SYM: lastClosedTime }, errors: { SYM: MarketError } }
+export async function loadDaily(symbols, now, onProgress) {
+  store ??= loadStore();
+  const lastClosedStart = Math.floor(now / DAY) * DAY - DAY; // start time of the most recent fully closed day
+  const need = symbols.filter((s) => {
+    const rows = store[s]?.rows;
+    const tried = lastTry[s];
+    if (tried?.kind === 'not-listed' && now - tried.at < NOT_LISTED_RETRY_MS) return false;
+    if (!rows?.length) return true;
+    if (rows[rows.length - 1][0] >= lastClosedStart) return false;
+    // Out of date — but don't re-ask every few minutes if Coinbase just failed
+    // or has not published yesterday's candle yet.
+    return now - Math.max(tried?.at ?? 0, store[s].fetchedAt ?? 0) >= RETRY_MS;
+  });
+
+  const errors = {}, forming = {};
+  let done = 0;
+  onProgress?.(0, need.length);
+  await Promise.all(need.map(async (sym) => {
+    lastTry[sym] = { at: now, kind: null };
+    try {
+      const all = await getCandles(sym, '1D', KEEP_DAILY + 1);
+      const closed = closedOnly(all, DAY, now);
+      if (all.length > closed.length) forming[sym] = all[all.length - 1].close;
+      store[sym] = { fetchedAt: now, rows: closed.slice(-KEEP_DAILY).map(pack) };
+    } catch (e) {
+      errors[sym] = e;
+      lastTry[sym].kind = e?.kind ?? null;
+    } finally {
+      onProgress?.(++done, need.length);
     }
+  }));
+  if (need.length) saveStore(store);
+
+  const daily = {}, stale = {};
+  for (const sym of symbols) {
+    const rows = store[sym]?.rows;
+    if (!rows?.length) continue;
+    daily[sym] = rows.map(unpack);
+    const lastT = rows[rows.length - 1][0];
+    if (lastT < lastClosedStart) stale[sym] = lastT;
   }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return out;
+  return { daily, forming, stale, errors, refreshed: need.length - Object.keys(errors).length };
+}
+
+// Live prices for all symbols in one request; falls back to nothing (callers use the last close).
+export async function loadPrices(symbols) {
+  try { return await getPrices(symbols); } catch { return {}; }
+}
+
+// 4-hour candles (last one still forming), or null if Coinbase did not answer.
+export async function load4h(sym) {
+  try { return await getCandles(sym, '4H', 300); } catch { return null; }
+}
+
+// Candles for a chart: daily and 4-hour, each with the forming bar included.
+export async function loadChartCandles(sym) {
+  const [d1, h4] = await Promise.all([getCandles(sym, '1D', KEEP_DAILY + 1), load4h(sym)]);
+  return { d1, h4 };
 }

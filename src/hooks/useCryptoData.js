@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { analyzeCandles } from '../utils/indicators';
 import { fetchCandles } from '../utils/binanceApi';
 
-const REFRESH_MS = 5_000;
+const REFRESH_MS = 60_000; // candles are hourly or longer; refreshing every few seconds only spends Coinbase's rate limit
 
 export function useCoinData(coinSymbol, timeframe, refreshMs = REFRESH_MS) {
   const [state, setState] = useState({
