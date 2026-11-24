@@ -44,7 +44,7 @@ function jumpTo(id) {
 
 // `targets` maps each agent step to the id of its section on the page.
 export default function PipelineStrip({ targets = {} }) {
-  const { state, status, summary, actions } = useDesk();
+  const { state, status, health, summary, actions } = useDesk();
   const last = state.last;
 
   const view = useMemo(() => {
@@ -126,14 +126,25 @@ export default function PipelineStrip({ targets = {} }) {
             {status.detail || 'Working'}
             {status.progress && <span className="font-mono"> {status.progress.done}/{status.progress.total}</span>}
           </span>
+        ) : status.leader === false ? (
+          <>Another tab of this site is running the desk — this tab shows its results · last run {timeAgo(lastRun)}</>
         ) : (
           <>Last run {timeAgo(lastRun)} · checks again every 5 minutes · news refreshes hourly</>
         )}
       </p>
 
+      {!status.error && status.notice && (
+        <div className="rounded-lg border border-yellow-500/25 bg-yellow-500/10 px-3 py-2" role="status">
+          <p className="text-xs text-yellow-300 break-words">{status.notice}</p>
+        </div>
+      )}
+
       {status.error && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2" role="alert">
-          <p className="flex-1 min-w-[12rem] text-xs text-red-400 break-words">The last run did not finish: {status.error}</p>
+          <p className="flex-1 min-w-[12rem] text-xs text-red-400 break-words">
+            The last run did not finish: {status.error}
+            {health.pausedUntil > (health.lastError?.at ?? Infinity) && <> Requests to Coinbase are paused for a short while and resume automatically.</>}
+          </p>
           <button type="button" className={BTN} onClick={() => actions.runNow()} disabled={status.running}>Retry</button>
         </div>
       )}

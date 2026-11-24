@@ -2,8 +2,11 @@ import { useState, useEffect, useEffectEvent, useCallback, useMemo } from 'react
 import { Link } from 'react-router-dom';
 import AppNav from '../components/AppNav';
 import { Card, BTN } from '../desk/ui/atoms';
-import { createCoinbaseClient, isEdKey } from '../lib/coinbaseApi';
-import { KEY_STORAGE, PROXY_URL, loadKeys, saveKeys, loadProxyPref, saveProxyPref } from '../lib/coinbaseKeys';
+import {
+  createCoinbaseClient, detectKeyType, keyTypeLabel, normalizeSecret, normalizeKeyName,
+  checkProxy, describeCoinbaseError, CoinbaseError,
+} from '../lib/coinbaseApi';
+import { KEY_STORAGE, PROXY_URL, loadKeys, saveKeys, loadProxyPref, saveProxyPref, parseCoinbaseKeyJson } from '../lib/coinbaseKeys';
 import { fetchCandles } from '../utils/binanceApi';
 import { analyzeCandles } from '../utils/indicators';
 import { computeRunScore } from '../utils/scoring';
@@ -74,36 +77,32 @@ export default function LiveTrading() {
     setTimeout(() => setActionStatus(null), 5000);
   };
 
-  // Auto-parse pasted JSON credentials file from Coinbase Developer Platform
+  // Auto-parse the JSON key file downloaded from the Coinbase Developer Platform
+  // ({"id","privateKey"} for Ed25519 keys, {"name","privateKey"} for ECDSA keys)
   function handleJsonPaste(raw) {
     setJsonPaste(raw);
-    try {
-      const obj = JSON.parse(raw);
-      // Try all known field name variants Coinbase uses across different key types
-      const name =
-        obj.name       || obj.keyName   || obj.key_name  ||
-        obj.apiKeyName || obj.api_key   || obj.apiKey    || '';
-      const secret =
-        obj.privateKey  || obj.private_key ||
-        obj.apiSecret   || obj.api_secret  ||
-        obj.secret      || '';
-      if (name || secret) {
-        setKeyInput({ apiKey: name.trim(), apiSecret: secret.trim() });
-      }
-    } catch { /* not JSON yet */ }
+    const parsed = parseCoinbaseKeyJson(raw);
+    if (parsed) setKeyInput(parsed);
   }
+
+  const inputKeyType = detectKeyType(keyInput.apiSecret);
 
   // Save keys
   function handleSaveKeys(e) {
     e.preventDefault();
-    const trimmed = { apiKey: keyInput.apiKey.trim(), apiSecret: keyInput.apiSecret.trim() };
+    const trimmed = { apiKey: normalizeKeyName(keyInput.apiKey), apiSecret: normalizeSecret(keyInput.apiSecret) };
     if (!trimmed.apiKey || !trimmed.apiSecret) return;
+    const type = detectKeyType(trimmed.apiSecret);
+    if (!type) {
+      setStatus('That private key is not recognised — paste the privateKey value from the JSON file Coinbase gave you.', false);
+      return;
+    }
     saveKeys(trimmed);
     setKeys(trimmed);
     setShowSetup(false);
     setJsonPaste('');
-    const type = isEdKey(trimmed.apiSecret) ? 'Ed25519 (CDP)' : 'HMAC-SHA256 (legacy)';
-    setStatus(`${type} key saved — never sent to any server other than api.coinbase.com`);
+    setAccountsError(null);
+    setStatus(`${keyTypeLabel(type)} key saved — never sent to any server other than api.coinbase.com`);
   }
 
   function handleClearKeys() {
@@ -114,28 +113,21 @@ export default function LiveTrading() {
     setAccounts([]);
   }
 
-  // Test raw connectivity (no auth) — distinguishes CORS from auth errors
+  // Test raw connectivity (no auth) first, then the signed call — separates network problems from key problems
   async function testConnection() {
     setStatus('Testing connection…', true);
     try {
-      // Public unauthenticated endpoint — if this fails it's CORS/network
+      // Public unauthenticated endpoint
       const r = await fetch('https://api.coinbase.com/api/v3/brokerage/market/products?limit=1');
       if (r.ok || r.status === 401) {
-        // 401 means we reached the server (auth needed) — API is reachable
-        setStatus('API reachable ✓ — now testing authentication…', true);
-        fetchAccounts();
+        setStatus('Coinbase is reachable ✓ — now testing your API key…', true);
       } else {
-        setStatus(`API returned HTTP ${r.status}`, false);
+        setStatus(`Coinbase public API returned HTTP ${r.status} — testing your API key anyway…`, false);
       }
     } catch (e) {
-      const msg = e.message ?? String(e);
-      if (msg.includes('fetch') || msg.includes('network') || msg.includes('Load failed') || msg.includes('Failed to fetch')) {
-        setStatus('CORS / network block — see note below', false);
-        setAccountsError('__cors__');
-      } else {
-        setStatus(`Connection error: ${msg}`, false);
-      }
+      setStatus(`Could not reach api.coinbase.com from this browser (${e.message ?? e}) — check your internet connection or ad blocker. Testing your API key anyway…`, false);
     }
+    fetchAccounts();
   }
 
   // Fetch Coinbase account balances
@@ -143,33 +135,19 @@ export default function LiveTrading() {
     if (!client) return;
     setAccountsLoading(true);
     setAccountsError(null);
+    const keyType = detectKeyType(keys?.apiSecret);
     try {
-      // If proxy is enabled, verify it's our proxy (not some other service on the port)
-      if (useProxy) {
-        try {
-          const health = await fetch(`${PROXY_URL}/health`);
-          const hj = await health.json().catch(() => null);
-          if (!hj?.proxy?.includes('coinbase')) {
-            setAccountsError('Wrong service on port 9999 — make sure you ran cors-proxy.js (not some other app)');
-            setAccountsLoading(false);
-            return;
-          }
-        } catch {
-          setAccountsError(`__cors__:Proxy not running — start it with: node ~/Downloads/cors-proxy.js`);
-          setAccountsLoading(false);
-          return;
-        }
-      }
+      // Signed calls are CORS-blocked straight from a web page; they only work through the local proxy.
+      if (!useProxy) throw new CoinbaseError('proxy_off');
+      await checkProxy(PROXY_URL);
       const data = await client.getAccounts();
       const relevant = (data.accounts ?? [])
         .filter(a => parseFloat(a.available_balance?.value ?? 0) > 0)
         .sort((a, b) => parseFloat(b.available_balance?.value ?? 0) - parseFloat(a.available_balance?.value ?? 0));
       setAccounts(relevant);
+      if (relevant.length === 0) setStatus(`Connected ✓ (${keyTypeLabel(keyType)} key) — no balances above zero on this account.`, true);
     } catch (e) {
-      const msg = e.message ?? String(e);
-      const isCors = msg.includes('Load failed') || msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network');
-      // Preserve actual error message so UI can show it alongside the CORS explanation
-      setAccountsError(isCors ? `__cors__:${msg}` : msg);
+      setAccountsError(describeCoinbaseError(e, { keyType, proxyUrl: PROXY_URL }));
     } finally {
       setAccountsLoading(false);
     }
@@ -259,7 +237,11 @@ export default function LiveTrading() {
     if (!pos) return;
     try {
       const orderId = `manual-sell-${symbol}-${Date.now()}`;
-      await client.placeMarketSell(orderId, `${symbol}-USDC`, String(parseFloat(pos.qty.toFixed(8))));
+      // Coinbase takes its fee out of a buy, so the coin actually held is a little
+      // less than the amount recorded here — never try to sell more than is held.
+      const held = parseFloat(accounts.find(a => a.currency === symbol)?.available_balance?.value ?? 'NaN');
+      const size = Number.isFinite(held) && held > 0 ? Math.min(pos.qty, held) : pos.qty;
+      await client.placeMarketSell(orderId, `${symbol}-USDC`, String(Math.floor(size * 1e8) / 1e8));
       setLivePositions(p => { const n = { ...p }; delete n[symbol]; return n; });
       setStatus(`SELL order placed: ${symbol}`, true);
       fetchAccounts(); fetchOrders();
@@ -302,7 +284,7 @@ export default function LiveTrading() {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-                  <span className="text-green-400">{isEdKey(keys.apiSecret) ? 'Ed25519 key saved' : 'HMAC key saved'}</span>
+                  <span className="text-green-400">{keyTypeLabel(detectKeyType(keys.apiSecret))} key saved</span>
                 </span>
                 <button onClick={() => setShowSetup(s => !s)} className="text-xs text-[#8b949e] hover:text-white px-2 py-1 rounded border border-[#30363d]">
                   {showSetup ? 'Hide' : 'Edit'}
@@ -317,12 +299,12 @@ export default function LiveTrading() {
 
               {/* How-to instructions */}
               <div className="rounded-lg bg-[#0d1117] border border-[#30363d] p-3 text-[11px] text-[#8b949e] space-y-1.5">
-                <div className="font-semibold text-white text-xs">How to get your credentials (Ed25519 key)</div>
+                <div className="font-semibold text-white text-xs">How to get your credentials</div>
                 <div><span className="text-[#58a6ff]">1.</span> Go to <strong className="text-white">coinbase.com → Settings → API</strong></div>
                 <div><span className="text-[#58a6ff]">2.</span> Click <strong className="text-white">"Advanced API"</strong> (top right of that page) → Coinbase Developer Platform opens</div>
-                <div><span className="text-[#58a6ff]">3.</span> Click <strong className="text-white">"Create API key"</strong> → set permissions to <em>trade</em> and <em>view</em></div>
-                <div><span className="text-[#58a6ff]">4.</span> <strong className="text-white">Download the JSON file</strong> — it contains your <code className="text-green-300">name</code> and <code className="text-green-300">privateKey</code></div>
-                <div><span className="text-[#58a6ff]">5.</span> Paste the entire JSON content below — fields fill automatically</div>
+                <div><span className="text-[#58a6ff]">3.</span> Click <strong className="text-white">"Create API key"</strong> → give it the <em>View</em> permission (and <em>Trade</em> to place orders). Leave the IP allowlist empty unless you know this computer's public IP.</div>
+                <div><span className="text-[#58a6ff]">4.</span> <strong className="text-white">Download the JSON file</strong>. Ed25519 keys (the default) contain <code className="text-green-300">id</code> and <code className="text-green-300">privateKey</code>; ECDSA keys contain <code className="text-green-300">name</code> and <code className="text-green-300">privateKey</code>. Both work.</div>
+                <div><span className="text-[#58a6ff]">5.</span> Open the file in a text editor and paste all of it below — the fields fill automatically</div>
               </div>
 
               {/* JSON paste shortcut */}
@@ -331,8 +313,8 @@ export default function LiveTrading() {
                   Paste credentials JSON (easiest)
                 </label>
                 <textarea
-                  rows={3}
-                  placeholder={'{\n  "name": "organizations/.../apiKeys/...",\n  "privateKey": "-----BEGIN EC PRIVATE KEY-----\\n..."\n}'}
+                  rows={4}
+                  placeholder={'{\n  "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",\n  "privateKey": "base64…=="\n}\n— or —\n{\n  "name": "organizations/…/apiKeys/…",\n  "privateKey": "-----BEGIN EC PRIVATE KEY-----\\n…"\n}'}
                   value={jsonPaste}
                   onChange={e => handleJsonPaste(e.target.value)}
                   className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-[11px] text-[#8b949e] font-mono placeholder-[#30363d] focus:outline-none focus:border-[#58a6ff] resize-none"
@@ -340,15 +322,17 @@ export default function LiveTrading() {
                 {jsonPaste.length > 10 && (
                   <div className="mt-1.5 rounded bg-[#0d1117] border border-[#30363d] px-2 py-1.5 text-[10px] space-y-0.5">
                     <div>
-                      <span className="text-[#484f58]">Key name: </span>
+                      <span className="text-[#484f58]">Key name / id: </span>
                       <span className={keyInput.apiKey ? 'text-green-400' : 'text-red-400'}>
                         {keyInput.apiKey ? keyInput.apiKey.slice(0, 60) + (keyInput.apiKey.length > 60 ? '…' : '') : '— not detected'}
                       </span>
                     </div>
                     <div>
                       <span className="text-[#484f58]">Private key: </span>
-                      <span className={isEdKey(keyInput.apiSecret) ? 'text-green-400' : keyInput.apiSecret ? 'text-yellow-400' : 'text-red-400'}>
-                        {isEdKey(keyInput.apiSecret) ? '-----BEGIN… ✓ Ed25519 detected' : keyInput.apiSecret ? `"${keyInput.apiSecret.slice(0, 30)}…" (not a PEM key)` : '— not detected'}
+                      <span className={inputKeyType === 'ed25519' || inputKeyType === 'ecdsa' ? 'text-green-400' : keyInput.apiSecret ? 'text-yellow-400' : 'text-red-400'}>
+                        {!keyInput.apiSecret ? '— not detected'
+                          : inputKeyType ? `✓ ${keyTypeLabel(inputKeyType)} detected`
+                          : 'not recognised — paste the whole privateKey value'}
                       </span>
                     </div>
                   </div>
@@ -365,11 +349,11 @@ export default function LiveTrading() {
               <div className="space-y-2">
                 <div>
                   <label className="text-[10px] text-[#484f58] uppercase font-semibold tracking-widest block mb-1">
-                    Key Name <span className="normal-case font-normal">(the <code>name</code> field — looks like <code>organizations/…/apiKeys/…</code>)</span>
+                    Key Name / ID <span className="normal-case font-normal">(the <code>name</code> field, <code>organizations/…/apiKeys/…</code> — or the <code>id</code> field of an Ed25519 key file)</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="organizations/{org_id}/apiKeys/{key_id}"
+                    placeholder="organizations/{org_id}/apiKeys/{key_id}  or  xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                     value={keyInput.apiKey}
                     onChange={e => setKeyInput(p => ({ ...p, apiKey: e.target.value }))}
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-sm text-white font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
@@ -377,11 +361,11 @@ export default function LiveTrading() {
                 </div>
                 <div>
                   <label className="text-[10px] text-[#484f58] uppercase font-semibold tracking-widest block mb-1">
-                    Private Key <span className="normal-case font-normal">(the <code>privateKey</code> field — starts with <code>-----BEGIN</code>)</span>
+                    Private Key <span className="normal-case font-normal">(the <code>privateKey</code> field — a base64 string for Ed25519 keys, or text starting with <code>-----BEGIN</code> for ECDSA keys)</span>
                   </label>
                   <textarea
                     rows={4}
-                    placeholder={"-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----"}
+                    placeholder={"Ed25519: base64…==\n— or —\n-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----"}
                     value={keyInput.apiSecret}
                     onChange={e => setKeyInput(p => ({ ...p, apiSecret: e.target.value }))}
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-[11px] text-white font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] resize-none"
@@ -391,11 +375,12 @@ export default function LiveTrading() {
 
               {keyInput.apiKey && keyInput.apiSecret && (
                 <div className="text-[10px] text-[#484f58]">
-                  Detected: <span className="text-white font-semibold">{isEdKey(keyInput.apiSecret) ? 'Ed25519 / CDP key ✓' : 'HMAC / legacy key ✓'}</span>
+                  Detected: <span className={`font-semibold ${inputKeyType ? 'text-white' : 'text-yellow-400'}`}>{inputKeyType ? `${keyTypeLabel(inputKeyType)} ✓` : 'unrecognised private key'}</span>
+                  {inputKeyType === 'hmac' && <span> — legacy keys may no longer be accepted; a new CDP key (JSON file) is recommended.</span>}
                 </div>
               )}
 
-              <button type="submit" disabled={!keyInput.apiKey || !keyInput.apiSecret}
+              <button type="submit" disabled={!keyInput.apiKey.trim() || !inputKeyType}
                 className="w-full px-4 py-2 rounded-md bg-[#1f6feb] hover:bg-[#388bfd] disabled:opacity-40 text-white text-sm font-medium transition-colors">
                 Save Credentials
               </button>
@@ -437,66 +422,57 @@ export default function LiveTrading() {
                 </div>
               </div>
 
-              {accountsError?.startsWith('__cors__') ? (
-                <div className="space-y-3">
-                  <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-[11px] text-yellow-300 space-y-2">
-                    <div className="font-semibold text-sm">⚠ Browser Security Block (CORS / Mixed Content)</div>
-                    {accountsError.length > 8 && (
-                      <div className="rounded bg-black/30 px-2 py-1 font-mono text-[10px] text-[#8b949e]">
-                        Error: {accountsError.slice(8)}
+              {accountsError ? (
+                <div className={`rounded-lg border p-3 text-[11px] space-y-2 ${accountsError.kind === 'auth' || accountsError.kind === 'key_invalid' || accountsError.kind === 'http' ? 'border-red-500/30 bg-red-500/5 text-red-300' : 'border-yellow-500/30 bg-yellow-500/5 text-yellow-300'}`}>
+                  <div className="font-semibold text-sm">⚠ {accountsError.title}</div>
+                  <div>{accountsError.summary}</div>
+                  {accountsError.steps.length > 0 && (
+                    <ol className="list-decimal pl-4 space-y-1 text-[#c9d1d9]">
+                      {accountsError.steps.map(step => <li key={step}>{step}</li>)}
+                    </ol>
+                  )}
+                  {accountsError.kind.startsWith('proxy_') && accountsError.kind !== 'proxy_upstream' && (
+                    <>
+                      <div className="rounded bg-[#0d1117] border border-[#30363d] px-3 py-2 font-mono text-[10px] text-green-300 select-all whitespace-pre-wrap">
+                        {'cd ~/Downloads\nnode cors-proxy.js'}
                       </div>
-                    )}
-                    {useProxy ? (
-                      <div className="rounded bg-orange-500/10 border border-orange-500/30 px-3 py-2 text-orange-300">
-                        <strong>Proxy is enabled but still blocked.</strong> Safari blocks HTTP (non-secure) requests from HTTPS pages — even to localhost.
-                        <br /><strong className="text-white">Fix: open this page in Chrome</strong>, which allows localhost requests from HTTPS pages.
-                        Or run the proxy with HTTPS (see below).
+                      <div className="text-[10px] text-[#8b949e]">
+                        The proxy runs only on your computer and just relays the requests this page signs to api.coinbase.com. If you downloaded cors-proxy.js before, download it again — the new version is stricter about which sites may use it.
+                        Safari may block this page from calling localhost; if it still can't connect after the proxy is running, use Chrome or Firefox.
                       </div>
-                    ) : (
-                      <div>Browsers block direct API calls to financial APIs on different domains. Enable the local proxy (Option B) or open in Chrome.</div>
-                    )}
-                    <div className="font-semibold text-white mt-2">Options:</div>
-                    <div className="space-y-1.5 text-yellow-200/80">
-                      <div><span className="font-semibold text-white">Option A — Open in Chrome</span> — Chrome allows HTTPS pages to call http://localhost. Easiest fix if you have Chrome installed.</div>
-                      <div><span className="font-semibold text-white">Option B — Run a local proxy script</span> in Terminal (proxy must be running first):</div>
-                    </div>
-                    <div className="rounded bg-[#0d1117] border border-[#30363d] px-3 py-2 font-mono text-[10px] text-green-300 mt-2 select-all whitespace-pre-wrap">
-                      {'node ~/Downloads/cors-proxy.js'}
-                    </div>
-                    <a
-                      href="/Website/cors-proxy.js"
-                      download="cors-proxy.js"
-                      className="inline-block mt-2 px-3 py-1.5 rounded text-xs font-medium bg-[#21262d] border border-[#30363d] text-white hover:bg-[#30363d] transition-colors"
-                    >
-                      ↓ Download cors-proxy.js
-                    </a>
-                    <div className="text-[10px] text-[#8b949e] mt-1">Keep Terminal open, enable proxy below, then click "Retry load".</div>
-                    <div className="pt-1 flex items-center gap-3">
-                      <button
-                        onClick={() => { setUseProxy(v => { saveProxyPref(!v); return !v; }); setAccountsError(null); }}
-                        className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                          useProxy
-                            ? 'bg-green-500/15 border-green-500/30 text-green-300'
-                            : 'bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-white'
-                        }`}
+                      <a
+                        href={`${import.meta.env.BASE_URL}cors-proxy.js`}
+                        download="cors-proxy.js"
+                        className="inline-block px-3 py-1.5 rounded text-xs font-medium bg-[#21262d] border border-[#30363d] text-white hover:bg-[#30363d] transition-colors"
                       >
-                        {useProxy ? '✓ Proxy enabled (localhost:9999)' : 'Enable proxy (localhost:9999)'}
-                      </button>
-                      <button onClick={fetchAccounts} disabled={accountsLoading}
-                        className="px-3 py-1.5 rounded text-xs font-medium bg-[#1f6feb] text-white hover:bg-[#388bfd] disabled:opacity-40">
-                        {accountsLoading ? 'Loading…' : 'Retry load'}
-                      </button>
+                        ↓ Download cors-proxy.js
+                      </a>
+                    </>
+                  )}
+                  {accountsError.detail && (
+                    <div className="rounded bg-black/30 px-2 py-1 font-mono text-[10px] text-[#8b949e] break-all">
+                      Details: {accountsError.detail}
                     </div>
-                  </div>
-                </div>
-              ) : accountsError ? (
-                <div className="space-y-2">
-                  <div className="text-red-400 text-sm font-semibold">Error loading balances:</div>
-                  <div className="rounded bg-[#0d1117] border border-red-500/20 px-3 py-2 text-[11px] text-red-300 font-mono break-all">{accountsError}</div>
-                  <div className="text-[10px] text-[#484f58]">
-                    {accountsError.includes('401') || accountsError.includes('UNAUTHORIZED') || accountsError.includes('invalid')
-                      ? 'Authentication failed — check that your Key Name includes the full organizations/…/apiKeys/… path, not just the short ID.'
-                      : 'Try clicking "Test connection" to diagnose.'}
+                  )}
+                  <div className="pt-1 flex flex-wrap items-center gap-3">
+                    {!useProxy && (
+                      <button
+                        onClick={() => { setUseProxy(true); saveProxyPref(true); setAccountsError(null); }}
+                        className="px-3 py-1.5 rounded text-xs font-medium border transition-colors bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-white"
+                      >
+                        Turn on proxy (localhost:9999)
+                      </button>
+                    )}
+                    {(accountsError.kind === 'auth' || accountsError.kind === 'key_invalid') && (
+                      <button onClick={() => setShowSetup(true)}
+                        className="px-3 py-1.5 rounded text-xs font-medium bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white">
+                        Edit API key
+                      </button>
+                    )}
+                    <button onClick={fetchAccounts} disabled={accountsLoading}
+                      className="px-3 py-1.5 rounded text-xs font-medium bg-[#1f6feb] text-white hover:bg-[#388bfd] disabled:opacity-40">
+                      {accountsLoading ? 'Loading…' : 'Retry load'}
+                    </button>
                   </div>
                 </div>
               ) : accounts.length === 0 && !accountsLoading ? (

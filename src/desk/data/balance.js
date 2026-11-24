@@ -1,17 +1,26 @@
 // Coinbase cash balance for the Briefing, using the key saved on the Live Trading page.
 
-import { createCoinbaseClient } from '../../lib/coinbaseApi.js';
+import {
+  createCoinbaseClient, checkProxy, detectKeyType, describeCoinbaseError, CoinbaseError,
+} from '../../lib/coinbaseApi.js';
 import { loadKeys, loadProxyPref, PROXY_URL } from '../../lib/coinbaseKeys.js';
 
 // → { connected: false }
 //   { connected: true, ok: true, cash, assets }
-//   { connected: true, ok: false, error }
+//   { connected: true, ok: false, error, kind, title, steps, keyType }
+//     error — one actionable sentence (same wording as the Live page); kind — see CoinbaseError
 export async function fetchCoinbaseBalance() {
   const keys = loadKeys();
   if (!keys?.apiKey || !keys?.apiSecret) return { connected: false };
+  const keyType = detectKeyType(keys.apiSecret);
+  const fail = (e) => {
+    const d = describeCoinbaseError(e, { keyType, proxyUrl: PROXY_URL });
+    return { connected: true, ok: false, error: d.summary, kind: d.kind, title: d.title, steps: d.steps, keyType };
+  };
   // Authenticated Coinbase calls are CORS-blocked from a web page; they only work through the local proxy.
-  if (!loadProxyPref()) return { connected: true, ok: false, error: 'Local proxy is switched off on the Live page' };
+  if (!loadProxyPref()) return fail(new CoinbaseError('proxy_off'));
   try {
+    await checkProxy(PROXY_URL);
     const client = createCoinbaseClient(keys.apiKey, keys.apiSecret, PROXY_URL);
     const data = await client.getAccounts();
     let cash = 0, assets = 0;
@@ -22,6 +31,6 @@ export async function fetchCoinbaseBalance() {
     }
     return { connected: true, ok: true, cash, assets };
   } catch (e) {
-    return { connected: true, ok: false, error: String(e?.message ?? e).slice(0, 160) };
+    return fail(e);
   }
 }
