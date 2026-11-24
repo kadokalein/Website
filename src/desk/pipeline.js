@@ -19,9 +19,11 @@ export const DESK_CONFIG = {
 
 // market:     { SYM: { d1: closedDailyCandles, h4?: closed4hCandles } }  — must include BTC
 // livePrices: { SYM: price } — where fills happen; defaults to the last daily close
+// holds:      { all: reason|null, syms: { SYM: reason } } — no new entries (e.g. data out of date)
+// config.requireLivePrice: never fill on the daily-close fallback (the browser sets this)
 // external:   { fearGreed, headlines, coinbase }
 // watch:      { SYM: scoutResult } carried between cycles
-export function runCycle({ now, market, account, watch = {}, external = {}, livePrices = {}, config = DESK_CONFIG }) {
+export function runCycle({ now, market, account, watch = {}, external = {}, livePrices = {}, holds = {}, config = DESK_CONFIG }) {
   const reads = {};
   for (const [sym, m] of Object.entries(market)) reads[sym] = readChart(m.d1, m.h4 ?? null);
   const priceOf = (sym) => livePrices[sym] ?? reads[sym]?.price;
@@ -47,6 +49,7 @@ export function runCycle({ now, market, account, watch = {}, external = {}, live
   for (const pos of Object.values(account.positions)) {
     const r = reads[pos.sym];
     if (!r || pos.managedBar === r.d1.bar.time || r.d1.bar.time < pos.signalBar) continue;
+    if (config.requireLivePrice && livePrices[pos.sym] == null) continue; // no fresh price: decide next run
     pos.managedBar = r.d1.bar.time;
     pos.meta.exitLevel = pos.dir > 0 ? r.d1.exitLow : r.d1.exitHigh;
     const c = r.d1.bar.close;
@@ -95,6 +98,9 @@ export function runCycle({ now, market, account, watch = {}, external = {}, live
     const bar = reads[a.sym].d1.bar.time;
     if (account.signals[a.sym] === bar) { a.note = 'Already acted on this signal'; continue; }
     if (!config.execute) { a.note = 'Approved — auto-trading is paused, so nothing was opened'; continue; }
+    const hold = holds.all ?? holds.syms?.[a.sym];
+    if (hold) { a.note = `Approved but not taken: ${hold}`; continue; }
+    if (config.requireLivePrice && livePrices[a.sym] == null) { a.note = 'Approved but not taken: no live price from Coinbase right now — will re-check next run'; continue; }
     const block = entryBlock(account, now, prices, config.risk);
     if (block) { a.note = `Approved but not taken: ${block}`; continue; }
     const sizeUsd = sizeForRisk(equity(account, prices), account.cash, a.plan.entry, a.plan.stop, config.risk, config.fees);

@@ -53,7 +53,7 @@ export async function loadDaily(symbols, now, onProgress) {
     lastTry[sym] = { at: now, kind: null };
     try {
       const all = await getCandles(sym, '1D', KEEP_DAILY + 1);
-      const closed = closedOnly(all, DAY, now);
+      const closed = closedOnly(all, DAY, Math.min(now, all.fetchedAt ?? now));
       if (all.length > closed.length) forming[sym] = all[all.length - 1].close;
       store[sym] = { fetchedAt: now, rows: closed.slice(-KEEP_DAILY).map(pack) };
     } catch (e) {

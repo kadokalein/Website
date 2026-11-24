@@ -80,26 +80,31 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function rawGet(url) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
-  let res;
   try {
-    res = await fetch(url, { signal: ctl.signal });
+    return await readResponse(url, ctl.signal); // the timeout also covers reading the body
   } catch (e) {
+    if (e instanceof MarketError) throw e;
     if (e?.name === 'AbortError') throw new MarketError('timeout', 'Coinbase took too long to answer');
     throw new MarketError('blocked', 'No answer from Coinbase');
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function readResponse(url, signal) {
+  const res = await fetch(url, { signal });
   if (res.status === 429) {
     const retryAfter = Number(res.headers.get('retry-after'));
     throw Object.assign(new MarketError('rate-limit', 'Coinbase is limiting requests', 429), { retryAfterMs: retryAfter > 0 ? retryAfter * 1000 : null });
   }
   if (!res.ok) {
     let detail = '';
-    try { detail = (await res.text()).slice(0, 200); } catch { /* ignore */ }
+    try { detail = (await res.text()).slice(0, 200); } catch (e) { if (e?.name === 'AbortError') throw e; }
     if (res.status === 404 || /not.?found|NotFound|invalid product/i.test(detail)) throw new MarketError('not-listed', 'Not listed on Coinbase', res.status);
     throw new MarketError('http', `HTTP ${res.status}${detail ? `: ${detail}` : ''}`, res.status);
   }
-  try { return await res.json(); } catch { throw new MarketError('bad-data', 'Coinbase sent an unreadable answer'); }
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { throw new MarketError('bad-data', 'Coinbase sent an unreadable answer'); }
 }
 
 // ── Per-host protection ──────────────────────────────────────────────────────
@@ -241,19 +246,29 @@ function aggregate(candles, ms, offset = 0) {
 
 const MONDAY_OFFSET = 4 * TF_MS['1D']; // 1970-01-01 was a Thursday
 
+const stamp = (arr, at) => Object.defineProperty(arr, 'fetchedAt', { value: at, enumerable: false });
+
 // Candles oldest-first. The LAST candle is still forming (callers that analyse
-// must drop it). Throws MarketError.
+// must drop it). The array carries `fetchedAt` (ms): an answer may be reused for
+// a short while, so "has this candle closed?" must be judged against that time,
+// not the current time. Throws MarketError.
 export function getCandles(symbol, tf, bars = 300) {
   return cached(`${symbol}|${tf}|${bars}`, CACHE_MS[tf], async () => {
+    const at = Date.now();
     if (tf === '1W') {
       const daily = await getCandles(symbol, '1D', Math.min(350, bars * 7));
-      return aggregate(daily, TF_MS['1W'], MONDAY_OFFSET).slice(-bars);
+      return stamp(aggregate(daily, TF_MS['1W'], MONDAY_OFFSET).slice(-bars), daily.fetchedAt ?? at);
     }
     try {
-      return await advancedCandles(symbol, tf, bars);
+      return stamp(await advancedCandles(symbol, tf, bars), at);
     } catch (e) {
       if (e.kind === 'not-listed') throw new MarketError('not-listed', `${symbol} is not listed on Coinbase`, e.status);
-      try { return await exchangeCandles(symbol, tf, bars); } catch { throw e; }
+      try {
+        return stamp(await exchangeCandles(symbol, tf, bars), at);
+      } catch (e2) {
+        if (e2?.kind === 'not-listed') throw new MarketError('not-listed', `${symbol} is not listed on Coinbase`, e2.status);
+        throw e;
+      }
     }
   });
 }

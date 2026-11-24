@@ -237,7 +237,11 @@ export default function LiveTrading() {
     if (!pos) return;
     try {
       const orderId = `manual-sell-${symbol}-${Date.now()}`;
-      await client.placeMarketSell(orderId, `${symbol}-USDC`, String(parseFloat(pos.qty.toFixed(8))));
+      // Coinbase takes its fee out of a buy, so the coin actually held is a little
+      // less than the amount recorded here — never try to sell more than is held.
+      const held = parseFloat(accounts.find(a => a.currency === symbol)?.available_balance?.value ?? 'NaN');
+      const size = Number.isFinite(held) && held > 0 ? Math.min(pos.qty, held) : pos.qty;
+      await client.placeMarketSell(orderId, `${symbol}-USDC`, String(Math.floor(size * 1e8) / 1e8));
       setLivePositions(p => { const n = { ...p }; delete n[symbol]; return n; });
       setStatus(`SELL order placed: ${symbol}`, true);
       fetchAccounts(); fetchOrders();

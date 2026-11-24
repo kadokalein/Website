@@ -90,17 +90,29 @@ export function DeskProvider({ children }) {
         const closed = day.daily[sym];
         if (!closed || closed.length < 60) continue;
         market[sym] = { d1: closed };
-        live[sym] = quotes[sym] ?? day.forming[sym] ?? closed[closed.length - 1].close;
+        // Only fresh prices: never trade or test stops on yesterday's close.
+        const fresh = quotes[sym] ?? day.forming[sym];
+        if (fresh != null) live[sym] = fresh;
       }
       if (!market.BTC) {
         const why = day.errors.BTC ? explainMarketError(day.errors.BTC) : 'Coinbase returned too little Bitcoin history.';
         throw new Error(`Could not load Bitcoin's daily chart from Coinbase. ${why}`);
       }
-      const failed = Object.keys(day.errors).filter((s) => day.errors[s]?.kind !== 'not-listed' && (!market[s] || day.stale[s]));
+      // Out-of-date daily charts can still be shown, but no new trade is opened on them.
       const notices = [];
-      if (day.stale.BTC && day.errors.BTC) notices.push(`Coinbase did not answer, so the desk is using saved daily charts up to ${new Date(day.stale.BTC).toISOString().slice(0, 10)}. ${explainMarketError(day.errors.BTC)}`);
-      else if (failed.length) notices.push(`${failed.length} coin${failed.length === 1 ? '' : 's'} could not be refreshed this run (${failed.slice(0, 6).join(', ')}${failed.length > 6 ? '…' : ''}) and ${failed.length === 1 ? 'was' : 'were'} skipped or used saved data.`);
-      if (!Object.keys(quotes).length) notices.push('Live prices were unavailable, so the latest daily close is used as the price.');
+      const holds = { all: null, syms: {} };
+      const lastErr = Object.values(day.errors).find((e) => e?.kind !== 'not-listed');
+      const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
+      if (day.stale.BTC) {
+        holds.all = `daily charts are out of date (latest ${dayOf(day.stale.BTC)})`;
+        notices.push(`Coinbase has not provided the latest daily candles, so the desk is showing saved charts up to ${dayOf(day.stale.BTC)} and will not open new trades until they refresh.${lastErr ? ` ${explainMarketError(lastErr)}` : ''}`);
+      } else {
+        const staleSyms = Object.keys(day.stale).filter((s) => market[s]);
+        for (const s of staleSyms) holds.syms[s] = `${s}'s daily chart is out of date (latest ${dayOf(day.stale[s])})`;
+        const missing = Object.keys(day.errors).filter((s) => day.errors[s]?.kind !== 'not-listed' && !market[s]);
+        const affected = [...new Set([...staleSyms, ...missing])];
+        if (affected.length) notices.push(`${affected.length} coin${affected.length === 1 ? '' : 's'} could not be refreshed (${affected.slice(0, 6).join(', ')}${affected.length > 6 ? '…' : ''}) — skipped or shown from saved charts, with no new trades on ${affected.length === 1 ? 'it' : 'them'}.`);
+      }
 
       // ── 4-hour charts for open positions and anything through its line ─────
       const need = new Set(Object.keys(st.account.positions));
@@ -113,9 +125,11 @@ export function DeskProvider({ children }) {
       const h4 = await Promise.all(list.map((sym) => load4h(sym)));
       list.forEach((sym, i) => {
         if (!h4[i]) return;
-        market[sym].h4 = closedOnly(h4[i], TF['4H'].ms, now);
-        if (quotes[sym] == null) live[sym] = h4[i][h4[i].length - 1].close;
+        market[sym].h4 = closedOnly(h4[i], TF['4H'].ms, Math.min(now, h4[i].fetchedAt ?? now));
+        if (live[sym] == null) live[sym] = h4[i][h4[i].length - 1].close;
       });
+      const noPrice = Object.keys(st.account.positions).filter((s) => live[s] == null);
+      if (!Object.keys(quotes).length) notices.push(`Live prices were unavailable this run${noPrice.length ? ` (no fresh price for ${noPrice.join(', ')})` : ''}. The desk will not open or close a trade without a fresh price.`);
 
       // ── Stops: replay every closed 4H bar since each position was last checked,
       //    so a stop hit while the site was closed is still honoured, then test the live price.
@@ -138,9 +152,9 @@ export function DeskProvider({ children }) {
 
       // ── Briefing → Scout → Analyst → paper execution ──────────────────────
       const res = runCycle({
-        now, market, account: st.account, watch: st.watch, livePrices: live,
+        now, market, account: st.account, watch: st.watch, livePrices: live, holds,
         external: { fearGreed: st.external.fearGreed, headlines: st.external.headlines, coinbase: st.external.coinbase },
-        config: { ...DESK_CONFIG, allowShorts: !!stateRef.current.settings.shorts, execute: !!stateRef.current.settings.auto },
+        config: { ...DESK_CONFIG, allowShorts: !!stateRef.current.settings.shorts, execute: !!stateRef.current.settings.auto, requireLivePrice: true },
       });
 
       const entries = [];

@@ -245,8 +245,8 @@ async function hmacHex(secret, message) {
   return Array.from(new Uint8Array(sig), b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Auth headers for one request. fullPath excludes the query; query is the encoded query string ('' for none).
-export async function authHeaders(apiKey, apiSecret, method, fullPath, query = '', bodyStr = '') {
+// Auth headers for one request. fullPath excludes the query string (Coinbase signs the path only).
+export async function authHeaders(apiKey, apiSecret, method, fullPath, bodyStr = '') {
   const secret = normalizeSecret(apiSecret);
   const type = detectKeyType(secret);
   if (!type) {
@@ -256,7 +256,8 @@ export async function authHeaders(apiKey, apiSecret, method, fullPath, query = '
   if (!normalizeKeyName(apiKey)) throw new CoinbaseError('key_invalid', 'The API key name / id is missing.');
   if (type === 'hmac') {
     const timestamp = String(Math.floor(Date.now() / 1000));
-    const requestPath = fullPath + (query ? `?${query}` : '');
+    // Coinbase's legacy signature covers the path only, not the query string.
+    const requestPath = fullPath;
     return {
       'Content-Type': 'application/json',
       'CB-ACCESS-KEY': normalizeKeyName(apiKey),
@@ -304,6 +305,9 @@ export async function checkProxy(proxyUrl = PROXY_URL) {
     throw new CoinbaseError('proxy_wrong_service',
       `Something other than cors-proxy.js is answering at ${proxyUrl}.`, { status: res.status });
   }
+  if (!(Number(j.version) >= 2)) {
+    throw new CoinbaseError('proxy_outdated', 'Your copy of cors-proxy.js is out of date.', { status: res.status });
+  }
   return j;
 }
 
@@ -313,7 +317,7 @@ async function req(apiKey, apiSecret, method, path, body, params, origin, proxie
   const query = params ? new URLSearchParams(params).toString() : '';
   const fullPath = API_PREFIX + path;
   const url = origin + fullPath + (query ? `?${query}` : '');
-  const headers = await authHeaders(apiKey, apiSecret, method, fullPath, query, bodyStr);
+  const headers = await authHeaders(apiKey, apiSecret, method, fullPath, bodyStr);
 
   let res;
   try {
@@ -332,7 +336,10 @@ async function req(apiKey, apiSecret, method, path, body, params, origin, proxie
   if (res.ok) return json;
 
   const detail = coinbaseErrorText(json, text);
-  if (proxied && typeof json?.error === 'string' && json.error.startsWith('proxy_')) {
+  if (proxied && json?.error === 'proxy_forbidden_origin') {
+    throw new CoinbaseError('proxy_forbidden_origin', 'The local proxy only answers this site at kadokalein.github.io or localhost.', { status: res.status });
+  }
+  if (proxied && (json?.error === 'proxy_upstream_error' || json?.error === 'proxy_timeout')) {
     throw new CoinbaseError('proxy_upstream',
       `The local proxy is running but could not get an answer from api.coinbase.com (HTTP ${res.status}).`,
       { status: res.status, detail: json.message ?? detail });
@@ -378,6 +385,21 @@ export function describeCoinbaseError(err, { keyType = null, proxyUrl = PROXY_UR
         title: 'The proxy is running but could not reach Coinbase',
         summary: `The local proxy could not reach api.coinbase.com${detail ? ` (${detail})` : ''} — check your internet connection and try again.`,
         steps: ['Check this computer\'s internet connection.', 'Look at the proxy window for an error message, then try again.'] };
+    case 'proxy_outdated':
+      return { kind, status, detail,
+        title: 'Your copy of the local proxy is out of date',
+        summary: 'Your copy of cors-proxy.js is out of date — download it again from this page, stop the old one (Ctrl+C in its window), and run "node cors-proxy.js".',
+        steps: ['Stop the old proxy: click its window and press Ctrl+C.', ...startSteps] };
+    case 'proxy_forbidden_origin':
+      return { kind, status, detail,
+        title: 'The local proxy refused this page',
+        summary: 'The local proxy only works with this site opened from https://kadokalein.github.io (or localhost on this computer).',
+        steps: ['Open the site at https://kadokalein.github.io/Website/ and try again.'] };
+    case 'order_rejected':
+      return { kind, status, detail,
+        title: 'Coinbase rejected the order',
+        summary: err.message,
+        steps: ['Nothing was bought or sold. Check the amount, your available balance and the coin, then try again.'] };
     case 'auth': {
       const typeText = keyType ? keyTypeLabel(keyType) : 'unrecognised';
       const steps = [
@@ -388,6 +410,7 @@ export function describeCoinbaseError(err, { keyType = null, proxyUrl = PROXY_UR
         'This computer\'s clock must be correct — each signed request is only valid for 2 minutes.',
       ];
       if (keyType === 'hmac') steps.push('Legacy keys may no longer work — create a new key on the Coinbase Developer Platform and paste its JSON file.');
+      if (keyType === 'ed25519') steps.push('If an Ed25519 key keeps being rejected, create a new key with the ECDSA signature algorithm (under "Advanced settings" when creating the key) and paste that file instead.');
       return { kind, status, detail,
         title: `Coinbase rejected the API key (HTTP ${status})`,
         summary: `Coinbase rejected the ${typeText} API key (HTTP ${status}) — check it has "View" permission, any IP allowlist, and that the full key name/id was pasted.`,
@@ -414,19 +437,30 @@ export function describeCoinbaseError(err, { keyType = null, proxyUrl = PROXY_UR
 // ── Public client ─────────────────────────────────────────────────────────────
 // proxyBase: optional origin like 'http://localhost:9999' to route through the local CORS proxy.
 // Requests then go to proxyBase/api/v3/brokerage/… but are signed for api.coinbase.com.
+// Coinbase answers a rejected order with HTTP 200 and { success: false, error_response }.
+function orderResult(json) {
+  if (json && json.success === false) {
+    const er = json.error_response ?? {};
+    const why = er.message || er.preview_failure_reason || er.error || json.failure_reason || 'no reason given';
+    throw new CoinbaseError('order_rejected', `Coinbase rejected the order: ${why}`, { detail: String(er.error_details ?? '').slice(0, 300) });
+  }
+  return json;
+}
+
 export function createCoinbaseClient(apiKey, apiSecret, proxyBase = null) {
   const origin = proxyBase ? proxyBase.replace(/\/+$/, '') : API_ORIGIN;
   const r = (m, p, b = null, q = null) => req(apiKey, apiSecret, m, p, b, q, origin, Boolean(proxyBase));
+  const order = (body) => r('POST', '/orders', body).then(orderResult);
   return {
     getAccounts:     ()                                    => r('GET',  '/accounts'),
     placeMarketBuy:  (clientOrderId, productId, quoteSize) =>
-      r('POST', '/orders', { client_order_id: clientOrderId, product_id: productId, side: 'BUY',
+      order({ client_order_id: clientOrderId, product_id: productId, side: 'BUY',
         order_configuration: { market_market_ioc: { quote_size: String(quoteSize) } } }),
     placeMarketSell: (clientOrderId, productId, baseSize) =>
-      r('POST', '/orders', { client_order_id: clientOrderId, product_id: productId, side: 'SELL',
+      order({ client_order_id: clientOrderId, product_id: productId, side: 'SELL',
         order_configuration: { market_market_ioc: { base_size: String(baseSize) } } }),
     placeLimitOrder: (clientOrderId, productId, side, baseSize, limitPrice) =>
-      r('POST', '/orders', { client_order_id: clientOrderId, product_id: productId, side,
+      order({ client_order_id: clientOrderId, product_id: productId, side,
         order_configuration: { limit_limit_gtc: { base_size: String(baseSize), limit_price: String(limitPrice) } } }),
     cancelOrder:     (orderId) => r('POST', '/orders/cancel', { order_ids: [orderId] }),
     listOrders:      (params = {}) => r('GET', '/orders/historical/batch', null, params),
