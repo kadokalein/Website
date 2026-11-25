@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
     "lightweight-charts": "^5.2.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1",
