@@ -11,7 +11,9 @@ export const EXIT_DAYS = 10;    // trailing exit channel
 const D1_WINDOW = 150;
 const H4_WINDOW = 240;
 
-export function readChart(d1, h4 = null) {
+// opts.rangeDays / opts.exitDays override the breakout box and trailing-exit lengths
+// (stocks use different ones than crypto).
+export function readChart(d1, h4 = null, { rangeDays = RANGE_DAYS, exitDays = EXIT_DAYS } = {}) {
   if (!d1 || d1.length < 60) return null;
   const n = d1.length;
   const bar = d1[n - 1];
@@ -23,20 +25,30 @@ export function readChart(d1, h4 = null) {
   const ema20 = last(emaSeries(closes, 20));
   const ema50S = emaSeries(closes, 50);
   const ema50 = last(ema50S);
-  const sma200 = last(smaSeries(closes, 200));
+  const sma200S = smaSeries(closes, 200);
+  const sma200 = last(sma200S);
+  const sma200Prev = sma200S[n - 23] ?? null; // ~one month earlier
+  const sma150 = last(smaSeries(closes, 150));
+  const sma50 = last(smaSeries(closes, 50));
   const rsiS = rsiSeries(d1, 14);
   const adxS = adxSeries(d1, 14);
   const bbw = bbWidthSeries(d1, 20, 2);
 
   // The box: highs/lows of the RANGE_DAYS days BEFORE the latest closed day.
-  const rangeHigh = highest(d1, n - 1 - RANGE_DAYS, n - 2);
-  const rangeLow = lowest(d1, n - 1 - RANGE_DAYS, n - 2);
+  const rangeHigh = highest(d1, n - 1 - rangeDays, n - 2);
+  const rangeLow = lowest(d1, n - 1 - rangeDays, n - 2);
   // Trailing-exit channel includes the latest day (it applies from tomorrow).
-  const exitLow = lowest(d1, n - EXIT_DAYS, n - 1);
-  const exitHigh = highest(d1, n - EXIT_DAYS, n - 1);
+  const exitLow = lowest(d1, n - exitDays, n - 1);
+  const exitHigh = highest(d1, n - exitDays, n - 1);
   // The channel the latest close is judged against (the EXIT_DAYS days before it).
-  const exitLowPrev = lowest(d1, n - 1 - EXIT_DAYS, n - 2);
-  const exitHighPrev = highest(d1, n - 1 - EXIT_DAYS, n - 2);
+  const exitLowPrev = lowest(d1, n - 1 - exitDays, n - 2);
+  const exitHighPrev = highest(d1, n - 1 - exitDays, n - 2);
+  // 52-week (≈252 trading days, or 365 crypto days) extremes, using what history there is.
+  const yearBars = Math.min(n, 252);
+  const high52 = highest(d1, n - yearBars, n - 1);
+  const high52Prev = highest(d1, n - 1 - yearBars, n - 2); // the 52-week high BEFORE the latest bar
+  const low50 = lowest(d1, n - 1 - rangeDays, n - 2, 'low');
+  const low52 = lowest(d1, n - yearBars, n - 1, 'low');
 
   let volAvg = 0;
   for (let i = n - 21; i < n - 1; i++) volAvg += d1[i].volume;
@@ -62,7 +74,7 @@ export function readChart(d1, h4 = null) {
     d1: {
       bar, prevClose: closes[n - 2],
       atr, atrPct: (atr / close) * 100,
-      ema20, ema50, sma200, trend,
+      ema20, ema50, sma200, sma200Prev, sma150, sma50, trend, high52, low52, high52Prev, low50, rangeDays, exitDays,
       rsi: last(rsiS), adx: last(adxS.adx), adxPrev: adxS.adx[n - 4],
       macd: calcMACD(d1),
       bbwRankBefore: percentRank(bbw.slice(0, -1), 120), // compression going INTO the latest bar

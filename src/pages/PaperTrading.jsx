@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppNav from '../components/AppNav';
 import { useDesk } from '../desk/DeskProvider';
 import { positionValue, dayKey } from '../desk/engine/account';
 import { Badge, Card, SectionLabel, CoinChip, Stat, BTN } from '../desk/ui/atoms';
 import { fmtUsd, fmtPrice, fmtPct, timeAgo, fmtDate, coinMeta } from '../desk/ui/format';
+import StockDataSettings from '../desk/ui/StockDataSettings';
+import NotificationSettings from '../desk/ui/NotificationSettings';
+import { SECTORS, sectorOf } from '../desk/universe';
+
+const sectorLabel = (id) => sectorOf(id ?? 'crypto')?.label ?? id;
 
 const DAY = 86_400_000;
 const STRIP_DAYS = 60;
@@ -87,6 +92,8 @@ function PositionRow({ pos, price, onClose }) {
             <span className="text-sm font-semibold">{pos.sym}</span>
             <span className="text-[11px] text-[#8b949e] truncate">{meta.name}</span>
             <SideBadge dir={pos.dir} />
+            <Badge>{sectorLabel(pos.sector)}</Badge>
+            <Badge tone="grey">{pos.asset === 'stock' ? 'Stock' : 'Crypto'}</Badge>
           </div>
           <div className="text-[11px] text-[#8b949e] mt-0.5">
             Entry <span className="font-mono text-white">{fmtPrice(pos.entry)}</span> on {fmtDate(pos.entryTime)}
@@ -144,7 +151,7 @@ function ClosedTrades({ trades }) {
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-widest text-[#484f58] border-b border-[#30363d]">
                 <th className="px-4 py-2 font-semibold">Dates</th>
-                <th className="px-2 py-2 font-semibold">Coin</th>
+                <th className="px-2 py-2 font-semibold">Symbol</th>
                 <th className="px-2 py-2 font-semibold">Side</th>
                 <th className="px-2 py-2 font-semibold">Entry → Exit</th>
                 <th className="px-2 py-2 font-semibold text-right">Net</th>
@@ -162,6 +169,7 @@ function ClosedTrades({ trades }) {
                     <span className="inline-flex items-center gap-1.5">
                       <CoinChip sym={t.sym} size="sm" />
                       <span className="font-semibold text-xs">{t.sym}</span>
+                      <span className="text-[10px] text-[#8b949e] whitespace-nowrap">{sectorLabel(t.sector)}</span>
                     </span>
                   </td>
                   <td className="px-2 py-2"><SideBadge dir={t.dir} /></td>
@@ -187,6 +195,8 @@ function Settings({ settings, risk, actions }) {
     ['Risk per trade', `${risk.riskPerTradePct}% of equity, fees included, if the stop is hit`],
     ['Max position size', `${risk.maxPositionPct}% of equity`],
     ['Max open positions', String(risk.maxPositions)],
+    ['Max positions per sector', String(risk.maxPerSector ?? 2)],
+    ['Stocks', 'no commission on Coinbase; position ≤ 20% of equity (overnight-gap cap); pharma at half size'],
     ['Max new trades per day', String(risk.maxNewTradesPerDay)],
     ['Daily loss limit', `${risk.dailyLossLimitPct}% — no new entries for the rest of the day`],
     ['Max open risk', `${risk.maxOpenRiskPct}% of equity across all open stops`],
@@ -251,8 +261,64 @@ function Settings({ settings, risk, actions }) {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+function BySector({ positions, trades, prices }) {
+  const rows = SECTORS.map((sec) => {
+    const open = positions.filter((p) => (p.sector ?? 'crypto') === sec.id);
+    const closed = trades.filter((t) => (t.sector ?? 'crypto') === sec.id);
+    const realized = closed.reduce((n, t) => n + t.net, 0);
+    const unrealized = open.reduce((n, p) => n + positionValue(p, prices[p.sym] ?? p.lastPrice ?? p.entry) - p.notional, 0);
+    return { sec, open: open.length, closed: closed.length, realized, unrealized };
+  }).filter((r) => r.open || r.closed);
+  return (
+    <Card className="p-4">
+      <div className="text-sm font-semibold mb-2">By sector</div>
+      {rows.length === 0 ? <p className="text-xs text-[#8b949e]">No trades in any sector yet.</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-[11px]">
+            <thead><tr className="text-left text-[10px] uppercase tracking-widest text-[#484f58]"><th className="py-1">Sector</th><th className="py-1 text-right">Open</th><th className="py-1 text-right">Closed</th><th className="py-1 text-right">Realised</th><th className="py-1 text-right">Open P&amp;L</th></tr></thead>
+            <tbody className="divide-y divide-[#30363d]">
+              {rows.map((r) => (
+                <tr key={r.sec.id}>
+                  <td className="py-1.5 text-white">{r.sec.label}</td>
+                  <td className="py-1.5 text-right font-mono">{r.open}</td>
+                  <td className="py-1.5 text-right font-mono">{r.closed}</td>
+                  <td className={`py-1.5 text-right font-mono ${toneFor(r.realized)}`}>{fmtUsd(r.realized)}</td>
+                  <td className={`py-1.5 text-right font-mono ${toneFor(r.unrealized)}`}>{fmtUsd(r.unrealized)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function SectorToggles({ settings, actions }) {
+  const on = settings.sectors ?? {};
+  return (
+    <Card className="p-4">
+      <div className="text-sm font-semibold mb-1">Sectors the desk searches</div>
+      <p className="text-[11px] text-[#8b949e] mb-3">Switch a sector off to stop the desk from looking there (open positions are still managed).</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {SECTORS.map((sec) => (
+          <div key={sec.id} className="flex items-center gap-3">
+            <Toggle on={on[sec.id] !== false} onChange={(v) => actions.setSector(sec.id, v)} label={`Search ${sec.label}`} />
+            <span className="text-xs text-white">{sec.label}</span>
+            <span className="text-[10px] text-[#484f58]">{sec.symbols.length} {sec.kind === 'crypto' ? 'coins' : 'stocks'} · vs {sec.benchmark}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 export default function PaperTrading() {
   const { state, status, prices, summary, actions, config } = useDesk();
+  useEffect(() => {
+    const m = window.location.hash.match(/settings=(stocks|notifications)/);
+    if (m) setTimeout(() => document.getElementById(`settings-${m[1]}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+  }, []);
   const account = state.account ?? { cash: 0, positions: {}, trades: [] };
   const positions = Object.values(account.positions ?? {});
   const trades = account.trades ?? [];
@@ -272,8 +338,8 @@ export default function PaperTrading() {
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         <div className="space-y-1">
           <p className="text-sm text-[#8b949e] leading-relaxed">
-            This is the paper account the Trading Desk trades — $5,000 of simulated money that pays real Coinbase fees
-            ({(config.fees.taker * 100).toFixed(1)}% per side) and slippage, so the numbers here are what live trading would have looked like.
+            This is the paper account the Trading Desk trades — $5,000 of simulated money that pays real Coinbase costs
+            (crypto: {(config.fees.taker * 100).toFixed(1)}% per side; stocks: no commission) and slippage, so the numbers here are what live trading would have looked like.
           </p>
           <div className="text-[11px] text-[#484f58]">
             {status.running
@@ -317,9 +383,15 @@ export default function PaperTrading() {
           )}
         </Card>
 
+        <BySector positions={positions} trades={trades} prices={prices} />
+
         <ClosedTrades trades={trades} />
 
         <Settings settings={state.settings ?? {}} risk={risk} actions={actions} />
+
+        <section id="settings-stocks" className="scroll-mt-36 lg:scroll-mt-20"><StockDataSettings /></section>
+        <SectorToggles settings={state.settings ?? {}} actions={actions} />
+        <section id="settings-notifications" className="scroll-mt-36 lg:scroll-mt-20"><NotificationSettings /></section>
       </main>
     </div>
   );

@@ -447,12 +447,38 @@ function orderResult(json) {
   return json;
 }
 
+// Stocks/ETFs (product_type EQUITY) trade through the same /orders endpoint; market orders
+// must say they are for the regular session (9:30–16:00 ET) and are good for the day.
+const EQUITY_MARKET_METADATA = {
+  equity_trading_session: 'EQUITY_TRADING_SESSION_NORMAL',
+  displayed_order_config: 'MARKET_GFD',
+};
+
 export function createCoinbaseClient(apiKey, apiSecret, proxyBase = null) {
   const origin = proxyBase ? proxyBase.replace(/\/+$/, '') : API_ORIGIN;
   const r = (m, p, b = null, q = null) => req(apiKey, apiSecret, m, p, b, q, origin, Boolean(proxyBase));
   const order = (body) => r('POST', '/orders', body).then(orderResult);
+  const id = (v) => encodeURIComponent(String(v));
+  // POST /orders/batch_cancel → { results: [{ success, failure_reason, order_id }] }
+  const cancelOrders = (orderIds) => r('POST', '/orders/batch_cancel', { order_ids: [...orderIds].map(String) });
   return {
     getAccounts:     ()                                    => r('GET',  '/accounts'),
+    // Every account page (GET /accounts follows `cursor` while `has_next`) → { accounts: [...] }
+    getAllAccounts: async () => {
+      const accounts = [];
+      let cursor = null;
+      for (let page = 0; page < 20; page++) {
+        const json = await r('GET', '/accounts', null, cursor ? { limit: '250', cursor } : { limit: '250' });
+        accounts.push(...(json?.accounts ?? []));
+        cursor = json?.has_next && json?.cursor ? json.cursor : null;
+        if (!cursor) break;
+      }
+      return { accounts };
+    },
+    getProduct:      (productId) => r('GET', `/products/${id(productId)}`),
+    getOrder:        (orderId) => r('GET', `/orders/historical/${id(orderId)}`),
+    listPortfolios:  () => r('GET', '/portfolios'),
+    getPortfolioBreakdown: (uuid) => r('GET', `/portfolios/${id(uuid)}`),
     placeMarketBuy:  (clientOrderId, productId, quoteSize) =>
       order({ client_order_id: clientOrderId, product_id: productId, side: 'BUY',
         order_configuration: { market_market_ioc: { quote_size: String(quoteSize) } } }),
@@ -462,7 +488,24 @@ export function createCoinbaseClient(apiKey, apiSecret, proxyBase = null) {
     placeLimitOrder: (clientOrderId, productId, side, baseSize, limitPrice) =>
       order({ client_order_id: clientOrderId, product_id: productId, side,
         order_configuration: { limit_limit_gtc: { base_size: String(baseSize), limit_price: String(limitPrice) } } }),
-    cancelOrder:     (orderId) => r('POST', '/orders/cancel', { order_ids: [orderId] }),
+    // Stock/ETF market orders: buy in dollars, sell in shares (fractional to 0.00001).
+    placeEquityMarketBuy: (clientOrderId, productId, quoteSize) =>
+      order({ client_order_id: clientOrderId, product_id: productId, side: 'BUY',
+        order_configuration: { market_market_ioc: { quote_size: String(quoteSize) } },
+        equity_order_metadata: { ...EQUITY_MARKET_METADATA } }),
+    placeEquityMarketSell: (clientOrderId, productId, baseSize) =>
+      order({ client_order_id: clientOrderId, product_id: productId, side: 'SELL',
+        order_configuration: { market_market_ioc: { base_size: String(baseSize) } },
+        equity_order_metadata: { ...EQUITY_MARKET_METADATA } }),
+    // Resting stop-loss for crypto: once the price trades at or below stopPrice, a limit SELL at limitPrice is placed.
+    placeStopLimitSell: (clientOrderId, productId, baseSize, stopPrice, limitPrice) =>
+      order({ client_order_id: clientOrderId, product_id: productId, side: 'SELL',
+        order_configuration: { stop_limit_stop_limit_gtc: {
+          base_size: String(baseSize), limit_price: String(limitPrice), stop_price: String(stopPrice),
+          stop_direction: 'STOP_DIRECTION_STOP_DOWN',
+        } } }),
+    cancelOrders,
+    cancelOrder:     (orderId) => cancelOrders([orderId]),
     listOrders:      (params = {}) => r('GET', '/orders/historical/batch', null, params),
     getBestBidAsk:   (productIds) => r('GET', '/best_bid_ask', null, { product_ids: productIds }),
   };

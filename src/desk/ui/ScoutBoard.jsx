@@ -6,9 +6,11 @@ import { useDesk } from '../DeskProvider';
 import DeskChart from './DeskChart';
 import { Badge, Card, SectionLabel, CoinChip, BTN } from './atoms';
 import { fmtPrice, coinMeta } from './format';
+import SectorTabs from './SectorTabs';
+import { groupTone, rememberTab, recallTab } from './tabs';
 
 const DAY_MS = 86_400_000;
-const EXPLAIN = 'A quick look at every chart with the lines drawn. A coin only moves on when its latest daily candle closes through its 20-day range.';
+const EXPLAIN = 'A quick look at every chart with the lines drawn. A coin or stock only moves on to the Analyst when its latest daily candle closes through its breakout line.';
 
 const VERDICTS = {
   OPEN: { label: 'Open now', tone: 'green' },
@@ -54,7 +56,7 @@ function IndicatorChips({ ind }) {
 }
 
 function LinesList({ lines }) {
-  if (!lines?.length) return <p className="text-xs text-[#8b949e]">No lines could be drawn for this coin yet.</p>;
+  if (!lines?.length) return <p className="text-xs text-[#8b949e]">No lines could be drawn for this chart yet.</p>;
   return (
     <ul className="space-y-1.5">
       {lines.map((l) => (
@@ -119,7 +121,7 @@ function ScoutRow({ scout, variant, price, open, onToggle }) {
             <span className="text-sm font-semibold text-white">{sym}</span>
             {meta.name !== sym && <span className="text-xs text-[#8b949e]">{meta.name}</span>}
             {showDir && <Badge tone={scout.dir === 1 ? 'green' : 'red'}>{scout.dir === 1 ? 'Long setup' : 'Short setup'}</Badge>}
-            {scout.held && <Badge tone="blue" title="The paper account already holds this coin, so no new trade is opened">Holding</Badge>}
+            {scout.held && <Badge tone="blue" title="The paper account already holds this, so no new trade is opened">Holding</Badge>}
             {left && <Badge tone="yellow" title="Saved items are dropped after 7 days if the line is not crossed">{left}</Badge>}
             <span className="font-mono text-sm text-white ml-auto">{fmtPrice(price)}</span>
           </div>
@@ -175,7 +177,7 @@ function ChartRoom({ scouts }) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="min-w-0 flex-1 basis-56">
           <SectionLabel>Chart room</SectionLabel>
-          <p className="text-xs text-[#8b949e] mt-1 leading-relaxed">See the lines the Scout drew on any coin, including on days with no trade.</p>
+          <p className="text-xs text-[#8b949e] mt-1 leading-relaxed">See the lines the Scout drew on any coin or stock, including on days with no trade.</p>
         </div>
         <button type="button" className={BTN} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {open ? 'Close chart room' : 'Open chart room'}
@@ -185,7 +187,7 @@ function ChartRoom({ scouts }) {
       {open && (
         <div className="mt-3 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <label htmlFor="desk-chart-room-coin" className="text-xs text-[#8b949e]">Coin</label>
+            <label htmlFor="desk-chart-room-coin" className="text-xs text-[#8b949e]">Symbol</label>
             <select
               id="desk-chart-room-coin"
               value={sym}
@@ -216,9 +218,11 @@ export default function ScoutBoard() {
   const { state, prices } = useDesk();
   const [expanded, setExpanded] = useState(null); // 'group:SYM' — one row at a time
   const [showPassed, setShowPassed] = useState(false);
+  const [picked, setPicked] = useState(() => recallTab('scout'));
   const last = state.last;
+  const groups = last?.groups ?? [];
 
-  if (!last) {
+  if (!last || !groups.length) {
     return (
       <Card className="p-4">
         <h2 className="text-sm font-semibold text-white">Agent 2 · Scout</h2>
@@ -227,10 +231,18 @@ export default function ScoutBoard() {
     );
   }
 
-  const scouts = last.scouts ?? [];
+  const counts = Object.fromEntries(groups.map((g) => [g.id,
+    (g.scouts ?? []).filter((x) => x.verdict === 'OPEN').length + Object.keys(state.watch?.[g.id] ?? {}).length]));
+  const firstBusy = groups.find((g) => counts[g.id] > 0)?.id;
+  const active = groups.some((g) => g.id === picked) ? picked : (firstBusy ?? groups[0].id);
+  const group = groups.find((g) => g.id === active);
+  const isStock = group.kind === 'stock';
+  const noun = isStock ? 'stock' : 'coin';
+  const scouts = group.scouts ?? [];
   const openNow = scouts.filter((s) => s.verdict === 'OPEN').sort(bySym);
   const passed = scouts.filter((s) => s.verdict === 'PASS').sort(bySym);
-  const saved = Object.values(state.watch ?? {}).filter(Boolean).sort((a, b) => (a.expires ?? Infinity) - (b.expires ?? Infinity) || bySym(a, b));
+  const saved = Object.values(state.watch?.[active] ?? {}).filter(Boolean).sort((a, b) => (a.expires ?? Infinity) - (b.expires ?? Infinity) || bySym(a, b));
+  const choose = (id) => { setPicked(id); rememberTab('scout', id); setExpanded(null); setShowPassed(false); };
 
   const priceOf = (s) => prices?.[s.sym] ?? s.price;
   // Hiding the passed list also closes any chart that was open inside it.
@@ -268,16 +280,28 @@ export default function ScoutBoard() {
         <p className="text-xs text-[#8b949e] mt-1.5 leading-relaxed">{EXPLAIN}</p>
       </div>
 
+      <SectorTabs groups={groups} active={active} counts={counts} tone={Object.fromEntries(groups.map((g) => [g.id, groupTone(g)]))} label="Scout by sector" onChange={choose} />
+
+      {group.status !== 'ok' ? (
+        <div className="rounded-lg border border-[#30363d] bg-[#1c2128] p-3">
+          <p className="text-xs text-[#8b949e] leading-relaxed">{group.statusText || 'Waiting for data.'}</p>
+          {group.status === 'no-key' && (
+            <button type="button" className={`${BTN} mt-2`} onClick={() => { window.location.hash = '#/paper?settings=stocks'; }}>Add Twelve Data key</button>
+          )}
+        </div>
+      ) : (<>
+      {isStock && <p className="text-[11px] text-[#484f58] -mt-2">Measured against the S&amp;P 500 and {group.benchmark}. Only leaders in an uptrend near their 52-week high qualify.</p>}
+
       <Group title="Open now" count={openNow.length} hint="Handed to the Analyst">
-        {openNow.length ? rows(openNow, 'open') : <Empty>Nothing has closed through its line today.</Empty>}
+        {openNow.length ? rows(openNow, 'open') : <Empty>Nothing in {group.label} has closed through its line today.</Empty>}
       </Group>
 
       <Group title="Saved for later" count={saved.length} hint="Could trigger within 7 days">
-        {saved.length ? rows(saved, 'watch') : <Empty>No coin is close enough to its line to be worth watching.</Empty>}
+        {saved.length ? rows(saved, 'watch') : <Empty>No {noun} is close enough to its line to be worth watching.</Empty>}
       </Group>
 
       <Group title="Passed" count={passed.length}>
-        {passed.length === 0 ? <Empty>No coin was passed over on this run.</Empty> : (
+        {passed.length === 0 ? <Empty>No {noun} was passed over on this run.</Empty> : (
           <>
             <button type="button" className={BTN} aria-expanded={showPassed} onClick={togglePassed}>
               {showPassed ? `Hide ${passed.length} passed` : `Show ${passed.length} passed`}
@@ -287,7 +311,8 @@ export default function ScoutBoard() {
         )}
       </Group>
 
-      <ChartRoom scouts={scouts} />
+      <ChartRoom key={active} scouts={scouts} />
+      </>)}
     </Card>
   );
 }

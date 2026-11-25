@@ -3,7 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, Cell,
 } from 'recharts';
-import { supabase, isSupabaseConfigured, ADMIN_EMAIL } from '../lib/supabase';
+import { supabase, isSupabaseConfigured, ADMIN_EMAIL, loginEmail } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import AppNav from '../components/AppNav';
 
@@ -176,11 +176,12 @@ export default function Admin() {
   async function handleAdminLogin(e) {
     e.preventDefault();
     setLoginErr(''); setLoginInfo('');
-    if (loginForm.email !== ADMIN_EMAIL) { setLoginErr('Access denied: not the admin email.'); return; }
+    const email = loginEmail(loginForm.email);
+    if (email !== ADMIN_EMAIL) { setLoginErr('Access denied: not the admin account.'); return; }
     if (!supabase) { setLoginErr('Sign-in is not available: Supabase is not configured for this site.'); return; }
     setLoginBusy(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email, password: loginForm.password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password: loginForm.password });
 
     if (!error) { setLoginBusy(false); return; }
 
@@ -193,14 +194,7 @@ export default function Admin() {
     }
 
     if (msg.includes('invalid') || msg.includes('not found') || msg.includes('no user')) {
-      setLoginInfo('Account not found — creating it now…');
-      const { error: signUpErr } = await supabase.auth.signUp({ email: loginForm.email, password: loginForm.password });
-      if (signUpErr) { setLoginErr(signUpErr.message); setLoginInfo(''); setLoginBusy(false); return; }
-      const { error: retryErr } = await supabase.auth.signInWithPassword({ email: loginForm.email, password: loginForm.password });
-      if (retryErr) {
-        setLoginInfo('✉ Account created! Check your email for a confirmation link, click it, then sign in here.');
-        setLoginBusy(false); return;
-      }
+      setLoginErr('Wrong username or password.');
     } else {
       setLoginErr(error.message);
     }
@@ -235,7 +229,7 @@ export default function Admin() {
             <form onSubmit={handleAdminLogin} className="rounded-xl border border-[#30363d] bg-[#161b22] p-6 space-y-3">
               <input
                 className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-white placeholder-[#484f58] text-sm focus:outline-none focus:border-[#58a6ff]"
-                type="email" placeholder="Admin email" value={loginForm.email}
+                type="text" autoComplete="username" autoCapitalize="none" placeholder="Admin (or admin email)" value={loginForm.email}
                 onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} />
               <input
                 className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-white placeholder-[#484f58] text-sm focus:outline-none focus:border-[#58a6ff]"

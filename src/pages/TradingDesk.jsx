@@ -15,26 +15,37 @@ const SECTIONS = { briefing: 'desk-briefing', scout: 'desk-scout', analyst: 'des
 const LOG_DOT = { win: 'bg-[#3fb950]', loss: 'bg-[#f85149]', open: 'bg-[#58a6ff]', watch: 'bg-yellow-400', brief: 'bg-[#484f58]' };
 const LOG_LABEL = { win: 'Winning trade', loss: 'Losing trade', open: 'Trade opened', watch: 'Saved for later', brief: 'Briefing' };
 
-// The desk's bottom line in plain language, from the last completed run.
+// The desk's bottom line in plain language, from the last completed run, across all sectors.
 function todaysCall(last, savedCount, holding) {
-  if (!last) return null;
-  const brief = last.brief ?? {};
-  const analyses = last.analyses ?? [];
-  const approved = analyses.filter((a) => a.decision === 'BUY' || a.decision === 'SHORT');
+  if (!last?.groups) return null;
+  const groups = last.groups.filter((g) => g.status !== 'disabled');
+  const approved = groups.flatMap((g) => (g.analyses ?? []).filter((a) => a.decision === 'BUY' || a.decision === 'SHORT').map((a) => ({ ...a, sectorLabel: g.label })));
   if (approved.length > 0) return { approved };
-  const open = (last.scouts ?? []).filter((s) => s.verdict === 'OPEN' && !s.held);
-  if (open.length > 0 && analyses.length > 0) return { text: 'Candidates were found but none passed the Analyst.' };
-  const phase = brief.regime?.phase;
-  if (phase === 'bear' || phase === 'correction' || !brief.allowLong) {
-    // In an uptrend the first note says longs are allowed; the veto that overrode it comes later.
-    const notes = brief.notes ?? [];
-    const why = (phase === 'bull' ? notes.find((n) => /holding off/i.test(n)) : notes[0]) ?? 'The Briefing is not allowing new trades right now.';
-    const plan = holding ? 'Opening nothing new' : 'Staying in cash';
-    return { text: `No trade today. ${why} ${plan} is the plan working, not the bot being idle.` };
+  const rejected = groups.reduce((n, g) => n + (g.analyses ?? []).length, 0);
+  if (rejected > 0) return { text: `Candidates were found (${rejected}) but none passed the Analyst's must-pass checks.` };
+
+  const parts = [];
+  const crypto = groups.find((g) => g.id === 'crypto');
+  if (crypto?.status === 'ok' && crypto.brief) {
+    const phase = crypto.brief.regime?.phase;
+    parts.push(crypto.brief.allowLong ? 'Crypto: buying allowed, but nothing has closed through its line.'
+      : `Crypto: buying blocked (${phase === 'bear' ? 'Bitcoin in a downtrend' : phase === 'correction' ? 'Bitcoin correcting' : 'conditions not met'}).`);
   }
-  const saved = savedCount === 0 ? 'No coins are saved for later either.'
-    : savedCount === 1 ? '1 coin is saved for later.' : `${savedCount} coins are saved for later.`;
-  return { text: `No trade today — nothing has closed through its line. ${saved}` };
+  const stocks = groups.filter((g) => g.kind === 'stock');
+  const readyStocks = stocks.filter((g) => g.status === 'ok' && g.brief);
+  if (readyStocks.length) {
+    const allowed = readyStocks.filter((g) => g.brief.allowLong);
+    parts.push(allowed.length
+      ? `Stocks: ${allowed.length} of ${readyStocks.length} sectors allow buying (${allowed.map((g) => g.label).join(', ')}), but no stock has closed through its line.`
+      : `Stocks: none of ${readyStocks.length} sectors allows buying right now.`);
+  } else if (stocks.some((g) => g.status === 'no-key')) {
+    parts.push('Stocks: waiting for your Twelve Data key.');
+  } else if (stocks.some((g) => g.status === 'loading')) {
+    parts.push('Stocks: still loading price history.');
+  }
+  const saved = savedCount === 0 ? '' : savedCount === 1 ? ' 1 chart is saved for later.' : ` ${savedCount} charts are saved for later.`;
+  const plan = holding ? 'Opening nothing new' : 'Staying in cash';
+  return { text: `No trade today. ${parts.join(' ')}${saved} ${plan} is the plan working — the desk only acts on a real setup.` };
 }
 
 function CallBanner({ call, time, auto }) {
@@ -62,7 +73,7 @@ function CallBanner({ call, time, auto }) {
             <li key={a.sym}>
               <p className="text-base sm:text-lg text-white leading-snug">
                 <span className="inline-block align-middle mr-2"><Badge tone={a.decision === 'SHORT' ? 'red' : 'green'}>{a.decision}</Badge></span>
-                Trade approved: {a.summary}
+                Trade approved{a.sectorLabel ? ` in ${a.sectorLabel}` : ''}: {a.summary}
               </p>
               {a.note && <p className="text-sm text-[#8b949e] mt-1">{a.note}</p>}
             </li>
@@ -71,7 +82,7 @@ function CallBanner({ call, time, auto }) {
       ) : (
         <p className="text-base sm:text-lg text-white leading-snug">{call.text}</p>
       )}
-      <p className="text-[11px] text-[#484f58] mt-3">Paper trades only, in a simulated $5,000 account that charges real Coinbase fees and slippage.</p>
+      <p className="text-[11px] text-[#484f58] mt-3">Paper trades only, in a simulated $5,000 account that charges real Coinbase costs (crypto fees; stocks are commission-free) and slippage.</p>
     </Card>
   );
 }
@@ -103,7 +114,7 @@ function Activity({ log }) {
 export default function TradingDesk() {
   const { state, status, actions } = useDesk();
   const auto = !!state.settings?.auto;
-  const savedCount = useMemo(() => Object.keys(state.watch ?? {}).length, [state.watch]);
+  const savedCount = useMemo(() => Object.values(state.watch ?? {}).reduce((n, w) => n + Object.keys(w ?? {}).length, 0), [state.watch]);
   const holding = useMemo(() => Object.keys(state.account?.positions ?? {}).length > 0, [state.account]);
   const call = useMemo(() => todaysCall(state.last, savedCount, holding), [state.last, savedCount, holding]);
 
@@ -127,8 +138,15 @@ export default function TradingDesk() {
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         <div>
           <h1 className="text-lg font-semibold text-white">Trading Desk</h1>
-          <p className="text-xs text-[#8b949e] mt-0.5">Three agents work in order: one reads the market, one looks for a line being broken, one decides. A day with no trade is a normal result.</p>
+          <p className="text-xs text-[#8b949e] mt-0.5">Three agents work in order across crypto and six stock sectors: one reads each market, one looks for a line being broken, one decides. A day with no trade is a normal result.</p>
         </div>
+
+        {status.stocks && !status.stocks.keySet && (
+          <Card className="p-3 flex flex-wrap items-center gap-3">
+            <p className="text-xs text-[#8b949e] flex-1 min-w-[14rem]">Add your free Twelve Data key to let the desk search stocks (pharma, AI, science, oil &amp; gas, utilities, tech).</p>
+            <button type="button" className={BTN} onClick={() => { window.location.hash = '#/paper?settings=stocks'; }}>Add key</button>
+          </Card>
+        )}
 
         <PipelineStrip targets={SECTIONS} />
         <CallBanner call={call} time={state.last?.time} auto={auto} />
