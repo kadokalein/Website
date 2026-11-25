@@ -2,9 +2,12 @@
 // the same code drives the browser (persisted to localStorage) and the backtest.
 //
 // Unlike the old paper bot, every fill pays Coinbase-style fees and slippage, and
-// shorts are supported (1x, fully collateralised, paper only).
+// shorts are supported (1x, fully collateralised, paper only). Each position
+// remembers its own fee schedule, so crypto and stocks can share one account.
 
 export const DEFAULT_FEES = { taker: 0.009, maker: 0.005, slippage: 0.001 };
+// Coinbase charges no commission on stocks and ETFs; only the spread/slippage remains.
+export const STOCK_FEES = { taker: 0, maker: 0, slippage: 0.0005 };
 
 export const DEFAULT_RISK = {
   riskPerTradePct: 1.0,     // % of equity lost if the stop is hit, fees included
@@ -13,6 +16,7 @@ export const DEFAULT_RISK = {
   maxNewTradesPerDay: 2,
   dailyLossLimitPct: 2.0,   // no new entries for the rest of the UTC day once down this much
   maxOpenRiskPct: 3.0,      // sum of open stop-risk across positions
+  maxPerSector: 2,          // diversification: at most this many open positions in one sector
 };
 
 const DAY = 86_400_000;
@@ -66,10 +70,14 @@ export function markDay(acct, time, prices) {
 }
 
 // Why a new entry is not allowed right now, or null if it is.
-export function entryBlock(acct, time, prices, risk = DEFAULT_RISK) {
+export function entryBlock(acct, time, prices, risk = DEFAULT_RISK, sector = null) {
   const eq = equity(acct, prices);
   const d = ensureDay(acct, time, eq);
   if (Object.keys(acct.positions).length >= risk.maxPositions) return `Max ${risk.maxPositions} open positions`;
+  if (sector && risk.maxPerSector) {
+    const inSector = Object.values(acct.positions).filter((p) => (p.sector ?? 'crypto') === sector).length;
+    if (inSector >= risk.maxPerSector) return `Already ${inSector} open position${inSector === 1 ? '' : 's'} in this sector (max ${risk.maxPerSector})`;
+  }
   if (d.newTrades >= risk.maxNewTradesPerDay) return `Daily limit of ${risk.maxNewTradesPerDay} new trades reached`;
   const dayPnlPct = ((eq - d.startEquity) / d.startEquity) * 100;
   if (dayPnlPct <= -risk.dailyLossLimitPct) return `Daily loss limit hit (${dayPnlPct.toFixed(1)}%) — standing down until tomorrow`;
@@ -87,7 +95,7 @@ export function sizeForRisk(eq, cash, entry, stop, risk = DEFAULT_RISK, fees = D
   return Math.max(0, Math.min(byRisk, byCap, cash * 0.98));
 }
 
-// plan: { sym, dir (+1 long / -1 short), entry, stop, target?, trailAtr?, sizeUsd, meta }
+// plan: { sym, dir (+1 long / -1 short), entry, stop, target?, trailAtr?, sizeUsd, asset?, sector?, meta }
 export function openPosition(acct, plan, time, fees = DEFAULT_FEES) {
   if (acct.positions[plan.sym] || plan.sizeUsd < 10) return null;
   const fill = plan.entry * (1 + plan.dir * fees.slippage);
@@ -101,6 +109,7 @@ export function openPosition(acct, plan, time, fees = DEFAULT_FEES) {
     stop: plan.stop, initialStop: plan.stop, target: plan.target ?? null,
     trailAtr: plan.trailAtr ?? null, extreme: fill,
     lastPrice: fill, meta: plan.meta ?? {},
+    asset: plan.asset ?? 'crypto', sector: plan.sector ?? 'crypto', fees,
   };
   acct.cash -= plan.sizeUsd + fee;
   acct.positions[plan.sym] = pos;
@@ -109,9 +118,11 @@ export function openPosition(acct, plan, time, fees = DEFAULT_FEES) {
   return pos;
 }
 
+// feeRate defaults to the position's own taker fee.
 export function closePosition(acct, sym, price, reason, time, feeRate) {
   const pos = acct.positions[sym];
   if (!pos) return null;
+  feeRate ??= (pos.fees ?? DEFAULT_FEES).taker;
   const gross = pos.dir * (price - pos.entry) * pos.qty;
   const exitFee = pos.qty * price * feeRate;
   const net = gross - pos.entryFee - exitFee;
@@ -124,7 +135,7 @@ export function closePosition(acct, sym, price, reason, time, feeRate) {
     notional: pos.notional, gross, fees: pos.entryFee + exitFee, net,
     netPct: (net / pos.notional) * 100,
     r: riskUsd > 0 ? net / riskUsd : 0,
-    reason, meta: pos.meta,
+    reason, meta: pos.meta, asset: pos.asset ?? 'crypto', sector: pos.sector ?? 'crypto',
   };
   acct.trades.unshift(trade);
   const d = ensureDay(acct, time, equity(acct));
@@ -138,6 +149,7 @@ export function closePosition(acct, sym, price, reason, time, feeRate) {
 export function stepPosition(acct, sym, candle, atr, fees = DEFAULT_FEES) {
   const pos = acct.positions[sym];
   if (!pos) return null;
+  fees = pos.fees ?? fees;
   const { dir } = pos;
   const stopHit = dir > 0 ? candle.low <= pos.stop : candle.high >= pos.stop;
   if (stopHit) {
