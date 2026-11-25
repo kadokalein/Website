@@ -63,19 +63,23 @@ Apple Developer Program ($99/year) and one upload from Xcode: **Product → Arch
 Distribute App → TestFlight & App Store**. In
 [App Store Connect](https://appstoreconnect.apple.com), first create the app
 (**Apps → + → New App**, same bundle identifier). Then add yourself as an internal tester
-under **TestFlight** and install it from the TestFlight app. Internal testing (up to 100
-people on your team) does not need Apple's review.
+under **TestFlight** and install it from the TestFlight app. Internal testers are up to
+100 members of your own App Store Connect team, and each build lasts 90 days. Apple's
+TestFlight pages tie Beta App Review to *external* testers (people outside your team).
 
 ### What about the public App Store?
 
-It is possible to submit, but Apple is likely to reject this app as it is:
+You can submit it, but Apple is likely to reject this app as it is. From the
+[App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/):
 
-- **Guideline 5.1.1(ix):** apps offering financial services such as trading must be
-  submitted by a company, not an individual developer account.
-- **Guideline 3.1.5:** crypto trading apps are held to licensing rules.
-- **Guideline 4.2:** apps that are mainly a website in an app wrapper can be rejected.
-- **Guideline 3.1.1:** a paid subscription sold inside the app has to use Apple's in-app
-  purchase, not a Stripe link.
+- **5.1.1(ix):** apps in highly regulated fields, which include financial services and
+  crypto exchanges, "should be submitted by a legal entity that provides the services,
+  and not by an individual developer."
+- **3.1.5:** crypto apps may facilitate trades only "on an approved exchange" in places
+  where the app is licensed, and wallet features need an organization (company) account.
+- **4.2:** an app should "elevate it beyond a repackaged website."
+- **3.1.1:** subscriptions sold in the app must use Apple's in-app purchase, though apps
+  on the US storefront may also link to an outside payment page (3.1.1(a)).
 
 For an app only you (and a few people you invite) use, Option A or B is the way.
 
