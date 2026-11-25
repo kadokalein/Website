@@ -10,9 +10,10 @@
 // Coinbase; stocks cannot have one (Coinbase has no stock stop orders), so the bot
 // sells a stock itself when its price reaches the stop during market hours.
 
-import { createCoinbaseClient, checkProxy, describeCoinbaseError } from '../../lib/coinbaseApi';
-import { loadKeys, loadProxyPref, PROXY_URL } from '../../lib/coinbaseKeys';
+import { createCoinbaseClient, checkProxy, describeCoinbaseError, CoinbaseError } from '../../lib/coinbaseApi';
+import { loadKeys, signedRequestsReady, PROXY_URL } from '../../lib/coinbaseKeys';
 import { notify, askConfirm } from '../../lib/notify';
+import { pageLink } from '../../lib/platform';
 import { loadLive, saveLive, addLiveLog, pingLive, setMode } from './liveStore';
 
 export const LIVE_RULES = { riskPct: 1, maxPositions: 3, maxPerSector: 2, dailyLossPct: 2, maxFailures: 3 };
@@ -21,6 +22,7 @@ const SLIPPAGE = 0.001;
 const STOP_LIMIT_GAP = 0.015;      // crypto stop-limit sells up to 1.5% below the stop price
 const CONFIRM_TTL = 120_000;
 const MAX_ENTRY_DRIFT = 0.01;      // after a confirm, the price may not have run more than 1%
+const PENDING_GIVE_UP_MS = 10 * 60_000; // a buy whose order can't be found on Coinbase after this was never placed
 
 let running = false;
 let chain = Promise.resolve();
@@ -29,7 +31,8 @@ let latestMarketOpen = false;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const dayKey = (t) => new Date(t).toISOString().slice(0, 10);
-const siteUrl = (hash) => (typeof location !== 'undefined' ? `${location.origin}${import.meta.env.BASE_URL}${hash}` : null);
+// Link for notifications: the page on this site, or an app link in the iPhone app.
+const siteUrl = (hash) => pageLink(hash);
 const money = (v) => `$${Number(v).toFixed(2)}`;
 const px = (v) => (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(3) : v.toPrecision(4));
 const qt = (q) => String(Number(Number(q).toFixed(q >= 1 ? 4 : 6)));
@@ -65,7 +68,7 @@ function client() {
 async function blocker() {
   const keys = loadKeys();
   if (!keys?.apiKey || !keys?.apiSecret) return 'No Coinbase API key is saved in this browser.';
-  if (!loadProxyPref()) return 'The local proxy is switched off on the Live page.';
+  if (!signedRequestsReady()) return 'The local proxy is switched off on the Live page.';
   try { await checkProxy(PROXY_URL); } catch (e) { return describeCoinbaseError(e).summary; }
   return null;
 }
@@ -122,15 +125,31 @@ async function checkProduct(c, sym, asset) {
   };
 }
 
+// Coinbase said the order is over without filling (cancelled, expired, failed).
+class OrderEnded extends Error {}
+const ENDED = ['CANCELLED', 'EXPIRED', 'FAILED'];
+const endedText = (o) => `order ${String(o.status).toLowerCase()}${o.reject_message ? `: ${o.reject_message}` : ''}`;
+
 // Poll an order until it fills or ends. Returns the order, or null if still working.
 async function waitFill(c, orderId) {
   for (let i = 0; i < 10; i++) {
     const o = (await c.getOrder(orderId))?.order;
     if (o?.status === 'FILLED') return o;
-    if (['CANCELLED', 'EXPIRED', 'FAILED'].includes(o?.status)) throw new Error(`order ${o.status.toLowerCase()}${o.reject_message ? `: ${o.reject_message}` : ''}`);
+    if (ENDED.includes(o?.status)) throw new OrderEnded(endedText(o));
     await sleep(1000);
   }
   return null;
+}
+
+// Did this error prove the order was NOT placed? Only answers that came from Coinbase (or that
+// stopped the request before it left) count. A dropped connection, a timeout or a server error
+// after sending leaves it unknown: Coinbase may have taken the order. That happens easily on the
+// phone, where iOS pauses the app soon after it leaves the screen.
+function provesNotPlaced(e) {
+  if (e instanceof OrderEnded) return true;
+  if (!(e instanceof CoinbaseError)) return false;
+  if (['order_rejected', 'auth', 'key_invalid', 'proxy_off', 'proxy_forbidden_origin', 'proxy_wrong_service', 'proxy_outdated'].includes(e.kind)) return true;
+  return e.kind === 'http' && e.status >= 400 && e.status < 500;
 }
 
 function failure(text) {
@@ -149,35 +168,84 @@ async function placeEntry(c, plan) {
   const { sym, asset, sector, sectorLabel, stop, sizeUsd, clientOrderId } = plan;
   let prod;
   try { prod = await checkProduct(c, sym, asset); } catch (e) { addLiveLog('info', `Skipped ${sym}: ${e.message}`); return; }
-  saveLive((s) => { s.positions[sym] = { sym, asset, sector, productId: prod.productId, qty: 0, entryPrice: plan.price, entryTime: Date.now(), stop, initialStop: stop, exitLevel: plan.exitLevel ?? null, stopOrderId: null, clientOrderId, status: 'pending', cost: 0 }; });
+  saveLive((s) => { s.positions[sym] = { sym, asset, sector, sectorLabel: sectorLabel ?? null, productId: prod.productId, qty: 0, entryPrice: plan.price, entryTime: Date.now(), stop, initialStop: stop, exitLevel: plan.exitLevel ?? null, stopOrderId: null, clientOrderId, orderId: null, status: 'pending', cost: 0 }; });
+  let orderId = null;
   try {
     const size = sizeUsd.toFixed(2);
     const res = asset === 'stock'
       ? await c.placeEquityMarketBuy(clientOrderId, prod.productId, size)
       : await c.placeMarketBuy(clientOrderId, prod.productId, size);
-    const orderId = res?.success_response?.order_id ?? res?.order_id;
+    orderId = res?.success_response?.order_id ?? res?.order_id ?? null;
     if (!orderId) throw new Error('Coinbase did not return an order id');
+    saveLive((s) => { if (s.positions[sym]) s.positions[sym].orderId = orderId; });
     const fill = await waitFill(c, orderId);
     if (!fill) {
-      saveLive((s) => { if (s.positions[sym]) s.positions[sym].orderId = orderId; });
       addLiveLog('buy', `Buy order for ${sym} sent (${money(sizeUsd)}); waiting for Coinbase to report the fill.`);
       return;
     }
-    const qty = Number(fill.filled_size);
-    const avg = Number(fill.average_filled_price);
-    saveLive((s) => {
-      s.consecutiveFailures = 0;
-      const p = s.positions[sym];
-      if (p) Object.assign(p, { qty, entryPrice: avg, cost: Number(fill.filled_value ?? qty * avg) + Number(fill.total_fees ?? 0), status: 'open', orderId });
-    });
-    addLiveLog('buy', `Bought ${qt(qty)} ${sym} at $${px(avg)} (${money(qty * avg)}), stop $${px(stop)}.`);
-    notify({ title: `Live trade placed: BUY ${qt(qty)} ${sym} @ $${px(avg)}`, message: `${sectorLabel ?? sector} · ${money(qty * avg)} · stop $${px(stop)}`, event: 'liveTrades', priority: 4, url: siteUrl('#/live'), sequenceId: `trd_${clientOrderId}` });
-    if (asset === 'crypto') await protect(c, sym, prod);
-    else addLiveLog('info', `${sym}: Coinbase has no stop orders for stocks — the bot will sell if it trades at or below $${px(stop)} during market hours, so keep the site open on trading days.`);
+    await markFilled(c, sym, fill, prod);
   } catch (e) {
-    saveLive((s) => { delete s.positions[sym]; });
-    failure(`Could not buy ${sym}: ${describeCoinbaseError(e).summary}`);
+    if (provesNotPlaced(e)) {
+      saveLive((s) => { delete s.positions[sym]; });
+      failure(`Could not buy ${sym}: ${e instanceof OrderEnded ? e.message : describeCoinbaseError(e).summary}`);
+      return;
+    }
+    // Unknown outcome: keep the record and look the order up on the next cycles (reconcilePending).
+    const why = describeCoinbaseError(e).summary;
+    addLiveLog('error', `${sym}: the connection dropped while ${orderId ? 'waiting for the buy to fill' : 'sending the buy order'} (${why}). Coinbase may have taken it — the bot will look the order up and finish setting it up.`);
+    notify({ title: `Checking a live order: ${sym}`, message: 'The connection dropped while placing a buy. The bot will look it up on Coinbase and set its stop when it finds it.', event: 'liveTrades', priority: 4, url: siteUrl('#/live') });
   }
+}
+
+// A buy filled: record it, tell the owner, protect it. If the desk already closed it while the
+// buy was being confirmed, sell it straight away.
+async function markFilled(c, sym, fill, prod) {
+  const qty = Number(fill.filled_size);
+  const avg = Number(fill.average_filled_price);
+  const s = saveLive((x) => {
+    x.consecutiveFailures = 0;
+    const p = x.positions[sym];
+    if (p) Object.assign(p, { qty, entryPrice: avg, cost: Number(fill.filled_value ?? qty * avg) + Number(fill.total_fees ?? 0), status: 'open', orderId: fill.order_id ?? p.orderId });
+  });
+  const pos = s.positions[sym];
+  if (!pos) return;
+  addLiveLog('buy', `Bought ${qt(qty)} ${sym} at $${px(avg)} (${money(qty * avg)}), stop $${px(pos.stop)}.`);
+  notify({ title: `Live trade placed: BUY ${qt(qty)} ${sym} @ $${px(avg)}`, message: `${pos.sectorLabel ?? pos.sector} · ${money(qty * avg)} · stop $${px(pos.stop)}`, event: 'liveTrades', priority: 4, url: siteUrl('#/live'), sequenceId: `trd_${pos.clientOrderId}` });
+  if (pos.closeWhenFilled) { await exitPosition(c, sym, pos.closeWhenFilled); return; }
+  if (pos.asset === 'crypto') await protect(c, sym, prod);
+  else addLiveLog('info', `${sym}: Coinbase has no stop orders for stocks — the bot will sell if it trades at or below $${px(pos.stop)} during market hours, so keep the site open on trading days.`);
+}
+
+// Finds out what happened to a buy that is still 'pending' (sent, but the fill or even the order
+// itself was never confirmed). Network errors leave it for the next cycle.
+async function reconcilePending(c, pos) {
+  try {
+    let order = null;
+    if (pos.orderId) {
+      order = (await c.getOrder(pos.orderId))?.order ?? null;
+    } else {
+      // The order id never came back: look for our client_order_id among recent orders.
+      const find = (list) => (list?.orders ?? []).find((o) => o.client_order_id === pos.clientOrderId) ?? null;
+      order = find(await c.listOrders({ limit: 100 }));
+      if (!order) { try { order = find(await c.listOrders({ limit: 100, product_ids: pos.productId })); } catch { /* filter not accepted */ } }
+      if (!order) {
+        if (Date.now() - (pos.entryTime ?? 0) > PENDING_GIVE_UP_MS) {
+          saveLive((s) => { delete s.positions[pos.sym]; });
+          addLiveLog('error', `${pos.sym}: no buy order with id ${pos.clientOrderId} was found on Coinbase after ${PENDING_GIVE_UP_MS / 60_000} minutes, so it was most likely never placed. Check your Coinbase orders to be sure.`);
+          notify({ title: `Check Coinbase: ${pos.sym}`, message: `A buy whose connection dropped could not be found on Coinbase. It was most likely never placed — please check your Coinbase orders.`, event: 'liveTrades', priority: 5, url: siteUrl('#/live') });
+        }
+        return;
+      }
+      saveLive((s) => { if (s.positions[pos.sym]) s.positions[pos.sym].orderId = order.order_id ?? null; });
+    }
+    if (order?.status === 'FILLED') {
+      await markFilled(c, pos.sym, order, await checkProduct(c, pos.sym, pos.asset));
+    } else if (ENDED.includes(order?.status)) {
+      saveLive((s) => { delete s.positions[pos.sym]; });
+      addLiveLog('error', `Buy of ${pos.sym} did not complete: ${endedText(order)}.`);
+    }
+    // Otherwise still working on Coinbase — check again next cycle.
+  } catch { /* still unknown (no connection?) — check again next cycle */ }
 }
 
 // Resting stop-limit SELL for a crypto position.
@@ -202,6 +270,13 @@ async function protect(c, sym, prod) {
 async function exitPosition(c, sym, reason) {
   const pos = loadLive().positions[sym];
   if (!pos) return;
+  if (pos.status === 'pending') {
+    // Its buy isn't confirmed yet, so there is no known quantity to sell (and selling "everything
+    // held" could sell coins or shares that were there before). Sell as soon as the fill is known.
+    saveLive((s) => { if (s.positions[sym]) s.positions[sym].closeWhenFilled = reason; });
+    addLiveLog('info', `${sym}: ${reason} — its buy is still being confirmed, so it will be sold as soon as Coinbase reports the fill.`);
+    return;
+  }
   saveLive((s) => { if (s.positions[sym]) s.positions[sym].status = 'closing'; });
   if (pos.asset === 'stock' && !latestMarketOpen) {
     addLiveLog('info', `${sym}: ${reason} — the stock market is closed, so it will be sold at the next regular session.`);
@@ -284,13 +359,7 @@ export function runLiveCycle({ now = Date.now(), opened = [], closed = [], paper
       // 2) Stops, pending fills and unfinished exits.
       for (const pos of Object.values(loadLive().positions)) {
         const price = latestPrices[pos.sym];
-        if (pos.status === 'pending' && pos.orderId) {
-          try {
-            const fill = await waitFill(c, pos.orderId);
-            if (fill) saveLive((s) => { const p = s.positions[pos.sym]; if (p) Object.assign(p, { qty: Number(fill.filled_size), entryPrice: Number(fill.average_filled_price), status: 'open' }); });
-          } catch (e) { saveLive((s) => { delete s.positions[pos.sym]; }); addLiveLog('error', `Buy of ${pos.sym} did not complete: ${e.message}`); }
-          continue;
-        }
+        if (pos.status === 'pending') { await reconcilePending(c, pos); continue; }
         if (pos.status === 'closing') { await exitPosition(c, pos.sym, 'finishing an earlier sell'); continue; }
         if (pos.asset === 'crypto' && pos.stopOrderId) {
           try {

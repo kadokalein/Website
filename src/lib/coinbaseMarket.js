@@ -6,6 +6,8 @@
 // one queue here: few at a time, spaced out, identical requests merged,
 // recent answers reused, and a pause after Coinbase says "slow down".
 
+import { IS_NATIVE, nativeRequest } from './platform.js';
+
 const ADVANCED = 'https://api.coinbase.com/api/v3/brokerage/market';
 const EXCHANGE = 'https://api.exchange.coinbase.com';
 
@@ -91,8 +93,18 @@ async function rawGet(url) {
   }
 }
 
+// In the iPhone app the request is sent by iOS (Coinbase refuses the app's web view), with the
+// same timeout; the result is shaped like the bits of a fetch() Response used below.
+async function nativeGet(url, signal) {
+  const aborted = new Promise((_, reject) => {
+    signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })), { once: true });
+  });
+  const r = await Promise.race([nativeRequest(url, { timeoutMs: TIMEOUT_MS }), aborted]);
+  return { status: r.status, ok: r.ok, headers: { get: (name) => r.headers[String(name).toLowerCase()] ?? null }, text: async () => r.text };
+}
+
 async function readResponse(url, signal) {
-  const res = await fetch(url, { signal });
+  const res = IS_NATIVE ? await nativeGet(url, signal) : await fetch(url, { signal });
   if (res.status === 429) {
     const retryAfter = Number(res.headers.get('retry-after'));
     throw Object.assign(new MarketError('rate-limit', 'Coinbase is limiting requests', 429), { retryAfterMs: retryAfter > 0 ? retryAfter * 1000 : null });

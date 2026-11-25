@@ -14,8 +14,12 @@
 //
 // Keys are read from the caller and only ever sent to api.coinbase.com (directly, or through the
 // user's own localhost proxy, which forwards to api.coinbase.com).
+//
+// In the iPhone app, signed requests go straight to api.coinbase.com through iOS's own HTTP
+// stack (nativeRequest), which browsers' CORS rules do not apply to — no proxy is involved.
 
 import { PROXY_URL } from './coinbaseKeys.js';
+import { IS_NATIVE, nativeRequest } from './platform.js';
 
 const API_HOST = 'api.coinbase.com';
 const API_ORIGIN = `https://${API_HOST}`;
@@ -293,7 +297,9 @@ function coinbaseErrorText(json, text) {
 }
 
 // Confirms the local proxy is up and is ours. Throws CoinbaseError otherwise.
+// The iPhone app never uses the proxy, so there is nothing to check there.
 export async function checkProxy(proxyUrl = PROXY_URL) {
+  if (IS_NATIVE) return { proxy: 'not needed in the iPhone app', version: 2 };
   let res;
   try {
     res = await fetch(`${proxyUrl}/health`, { cache: 'no-store', signal: timeoutSignal(5000) });
@@ -321,8 +327,13 @@ async function req(apiKey, apiSecret, method, path, body, params, origin, proxie
 
   let res;
   try {
-    res = await fetch(url, { method, headers, body: body ? bodyStr : undefined, signal: timeoutSignal(30_000) });
+    res = IS_NATIVE && !proxied
+      ? await nativeRequest(url, { method, headers, body: body ? bodyStr : undefined, timeoutMs: 30_000 })
+      : await fetch(url, { method, headers, body: body ? bodyStr : undefined, signal: timeoutSignal(30_000) });
   } catch (e) {
+    if (IS_NATIVE && !proxied) {
+      throw new CoinbaseError('network', 'Could not reach api.coinbase.com — check the phone\'s internet connection.', { detail: e?.message });
+    }
     if (proxied) {
       throw new CoinbaseError('proxy_unreachable', `Could not reach the local proxy at ${origin}.`, { detail: e?.message });
     }
@@ -330,7 +341,7 @@ async function req(apiKey, apiSecret, method, path, body, params, origin, proxie
     throw new CoinbaseError('proxy_off',
       'Coinbase does not accept signed requests straight from a web page. Turn on the local proxy.', { detail: e?.message });
   }
-  const text = await res.text().catch(() => '');
+  const text = typeof res.text === 'string' ? res.text : await res.text().catch(() => '');
   let json = null;
   try { json = JSON.parse(text); } catch { /* not JSON */ }
   if (res.ok) return json;
@@ -405,9 +416,9 @@ export function describeCoinbaseError(err, { keyType = null, proxyUrl = PROXY_UR
       const steps = [
         `Detected key type: ${typeText}.`,
         'The key needs the "View" permission (and "Trade" to place orders) — check it on the Coinbase Developer Platform API keys page.',
-        'If the key has an IP allowlist, Coinbase rejects requests from any other IP address — add this computer\'s public IP, or create a key without an allowlist.',
+        'If the key has an IP allowlist, Coinbase rejects requests from any other IP address — add this device\'s public IP, or create a key without an allowlist (a phone on mobile data changes IP address often, so the iPhone app needs a key without one).',
         'Paste the full key name / id exactly as in the downloaded file: "organizations/…/apiKeys/…" (the "name" field) or the whole "id" value.',
-        'This computer\'s clock must be correct — each signed request is only valid for 2 minutes.',
+        'This device\'s clock must be correct — each signed request is only valid for 2 minutes.',
       ];
       if (keyType === 'hmac') steps.push('Legacy keys may no longer work — create a new key on the Coinbase Developer Platform and paste its JSON file.');
       if (keyType === 'ed25519') steps.push('If an Ed25519 key keeps being rejected, create a new key with the ECDSA signature algorithm (under "Advanced settings" when creating the key) and paste that file instead.');
@@ -454,7 +465,9 @@ const EQUITY_MARKET_METADATA = {
   displayed_order_config: 'MARKET_GFD',
 };
 
-export function createCoinbaseClient(apiKey, apiSecret, proxyBase = null) {
+export function createCoinbaseClient(apiKey, apiSecret, proxyBaseIn = null) {
+  // The iPhone app talks to api.coinbase.com directly (see nativeRequest); a proxy setting is ignored there.
+  const proxyBase = IS_NATIVE ? null : proxyBaseIn;
   const origin = proxyBase ? proxyBase.replace(/\/+$/, '') : API_ORIGIN;
   const r = (m, p, b = null, q = null) => req(apiKey, apiSecret, m, p, b, q, origin, Boolean(proxyBase));
   const order = (body) => r('POST', '/orders', body).then(orderResult);

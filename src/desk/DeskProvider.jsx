@@ -16,6 +16,7 @@ import { getStockDaily, refreshStockDaily, getStockQuotes, loadStockChart, stock
 import { usMarketStatus } from './data/usMarket';
 import { loadTdKey, saveTdKey, clearTdKey, tdCheckKey, explainTdError } from '../lib/twelveData';
 import { notify } from '../lib/notify';
+import { pageLink } from '../lib/platform';
 import { runLiveCycle } from './live/liveTrader';
 import { loadLive } from './live/liveStore';
 import { closedOnly, readChart } from './chart/read';
@@ -71,7 +72,8 @@ function persist(s) {
 }
 
 const money = (v) => `${v < 0 ? '-' : ''}$${Math.abs(v).toFixed(2)}`;
-const siteUrl = (hash) => (typeof location !== 'undefined' ? `${location.origin}${import.meta.env.BASE_URL}${hash}` : null);
+// Link for notifications: the page on this site, or an app link in the iPhone app.
+const siteUrl = (hash) => pageLink(hash);
 
 // Percentile rank (0–100) of each value within the set.
 function percentiles(values) {

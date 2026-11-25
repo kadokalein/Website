@@ -3,7 +3,7 @@
 import {
   createCoinbaseClient, checkProxy, detectKeyType, describeCoinbaseError, CoinbaseError,
 } from '../../lib/coinbaseApi.js';
-import { loadKeys, loadProxyPref, PROXY_URL } from '../../lib/coinbaseKeys.js';
+import { loadKeys, signedRequestsReady, PROXY_URL } from '../../lib/coinbaseKeys.js';
 
 // → { connected: false }
 //   { connected: true, ok: true, cash, assets }
@@ -17,8 +17,9 @@ export async function fetchCoinbaseBalance() {
     const d = describeCoinbaseError(e, { keyType, proxyUrl: PROXY_URL });
     return { connected: true, ok: false, error: d.summary, kind: d.kind, title: d.title, steps: d.steps, keyType };
   };
-  // Authenticated Coinbase calls are CORS-blocked from a web page; they only work through the local proxy.
-  if (!loadProxyPref()) return fail(new CoinbaseError('proxy_off'));
+  // Authenticated Coinbase calls are CORS-blocked from a web page; they only work through the local proxy
+  // (the iPhone app sends them itself — checkProxy and the proxy URL are no-ops there).
+  if (!signedRequestsReady()) return fail(new CoinbaseError('proxy_off'));
   try {
     await checkProxy(PROXY_URL);
     const client = createCoinbaseClient(keys.apiKey, keys.apiSecret, PROXY_URL);

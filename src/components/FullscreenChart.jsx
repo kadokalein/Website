@@ -71,7 +71,7 @@ export default function FullscreenChart({ candles, interval = '1d', color = '#58
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#0d1117]/98 flex flex-col"
+      className="fixed inset-0 z-50 bg-[#0d1117]/98 flex flex-col safe-fixed"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Header */}

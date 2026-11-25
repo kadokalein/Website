@@ -26,7 +26,7 @@ export default function NotifyPrompt() {
 
   return (
     <div role="dialog" aria-labelledby="notify-prompt-title"
-      className="fixed z-30 bottom-4 left-4 right-4 sm:left-auto sm:w-80">
+      className="fixed z-30 safe-bottom-4 left-4 right-4 sm:left-auto sm:w-80">
       <Card className="p-4 shadow-xl shadow-black/50">
         <div id="notify-prompt-title" className="text-sm font-semibold text-white">Turn on notifications?</div>
         <p className="text-xs text-[#8b949e] mt-1 leading-relaxed">

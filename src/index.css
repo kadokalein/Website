@@ -18,3 +18,37 @@ body {
   width: 100%;
   min-height: 100vh;
 }
+
+/* iPhone notch, status bar and home indicator. The page uses viewport-fit=cover, so in the
+   iPhone app (and Safari in landscape) it extends under them; these insets keep content clear.
+   Everywhere else the insets are 0 and nothing changes. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+#root {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* The sticky top bar: its normal 0.75rem plus the status-bar height. */
+.safe-header {
+  padding-top: calc(0.75rem + env(safe-area-inset-top));
+}
+/* Full-screen overlays (fixed, inset 0). */
+.safe-fixed {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.safe-sides-bottom {
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.safe-bottom-4 {
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+/* Chart page header: 3rem on phones (as before), at least the status-bar height plus a little. */
+.chart-head-top {
+  padding-top: max(3rem, calc(env(safe-area-inset-top) + 0.5rem));
+}
+@media (min-width: 640px) {
+  .chart-head-top {
+    padding-top: max(0.75rem, calc(env(safe-area-inset-top) + 0.5rem));
+  }
+}

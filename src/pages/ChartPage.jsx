@@ -171,7 +171,7 @@ export default function ChartPage() {
 
   if (!coin) {
     return (
-      <div className="fixed inset-0 bg-[#0d1117] flex flex-col items-center justify-center gap-4">
+      <div className="fixed inset-0 bg-[#0d1117] flex flex-col items-center justify-center gap-4 safe-fixed">
         <p className="text-[#8b949e]">Unknown coin</p>
         <Link to="/" className="text-[#58a6ff] text-sm">← Back to dashboard</Link>
       </div>
@@ -185,10 +185,10 @@ export default function ChartPage() {
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column' }}
-      className="bg-[#0d1117] text-white">
+      className="bg-[#0d1117] text-white safe-sides-bottom">
 
       {/* ── HEADER ────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-b border-[#30363d] px-4 pt-12 pb-2 sm:pt-3">
+      <div className="flex-shrink-0 border-b border-[#30363d] px-4 pb-2 chart-head-top">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <button

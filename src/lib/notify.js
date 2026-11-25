@@ -13,6 +13,8 @@
 // in-time reply from the phone or a click on the site itself. Anything else, including
 // silence until the time limit, is 'timeout', which callers must treat as "no trade".
 
+import { IS_NATIVE, APP_SCHEME, pageLink } from './platform.js';
+
 const STORAGE = 'pp_notify_v1';
 const NTFY = 'https://ntfy.sh';
 const TOPIC_RE = { alert: /^pp-a-[A-Za-z0-9]{22}$/, reply: /^pp-r-[A-Za-z0-9]{22}$/ };
@@ -78,7 +80,17 @@ function siteOrigin() {
     ? location.origin : 'https://kadokalein.github.io';
 }
 function deskUrl() {
+  if (IS_NATIVE) return pageLink('#/desk');
   return `${siteOrigin()}${baseUrl()}#/desk`;
+}
+
+// In the iPhone app, '#/live' style links become app links (prometheaprograms://open/#/live), so
+// tapping the alert opens the app; only those and https links are allowed there.
+function resolveAppUrl(s) {
+  if (s.startsWith('#')) return pageLink(s);
+  if (s.startsWith(`${APP_SCHEME}://open/#/`)) return s;
+  const u = new URL(s);
+  return u.protocol === 'https:' ? u.href : deskUrl();
 }
 
 // http(s) only. '#/live' style links resolve against the site. Local addresses are dropped
@@ -87,6 +99,7 @@ function resolveUrl(url) {
   if (!url) return deskUrl();
   try {
     const s = String(url);
+    if (IS_NATIVE) return resolveAppUrl(s);
     const u = s.startsWith('#') ? new URL(`${siteOrigin()}${baseUrl()}${s}`) : new URL(s, `${siteOrigin()}${baseUrl()}`);
     if (u.protocol !== 'https:' && u.protocol !== 'http:') return deskUrl();
     if (/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/i.test(u.hostname) && u.origin !== siteOrigin()) return deskUrl();
@@ -334,7 +347,7 @@ export async function notify({ title, message, priority = 3, tags = [], url = nu
         topic, title: t, message: m, priority: clampPriority(priority),
         tags: Array.isArray(tags) ? tags.filter((x) => typeof x === 'string' && x).slice(0, 5).map((x) => x.slice(0, 40)) : [],
         click: link,
-        actions: [{ action: 'view', label: url ? 'Open site' : 'Open desk', url: link, clear: true }],
+        actions: [{ action: 'view', label: IS_NATIVE ? 'Open app' : url ? 'Open site' : 'Open desk', url: link, clear: true }],
       };
       if (seq) payload.sequence_id = seq;
       const r = await publish(payload);
@@ -504,7 +517,7 @@ export function askConfirm({ id, title, message, ttlMs = DEFAULT_TTL, url = null
       const r = await publish({
         topic: p.alertTopic, title: p.title, message: body, priority: 5, tags: [],
         click: p.link, sequence_id: p.seq,
-        actions: [answer('confirm', p.nonces.confirm), answer('reject', p.nonces.reject), { action: 'view', label: url ? 'Open site' : 'Open desk', url: p.link, clear: true }],
+        actions: [answer('confirm', p.nonces.confirm), answer('reject', p.nonces.reject), { action: 'view', label: IS_NATIVE ? 'Open app' : url ? 'Open site' : 'Open desk', url: p.link, clear: true }],
       });
       if (!r.ok) { setLastError(r.error); return; } // phone has no buttons; the site can still answer
       setLastError(null);

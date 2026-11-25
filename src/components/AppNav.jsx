@@ -30,7 +30,7 @@ export default function AppNav({ badge = null, actions = null, subRow = null }) 
   const displayName = isAdmin ? 'Administrator' : (user?.user_metadata?.name || user?.email?.split('@')[0] || '');
 
   return (
-    <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 py-3">
+    <header className="sticky top-0 z-10 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur px-4 sm:px-6 pb-3 safe-header">
       <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-3">
         <div className="flex items-center justify-between gap-3 lg:flex-1 lg:justify-start min-w-0">
           <Link to="/" className="flex items-center gap-2 min-w-0">

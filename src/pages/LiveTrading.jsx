@@ -5,7 +5,8 @@ import {
   createCoinbaseClient, detectKeyType, keyTypeLabel, normalizeSecret, normalizeKeyName,
   checkProxy, describeCoinbaseError, CoinbaseError,
 } from '../lib/coinbaseApi';
-import { KEY_STORAGE, PROXY_URL, loadKeys, saveKeys, loadProxyPref, saveProxyPref, parseCoinbaseKeyJson } from '../lib/coinbaseKeys';
+import { KEY_STORAGE, PROXY_URL, loadKeys, saveKeys, loadProxyPref, saveProxyPref, parseCoinbaseKeyJson, signedRequestsReady } from '../lib/coinbaseKeys'
+import { IS_NATIVE, nativeRequest } from '../lib/platform';
 import { fetchCandles } from '../utils/binanceApi';
 import { analyzeCandles } from '../utils/indicators';
 import { computeRunScore } from '../utils/scoring';
@@ -105,7 +106,7 @@ export default function LiveTrading() {
   }
 
   function handleClearKeys() {
-    if (!confirm('Remove Coinbase API keys from this browser?')) return;
+    if (!confirm(IS_NATIVE ? 'Remove Coinbase API keys from this app?' : 'Remove Coinbase API keys from this browser?')) return;
     localStorage.removeItem(KEY_STORAGE);
     setKeys(null);
     setShowSetup(true);
@@ -117,14 +118,16 @@ export default function LiveTrading() {
     setStatus('Testing connection…', true);
     try {
       // Public unauthenticated endpoint
-      const r = await fetch('https://api.coinbase.com/api/v3/brokerage/market/products?limit=1');
+      // The iPhone app sends it through iOS: Coinbase refuses its public API to the app's web view.
+      const url = 'https://api.coinbase.com/api/v3/brokerage/market/products?limit=1';
+      const r = IS_NATIVE ? await nativeRequest(url, { timeoutMs: 15_000 }) : await fetch(url);
       if (r.ok || r.status === 401) {
         setStatus('Coinbase is reachable ✓ — now testing your API key…', true);
       } else {
         setStatus(`Coinbase public API returned HTTP ${r.status} — testing your API key anyway…`, false);
       }
     } catch (e) {
-      setStatus(`Could not reach api.coinbase.com from this browser (${e.message ?? e}) — check your internet connection or ad blocker. Testing your API key anyway…`, false);
+      setStatus(`Could not reach api.coinbase.com from this ${IS_NATIVE ? 'app' : 'browser'} (${e.message ?? e}) — check your internet connection${IS_NATIVE ? '' : ' or ad blocker'}. Testing your API key anyway…`, false);
     }
     fetchAccounts();
   }
@@ -137,7 +140,8 @@ export default function LiveTrading() {
     const keyType = detectKeyType(keys?.apiSecret);
     try {
       // Signed calls are CORS-blocked straight from a web page; they only work through the local proxy.
-      if (!useProxy) throw new CoinbaseError('proxy_off');
+      // The iPhone app sends them itself, so it needs no proxy.
+      if (!IS_NATIVE && !useProxy) throw new CoinbaseError('proxy_off');
       await checkProxy(PROXY_URL);
       const data = await client.getAccounts();
       const relevant = (data.accounts ?? [])
@@ -152,9 +156,9 @@ export default function LiveTrading() {
     }
   }
 
-  // Auto-fetch only when proxy pref is already saved (safe to auto-load)
+  // Auto-fetch only when signed calls can work (proxy pref saved, or the iPhone app)
   const autoLoadAccounts = useEffectEvent(() => {
-    if (loadProxyPref()) fetchAccounts();
+    if (signedRequestsReady()) fetchAccounts();
   });
   useEffect(() => {
     if (keys && !showSetup) autoLoadAccounts();
@@ -271,7 +275,7 @@ export default function LiveTrading() {
           <span className="text-red-400 text-lg flex-shrink-0">⚠</span>
           <div className="text-sm text-red-300">
             <strong>This page places real orders on Coinbase using your API key.</strong> Only trade with money you can afford to lose.
-            Your API keys are stored in <em>this browser's localStorage only</em> and are never sent to any server other than <code className="text-red-200">api.coinbase.com</code>.
+            Your API keys are stored in <em>{IS_NATIVE ? "this app's storage on this phone only" : "this browser's localStorage only"}</em> and are never sent to any server other than <code className="text-red-200">api.coinbase.com</code>.
           </div>
         </div>
 
@@ -401,6 +405,10 @@ export default function LiveTrading() {
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm font-semibold text-white">Account Balances</div>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {IS_NATIVE ? (
+                    <span className="text-xs px-2 py-1 rounded border bg-green-500/15 border-green-500/30 text-green-400"
+                      title="The iPhone app sends signed requests to api.coinbase.com itself, so no proxy is needed">Direct ✓</span>
+                  ) : (
                   <button
                     onClick={() => setUseProxy(v => { saveProxyPref(!v); return !v; })}
                     title="Route requests through a local proxy on localhost:9999 to bypass browser CORS restrictions"
@@ -412,6 +420,7 @@ export default function LiveTrading() {
                   >
                     {useProxy ? 'Proxy ✓' : 'Proxy off'}
                   </button>
+                  )}
                   <button onClick={testConnection} className="text-xs text-[#58a6ff] hover:text-white px-2 py-1 rounded border border-[#58a6ff]/30 hover:border-[#58a6ff]">
                     Test
                   </button>
@@ -430,7 +439,7 @@ export default function LiveTrading() {
                       {accountsError.steps.map(step => <li key={step}>{step}</li>)}
                     </ol>
                   )}
-                  {accountsError.kind.startsWith('proxy_') && accountsError.kind !== 'proxy_upstream' && (
+                  {!IS_NATIVE && accountsError.kind.startsWith('proxy_') && accountsError.kind !== 'proxy_upstream' && (
                     <>
                       <div className="rounded bg-[#0d1117] border border-[#30363d] px-3 py-2 font-mono text-[10px] text-green-300 select-all whitespace-pre-wrap">
                         {'cd ~/Downloads\nnode cors-proxy.js'}
@@ -454,7 +463,7 @@ export default function LiveTrading() {
                     </div>
                   )}
                   <div className="pt-1 flex flex-wrap items-center gap-3">
-                    {!useProxy && (
+                    {!IS_NATIVE && !useProxy && (
                       <button
                         onClick={() => { setUseProxy(true); saveProxyPref(true); setAccountsError(null); }}
                         className="px-3 py-1.5 rounded text-xs font-medium border transition-colors bg-[#21262d] border-[#30363d] text-[#8b949e] hover:text-white"
