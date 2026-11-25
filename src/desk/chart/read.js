@@ -46,6 +46,8 @@ export function readChart(d1, h4 = null, { rangeDays = RANGE_DAYS, exitDays = EX
   // 52-week (≈252 trading days, or 365 crypto days) extremes, using what history there is.
   const yearBars = Math.min(n, 252);
   const high52 = highest(d1, n - yearBars, n - 1);
+  const high52Prev = highest(d1, n - 1 - yearBars, n - 2); // the 52-week high BEFORE the latest bar
+  const low50 = lowest(d1, n - 1 - rangeDays, n - 2, 'low');
   const low52 = lowest(d1, n - yearBars, n - 1, 'low');
 
   let volAvg = 0;
@@ -72,7 +74,7 @@ export function readChart(d1, h4 = null, { rangeDays = RANGE_DAYS, exitDays = EX
     d1: {
       bar, prevClose: closes[n - 2],
       atr, atrPct: (atr / close) * 100,
-      ema20, ema50, sma200, sma200Prev, sma150, sma50, trend, high52, low52, rangeDays, exitDays,
+      ema20, ema50, sma200, sma200Prev, sma150, sma50, trend, high52, low52, high52Prev, low50, rangeDays, exitDays,
       rsi: last(rsiS), adx: last(adxS.adx), adxPrev: adxS.adx[n - 4],
       macd: calcMACD(d1),
       bbwRankBefore: percentRank(bbw.slice(0, -1), 120), // compression going INTO the latest bar

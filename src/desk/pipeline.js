@@ -139,9 +139,15 @@ export function executeApprovals({ now, account, results, livePrices = {}, price
     const block = entryBlock(account, now, prices, config.risk, group.id);
     if (block) { a.note = `Approved but not taken: ${block}`; continue; }
     const fees = group.fees ?? config.fees;
-    const sizeUsd = sizeForRisk(equity(account, prices), account.cash, a.plan.entry, a.plan.stop, config.risk, fees);
+    const risk = {
+      ...config.risk,
+      riskPerTradePct: config.risk.riskPerTradePct * (group.riskMult ?? 1),
+      maxPositionPct: group.maxPositionPct ?? config.risk.maxPositionPct,
+    };
+    const sizeUsd = sizeForRisk(equity(account, prices), account.cash, a.plan.entry, a.plan.stop, risk, fees);
     const pos = openPosition(account, {
       sym: a.sym, dir: a.dir, entry: a.plan.entry, stop: a.plan.stop, sizeUsd, asset: group.kind, sector: group.id,
+      trailAtr: a.plan.trailAtr ?? null, breakevenR: a.plan.breakevenR ?? null,
       meta: { setup: a.setupLabel ?? (a.dir > 0 ? 'Breakout' : 'Breakdown'), checklist: a.checklist, summary: a.summary, exitLevel: a.plan.exitLevel, sectorLabel: group.label },
     }, now, fees);
     if (!pos) { a.note = 'Approved but position too small to open'; continue; }

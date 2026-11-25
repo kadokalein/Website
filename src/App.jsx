@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { WatchlistProvider } from './context/WatchlistContext';
 import { DeskProvider } from './desk/DeskProvider';
+import NotifyPrompt from './components/NotifyPrompt';
 import Dashboard from './pages/Dashboard';
 import CoinDetail from './pages/CoinDetail';
 import Calculator from './pages/Calculator';
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/desk" element={<TradingDesk />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <NotifyPrompt />
         </DeskProvider>
       </WatchlistProvider>
     </HashRouter>

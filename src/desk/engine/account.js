@@ -107,7 +107,7 @@ export function openPosition(acct, plan, time, fees = DEFAULT_FEES) {
     qty: plan.sizeUsd / fill, entry: fill, notional: plan.sizeUsd,
     entryTime: time, entryFee: fee,
     stop: plan.stop, initialStop: plan.stop, target: plan.target ?? null,
-    trailAtr: plan.trailAtr ?? null, extreme: fill,
+    trailAtr: plan.trailAtr ?? null, breakevenR: plan.breakevenR ?? null, extreme: fill,
     lastPrice: fill, meta: plan.meta ?? {},
     asset: plan.asset ?? 'crypto', sector: plan.sector ?? 'crypto', fees,
   };
@@ -164,6 +164,12 @@ export function stepPosition(acct, sym, candle, atr, fees = DEFAULT_FEES) {
     if (targetHit) return closePosition(acct, sym, pos.target, 'Target reached', candle.time, fees.maker);
   }
   pos.extreme = dir > 0 ? Math.max(pos.extreme, candle.high) : Math.min(pos.extreme, candle.low);
+  // Once the trade has gone breakevenR × its initial risk in our favour, the stop moves to entry.
+  if (pos.breakevenR) {
+    const risk = Math.abs(pos.entry - pos.initialStop);
+    const reached = dir > 0 ? pos.extreme >= pos.entry + pos.breakevenR * risk : pos.extreme <= pos.entry - pos.breakevenR * risk;
+    if (reached && (dir > 0 ? pos.stop < pos.entry : pos.stop > pos.entry)) pos.stop = pos.entry;
+  }
   if (pos.trailAtr && atr) {
     const trail = pos.extreme - dir * pos.trailAtr * atr;
     if (dir > 0 ? trail > pos.stop : trail < pos.stop) pos.stop = trail;

@@ -98,6 +98,47 @@ export async function fetchHeadlines() {
   return { headlines, sources };
 }
 
+// Stock-market and industry feeds for the sector Briefings.
+const MARKET_FEEDS = [
+  { name: 'CNBC', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
+  { name: 'MarketWatch', url: 'https://feeds.content.dowjones.io/public/rss/mw_topstories' },
+  { name: 'Fierce Pharma', url: 'https://www.fiercepharma.com/rss/xml' },
+  { name: 'STAT', url: 'https://www.statnews.com/feed/' },
+  { name: 'OilPrice', url: 'https://oilprice.com/rss/main' },
+  { name: 'Utility Dive', url: 'https://www.utilitydive.com/feeds/news/' },
+  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/' },
+];
+
+// → { headlines: [{ title, url, source, time }], sources: [{ name, ok, count }] }
+export async function fetchMarketHeadlines() {
+  const sources = [];
+  let all = [];
+  const settled = await Promise.allSettled(MARKET_FEEDS.map(fromRss));
+  settled.forEach((r, i) => {
+    const ok = r.status === 'fulfilled' && r.value.length > 0;
+    sources.push({ name: MARKET_FEEDS[i].name, ok, count: ok ? r.value.length : 0 });
+    if (ok) all = all.concat(r.value);
+  });
+  const seen = new Set();
+  const headlines = all
+    .filter((h) => h.title)
+    .filter((h) => { const k = h.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => (b.time ?? 0) - (a.time ?? 0))
+    .slice(0, 120);
+  return { headlines, sources };
+}
+
+// Headlines that mention one of a sector's keywords (or its tickers as whole words).
+export function sectorHeadlines(headlines, sector) {
+  const words = (sector.keywords ?? []).map((k) => k.toLowerCase());
+  const tickers = new Set((sector.symbols ?? []).filter((t) => t.length >= 3));
+  return (headlines ?? []).filter((h) => {
+    const t = ` ${h.title.toLowerCase()} `;
+    if (words.some((w) => t.includes(w))) return true;
+    return (h.title.match(/\b[A-Z]{3,5}\b/g) ?? []).some((w) => tickers.has(w));
+  });
+}
+
 // → { value: 0-100, label } or null
 export async function fetchFearGreed() {
   try {
