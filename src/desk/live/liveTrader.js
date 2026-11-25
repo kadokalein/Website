@@ -11,8 +11,9 @@
 // sells a stock itself when its price reaches the stop during market hours.
 
 import { createCoinbaseClient, checkProxy, describeCoinbaseError } from '../../lib/coinbaseApi';
-import { loadKeys, loadProxyPref, PROXY_URL } from '../../lib/coinbaseKeys';
+import { loadKeys, signedRequestsReady, PROXY_URL } from '../../lib/coinbaseKeys';
 import { notify, askConfirm } from '../../lib/notify';
+import { pageLink } from '../../lib/platform';
 import { loadLive, saveLive, addLiveLog, pingLive, setMode } from './liveStore';
 
 export const LIVE_RULES = { riskPct: 1, maxPositions: 3, maxPerSector: 2, dailyLossPct: 2, maxFailures: 3 };
@@ -29,7 +30,8 @@ let latestMarketOpen = false;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const dayKey = (t) => new Date(t).toISOString().slice(0, 10);
-const siteUrl = (hash) => (typeof location !== 'undefined' ? `${location.origin}${import.meta.env.BASE_URL}${hash}` : null);
+// Link for notifications: the page on this site, or an app link in the iPhone app.
+const siteUrl = (hash) => pageLink(hash);
 const money = (v) => `$${Number(v).toFixed(2)}`;
 const px = (v) => (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(3) : v.toPrecision(4));
 const qt = (q) => String(Number(Number(q).toFixed(q >= 1 ? 4 : 6)));
@@ -65,7 +67,7 @@ function client() {
 async function blocker() {
   const keys = loadKeys();
   if (!keys?.apiKey || !keys?.apiSecret) return 'No Coinbase API key is saved in this browser.';
-  if (!loadProxyPref()) return 'The local proxy is switched off on the Live page.';
+  if (!signedRequestsReady()) return 'The local proxy is switched off on the Live page.';
   try { await checkProxy(PROXY_URL); } catch (e) { return describeCoinbaseError(e).summary; }
   return null;
 }

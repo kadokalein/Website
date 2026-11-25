@@ -8,9 +8,16 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "backtest": "node scripts/desk-backtest.mjs scripts/backtest-data"
+    "backtest": "node scripts/desk-backtest.mjs scripts/backtest-data",
+    "build:ios": "vite build --mode ios",
+    "ios:sync": "npm run build:ios && cap sync ios",
+    "ios:open": "npm run ios:sync && cap open ios"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
     "@supabase/supabase-js": "^2.106.2",
     "lightweight-charts": "^5.2.0",
     "qrcode": "^1.5.4",
@@ -20,6 +27,7 @@
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

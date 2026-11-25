@@ -1,5 +1,5 @@
 // Live page: the switch for automatic trading with real money, its status and log.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { ADMIN_EMAIL } from '../../lib/supabase';
@@ -12,6 +12,8 @@ import NotificationSettings from './NotificationSettings';
 import { Badge, Card, SectionLabel, CoinChip, BTN } from './atoms';
 import { fmtUsd, fmtPrice, fmtPct, timeAgo } from './format';
 import { sectorOf } from '../universe';
+import { IS_NATIVE } from '../../lib/platform';
+import { nativeSettings, onNativeSettings, saveNativeSettings } from '../../lib/nativeApp';
 
 const MODES = [
   { id: 'off', label: 'Off' },
@@ -22,8 +24,13 @@ const MODES = [
 const RISK_TEXT = [
   'This places REAL orders on Coinbase with your money.',
   `Each trade risks about ${LIVE_RULES.riskPct}% of your Coinbase balance; at most ${LIVE_RULES.maxPositions} positions (${LIVE_RULES.maxPerSector} per sector); no new buys after a ${LIVE_RULES.dailyLossPct}% loss in a day.`,
-  'It copies the Trading Desk\'s paper decisions, and runs only while this site is open in a browser on this computer with the local proxy running.',
-  'Coinbase has no stop orders for stocks, so the bot watches stock stops itself during market hours — keep the site open on trading days.',
+  IS_NATIVE
+    ? 'It copies the Trading Desk\'s paper decisions, and runs only while this app is open on screen — iPhone pauses apps in the background. Keep the phone on a charger with the app open (and "Keep the screen on" switched on).'
+    : 'It copies the Trading Desk\'s paper decisions, and runs only while this site is open in a browser on this computer with the local proxy running.',
+  IS_NATIVE
+    ? 'Coinbase has no stop orders for stocks, so the bot watches stock stops itself during market hours — if the app is closed, stock positions have no stop.'
+    : 'Coinbase has no stop orders for stocks, so the bot watches stock stops itself during market hours — keep the site open on trading days.',
+  'Turn automatic trading on in ONE place only (this phone or the website, not both): each keeps its own records, so two copies would buy twice.',
   'Past results do not guarantee future results. Continue?',
 ].join('\n\n');
 
@@ -44,8 +51,10 @@ export default function LiveAutoTradePanel() {
   }, [pending.length]);
 
   const keys = loadKeys();
-  const proxyOn = loadProxyPref();
+  // The iPhone app sends signed requests itself; the website needs the local proxy.
+  const proxyOn = IS_NATIVE || loadProxyPref();
   const ready = isAdmin && keys?.apiKey && proxyOn;
+  const native = useSyncExternalStore(onNativeSettings, nativeSettings, nativeSettings);
 
   function choose(mode) {
     if (mode === live.mode) return;
@@ -89,9 +98,19 @@ export default function LiveAutoTradePanel() {
             })}
           </div>
           {!isAdmin && <p className="text-[11px] text-yellow-300 mt-2">Sign in as Admin to turn on automatic trading. <Link to="/subscribe?mode=signin" className="underline">Sign in</Link></p>}
-          {isAdmin && !keys?.apiKey && <p className="text-[11px] text-yellow-300 mt-2">Save your Coinbase API key above first.</p>}
+          {isAdmin && !keys?.apiKey && <p className="text-[11px] text-yellow-300 mt-2">Save your Coinbase API key above first{IS_NATIVE ? ' (in this app — the website\'s saved key is not shared with the phone)' : ''}.</p>}
           {isAdmin && keys?.apiKey && !proxyOn && <p className="text-[11px] text-yellow-300 mt-2">Turn on the local proxy above first.</p>}
           {live.mode === 'confirm' && <p className="text-[11px] text-[#8b949e] mt-2">Every buy waits up to 2 minutes for your Confirm (phone or this page). No answer means no trade. Sells and stops run without asking, to protect you.</p>}
+          {IS_NATIVE && (
+            <div className="mt-3 rounded-lg border border-[#30363d] bg-[#1c2128] p-3 space-y-2">
+              <label className="flex items-start gap-2 text-[11px] text-[#c9d1d9]">
+                <input type="checkbox" className="mt-0.5" checked={native.keepAwake}
+                  onChange={(e) => saveNativeSettings({ keepAwake: e.target.checked })} />
+                <span><span className="text-white font-medium">Keep the screen on while the app is open.</span> iPhone pauses apps that are not on screen, so the desk and automatic trading only run while this app is open. Leave the phone on a charger.</span>
+              </label>
+              <p className="text-[11px] text-yellow-300">Run automatic trading on one device only — this phone or the website. Each keeps its own records, so two copies would place the same trades twice.</p>
+            </div>
+          )}
         </div>
         <div className="rounded-lg border border-[#30363d] bg-[#1c2128] p-3">
           <SectionLabel className="mb-1.5">Paper record the trades are copied from</SectionLabel>

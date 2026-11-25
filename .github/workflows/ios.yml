@@ -1,0 +1,107 @@
+name: iPhone app
+
+# Builds the iPhone app (the Capacitor project in ios/) on one of GitHub's Macs and runs it
+# in the iOS Simulator with its built-in self-test, so changes are checked on real iOS
+# without needing a Mac. Screenshots and the app's console log are attached to each run
+# (Actions -> this run -> Artifacts).
+#
+# Nothing is signed or uploaded here; see docs/IPHONE-APP.md for installing the app on an
+# iPhone (Xcode on a Mac, or TestFlight).
+#
+# macOS runners are free for public repositories; on private ones each minute counts
+# 10x against the plan's included Actions minutes, so this only runs when app-related
+# files change (or when started by hand from the Actions tab).
+
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'vite.config.js'
+      - 'scripts/ios-simulator-test.sh'
+      - '.github/workflows/ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    name: Build and self-test in the iPhone simulator
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Use Xcode 26 or newer (Capacitor 8 needs it)
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          major=$(xcodebuild -version | awk 'NR==1 { split($2, v, "."); print v[1] }')
+          if [ "${major:-0}" -lt 26 ]; then
+            newest=$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | sort -V | tail -n 1)
+            if [ -z "$newest" ]; then echo "::error::No Xcode 26 or newer on this runner."; exit 1; fi
+            sudo xcode-select -s "$newest/Contents/Developer"
+          fi
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Build the app's web files (test build with the self-test on)
+        run: npm run build:ios
+        env:
+          VITE_NATIVE_SELFTEST: '1'
+
+      - name: Copy them into the Xcode project
+        run: npx cap sync ios
+
+      - name: Build the app for the simulator
+        run: |
+          mkdir -p build
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee build/xcodebuild.log | grep -E 'error:|BUILD (SUCCEEDED|FAILED)' || true
+          test -d build/dd/Build/Products/Debug-iphonesimulator/App.app || { tail -n 80 build/xcodebuild.log; exit 1; }
+
+      - name: Run the app and its self-test in the simulator
+        run: scripts/ios-simulator-test.sh build/dd/Build/Products/Debug-iphonesimulator/App.app build/simulator
+
+      - name: Attach screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-simulator-run
+          path: |
+            build/simulator/
+            build/xcodebuild.log
+          if-no-files-found: ignore
+          retention-days: 14

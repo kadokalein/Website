@@ -1,0 +1,14 @@
+{
+  "appId": "com.prometheaprograms.trader",
+  "appName": "Promethea",
+  "webDir": "dist-ios",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0d1117",
+    "preferredContentMode": "mobile",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": false }
+  }
+}

@@ -2,6 +2,8 @@
 // this browser's localStorage and is only ever sent to api.coinbase.com (directly,
 // or through the user's own localhost proxy).
 
+import { IS_NATIVE } from './platform.js';
+
 export const KEY_STORAGE = 'pp_cb_keys_v1';
 export const PROXY_KEY = 'pp_use_proxy_v1';
 export const PROXY_URL = 'http://localhost:9999';
@@ -17,6 +19,12 @@ export function loadProxyPref() {
 }
 export function saveProxyPref(v) {
   try { localStorage.setItem(PROXY_KEY, String(v)); } catch { /* */ }
+}
+
+// Can signed (API-key) requests reach Coinbase from here? On the website they only work
+// through the local proxy (browsers block them otherwise); the iPhone app sends them itself.
+export function signedRequestsReady() {
+  return IS_NATIVE || loadProxyPref();
 }
 
 // Reads the key file Coinbase lets you download (or text pasted from it).
