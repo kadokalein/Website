@@ -6,7 +6,7 @@ import {
   checkProxy, describeCoinbaseError, CoinbaseError,
 } from '../lib/coinbaseApi';
 import { KEY_STORAGE, PROXY_URL, loadKeys, saveKeys, loadProxyPref, saveProxyPref, parseCoinbaseKeyJson, signedRequestsReady } from '../lib/coinbaseKeys'
-import { IS_NATIVE } from '../lib/platform';
+import { IS_NATIVE, nativeRequest } from '../lib/platform';
 import { fetchCandles } from '../utils/binanceApi';
 import { analyzeCandles } from '../utils/indicators';
 import { computeRunScore } from '../utils/scoring';
@@ -118,7 +118,9 @@ export default function LiveTrading() {
     setStatus('Testing connection…', true);
     try {
       // Public unauthenticated endpoint
-      const r = await fetch('https://api.coinbase.com/api/v3/brokerage/market/products?limit=1');
+      // The iPhone app sends it through iOS: Coinbase refuses its public API to the app's web view.
+      const url = 'https://api.coinbase.com/api/v3/brokerage/market/products?limit=1';
+      const r = IS_NATIVE ? await nativeRequest(url, { timeoutMs: 15_000 }) : await fetch(url);
       if (r.ok || r.status === 401) {
         setStatus('Coinbase is reachable ✓ — now testing your API key…', true);
       } else {

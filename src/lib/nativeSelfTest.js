@@ -10,6 +10,7 @@
 
 import { KeepAwake } from '@capacitor-community/keep-awake';
 import { createCoinbaseClient, detectKeyType, makeJWT, CoinbaseError } from './coinbaseApi.js';
+import { getCandles, getPrices } from './coinbaseMarket.js';
 import { idbGet, idbSet, idbDel } from './idb.js';
 import { IS_NATIVE, nativeRequest, pageLink } from './platform.js';
 import { hashFromAppUrl } from './nativeApp.js';
@@ -60,9 +61,21 @@ async function makeEd25519Key() {
   return b64(both);
 }
 
+// Header and payload of a JWT (the third part is the binary signature).
 function jwtParts(jwt) {
-  const [h, p] = jwt.split('.').map((s) => JSON.parse(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
-  return { h, p };
+  const dec = (seg) => {
+    const b = seg.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(b + '='.repeat((4 - (b.length % 4)) % 4)));
+  };
+  const [h, p] = jwt.split('.');
+  return { h: dec(h), p: dec(p) };
+}
+
+// JSON with object keys sorted, to compare values regardless of key order.
+function canonical(v) {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
+  return JSON.stringify(v);
 }
 
 function show() {
@@ -151,8 +164,9 @@ export async function runNativeSelfTest() {
       try {
         const r = await nativeRequest(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sent), timeoutMs: 15_000 });
         if (!r.ok) { last = `${url} HTTP ${r.status}`; continue; }
+        // iOS re-parses JSON responses, so compare values, not key order.
         const echoed = JSON.parse(r.text)[field];
-        assert(JSON.stringify(echoed) === JSON.stringify(sent), `echo differs: ${JSON.stringify(echoed).slice(0, 160)}`);
+        assert(canonical(echoed) === canonical(sent), `echo differs: ${JSON.stringify(echoed).slice(0, 160)}`);
         return `echoed by ${new URL(url).host}`;
       } catch (e) {
         if (String(e?.message).startsWith('echo differs')) throw e;
@@ -162,10 +176,28 @@ export async function runNativeSelfTest() {
     throw new Error(`no echo service answered (${last})`);
   });
 
+  // Coinbase market data through the app's own client (sent by iOS, see coinbaseMarket.js).
+  await check('market data: live prices (BTC, ETH)', async () => {
+    const px = await getPrices(['BTC', 'ETH']);
+    assert(px.BTC > 0 && px.ETH > 0, `got ${JSON.stringify(px)}`);
+    return `BTC ${px.BTC}`;
+  }, 30_000);
+  await check('market data: daily candles (BTC)', async () => {
+    const c = await getCandles('BTC', '1D', 60);
+    assert(Array.isArray(c) && c.length >= 50, `got ${c?.length} candles`);
+    return `${c.length} candles`;
+  }, 30_000);
+  // For the record: does Coinbase answer the web view directly? (Not needed — the app goes through iOS.)
+  try {
+    const r = await fetch('https://api.coinbase.com/api/v3/brokerage/market/products/BTC-USD');
+    console.log(`[selftest] INFO web view fetch to api.coinbase.com: HTTP ${r.status}`);
+  } catch (e) {
+    console.log(`[selftest] INFO web view fetch to api.coinbase.com refused (${e?.message ?? e}) — expected; the app uses native requests`);
+  }
+
   // Ordinary requests from the web view (the app's origin is capacitor://localhost).
   const webChecks = [
-    ['Coinbase market data', 'https://api.coinbase.com/api/v3/brokerage/market/products/BTC-USD', {}, (r) => r.ok],
-    ['Coinbase Exchange candles (fallback source)', 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400', {}, (r) => r.ok],
+    ['Coinbase Exchange candles', 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400', {}, (r) => r.ok],
     ['Twelve Data (stock prices)', 'https://api.twelvedata.com/quote?symbol=AAPL&apikey=demo', {}, (r) => r.ok],
     ['news feeds (rss2json)', `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://cointelegraph.com/rss')}`, {}, (r) => r.ok || r.status === 422 || r.status === 429],
     ['Fear & Greed index', 'https://api.alternative.me/fng/?limit=1', {}, (r) => r.ok],
@@ -213,6 +245,39 @@ export async function runNativeSelfTest() {
     assert(!header || hTop >= top, `header padding ${hTop}px is less than the ${top}px inset`);
     return `inset ${top}px, header padding ${hTop}px`;
   });
+
+  // The Trading Desk's first run in the app (real Coinbase data; stocks need a Twelve Data key, so
+  // those sectors just report that).
+  await check('Trading Desk completes a run in the app', async () => {
+    for (let i = 0; i < 90; i++) {
+      let last = null;
+      try { last = JSON.parse(localStorage.getItem('pp_desk_v1') ?? 'null')?.last; } catch { /* not saved yet */ }
+      if (last?.time) {
+        const crypto = last.groups?.find((g) => g.id === 'crypto');
+        for (const g of last.groups ?? []) console.log(`[selftest] INFO desk ${g.id}: ${g.status}${g.statusText ? ` — ${g.statusText.slice(0, 140)}` : ''}`);
+        for (const n of last.notices ?? []) console.log(`[selftest] INFO desk notice: ${String(n).slice(0, 200)}`);
+        assert(crypto?.status === 'ok', `crypto: ${crypto?.status} ${crypto?.statusText ?? ''}`);
+        return `crypto ok, ${crypto.scouts?.length ?? 0} coins scouted, regime ${crypto.brief?.regime?.label ?? crypto.brief?.stance ?? '?'}`;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    throw new Error('the desk did not finish a run within 90 s');
+  }, 100_000);
+
+  // Open an app link the way iOS does when an alert is tapped: the app asks iOS to open its own
+  // link, iOS hands it back through the scene delegate, and the app goes to that page.
+  await check('app link round trip through iOS (prometheaprograms://open/#/paper)', async () => {
+    window.location.hash = '#/';
+    await new Promise((r) => setTimeout(r, 500));
+    const arrived = new Promise((resolve, reject) => {
+      const t = setTimeout(() => { window.removeEventListener('hashchange', on); reject(new Error(`still on ${window.location.hash}`)); }, 10_000);
+      function on() { if (window.location.hash === '#/paper') { clearTimeout(t); window.removeEventListener('hashchange', on); resolve(); } }
+      window.addEventListener('hashchange', on);
+    });
+    window.location.href = pageLink('#/paper');
+    await arrived;
+    return 'arrived on #/paper';
+  }, 15_000);
 
   const pass = results.filter((r) => r.ok).length;
   console.log(`[selftest] DONE pass=${pass} fail=${results.length - pass}`);

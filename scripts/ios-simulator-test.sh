@@ -3,8 +3,10 @@
 #   1. picks the newest available iPhone simulator, boots it, installs the app
 #   2. launches it with its console attached; the test build (VITE_NATIVE_SELFTEST=1) prints
 #      "[selftest] PASS/FAIL …" lines and finally "[selftest] DONE pass=N fail=M"
-#   3. takes screenshots, then opens an app link (prometheaprograms://open/#/desk) like a
-#      tapped alert would, and checks the app reports it
+#   3. takes a screenshot and prints the app's own errors/warnings into the log
+# (The app-link check runs inside the app: it asks iOS to open prometheaprograms://open/#/paper,
+# the same path a tapped alert takes. `simctl openurl` is not used because the simulator stops
+# at an "Open in …?" prompt for it.)
 # Used by .github/workflows/ios.yml.
 # Usage: scripts/ios-simulator-test.sh path/to/App.app [output-dir]
 set -euo pipefail
@@ -46,24 +48,18 @@ LOG="$OUT/app-console.log"
 xcrun simctl launch --console-pty --terminate-running-process "$UDID" "$BUNDLE_ID" > "$LOG" 2>&1 &
 LAUNCH_PID=$!
 
-for _ in $(seq 1 150); do
+for _ in $(seq 1 300); do
   grep -aq '\[selftest\] DONE' "$LOG" && break
   sleep 1
 done
 sleep 2
-xcrun simctl io "$UDID" screenshot "$OUT/1-selftest.png" || true
-
-# Same thing iOS does when an alert's link is tapped.
-xcrun simctl openurl "$UDID" 'prometheaprograms://open/#/desk' || true
-for _ in $(seq 1 20); do
-  grep -aq '\[selftest\] app link opened #/desk' "$LOG" && break
-  sleep 1
-done
-sleep 5
-xcrun simctl io "$UDID" screenshot "$OUT/2-trading-desk.png" || true
+xcrun simctl io "$UDID" screenshot "$OUT/selftest.png" || true
 
 kill "$LAUNCH_PID" 2>/dev/null || true
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+
+echo "---- errors and warnings the app printed ----"
+grep -aE '\[(error|warn)\]' "$LOG" | grep -av '\[selftest\]' | cut -c1-400 | head -n 60 || echo "(none)"
 
 echo "---- self-test output from the app ----"
 if ! grep -a '\[selftest\]' "$LOG"; then
@@ -72,7 +68,7 @@ if ! grep -a '\[selftest\]' "$LOG"; then
   exit 1
 fi
 
-status=0
-grep -aq '\[selftest\] DONE pass=[0-9]* fail=0' "$LOG" || { echo "::error::The in-app self-test reported failures (see above)."; status=1; }
-grep -aq '\[selftest\] app link opened #/desk' "$LOG" || { echo "::error::Opening prometheaprograms://open/#/desk did not reach the app."; status=1; }
-exit $status
+if ! grep -aq '\[selftest\] DONE pass=[0-9]* fail=0' "$LOG"; then
+  echo "::error::The in-app self-test reported failures (see above)."
+  exit 1
+fi
