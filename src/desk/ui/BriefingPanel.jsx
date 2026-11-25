@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { useDesk } from '../DeskProvider';
 import { Badge, Card, SectionLabel } from './atoms';
 import { fmtUsd, fmtPrice, fmtPct, timeAgo } from './format';
+import SectorTabs from './SectorTabs';
+import { groupTone, rememberTab, recallTab } from './tabs';
 
 const PHASES = {
   bull: { label: 'Uptrend', tone: 'green', text: 'Bitcoin is above its long-term average. Long breakouts are allowed.' },
@@ -140,30 +142,81 @@ function Headlines({ news, external }) {
   );
 }
 
-export default function BriefingPanel() {
-  const { state } = useDesk();
-  const brief = state.last?.brief ?? null;
+const STOCK_PHASES = {
+  bull: { label: 'Uptrend', tone: 'green' },
+  correction: { label: 'Correction', tone: 'yellow' },
+  bear: { label: 'Downtrend', tone: 'red' },
+  unknown: { label: 'Unknown', tone: 'grey' },
+};
 
-  if (!brief) {
-    return (
-      <Card className="p-4">
-        <h2 className="text-sm font-semibold text-white">Agent 1 · Briefing</h2>
-        <p className="text-xs text-[#8b949e] mt-2">The first briefing is still being put together. It reads the headlines, the Fear &amp; Greed index and the balance, then judges the Bitcoin trend.</p>
-      </Card>
-    );
-  }
+function RegimeLine({ name, r }) {
+  if (!r || r.close == null) return <div className="text-xs text-[#8b949e]">{name}: not loaded yet</div>;
+  const ph = STOCK_PHASES[r.phase] ?? STOCK_PHASES.unknown;
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs">
+      <span className="text-white font-semibold">{name}</span>
+      <Badge tone={ph.tone}>{ph.label}</Badge>
+      <span className="font-mono text-white">{fmtPrice(r.close)}</span>
+      <span className="text-[#8b949e]"><span className={`font-mono ${pctTone(r.distAnchorPct)}`}>{Math.abs(r.distAnchorPct ?? 0).toFixed(1)}%</span> {r.distAnchorPct >= 0 ? 'above' : 'below'} its 200-day average</span>
+      <span className="text-[#8b949e]">30d <span className={`font-mono ${pctTone(r.ret30)}`}>{fmtPct(r.ret30)}</span></span>
+    </div>
+  );
+}
 
+function CryptoRegime({ r, phase }) {
+  return (
+    <Inset>
+      <SectionLabel className="mb-2">Market regime</SectionLabel>
+      <p className="text-sm text-white">{phase.label}</p>
+      <p className="text-xs text-[#8b949e] mt-0.5 leading-relaxed">{phase.text}</p>
+      {r.close != null && (
+        <dl className="grid grid-cols-3 gap-2 mt-3">
+          <div><dt className="text-[10px] text-[#8b949e]">Bitcoin</dt><dd className="font-mono text-sm text-white">{fmtPrice(r.close)}</dd></div>
+          <div><dt className="text-[10px] text-[#8b949e]">7 days</dt><dd className={`font-mono text-sm ${pctTone(r.ret7)}`}>{fmtPct(r.ret7)}</dd></div>
+          <div><dt className="text-[10px] text-[#8b949e]">30 days</dt><dd className={`font-mono text-sm ${pctTone(r.ret30)}`}>{fmtPct(r.ret30)}</dd></div>
+        </dl>
+      )}
+      {r.distAnchorPct != null && (
+        <p className="text-[11px] text-[#8b949e] mt-2">
+          <span className={`font-mono ${pctTone(r.distAnchorPct)}`}>{Math.abs(r.distAnchorPct).toFixed(1)}%</span>{' '}
+          {r.distAnchorPct >= 0 ? 'above' : 'below'} its {r.anchorLabel ?? '200-day average'}
+          {r.sma200 != null && <> (<span className="font-mono">{fmtPrice(r.sma200)}</span>)</>}
+        </p>
+      )}
+    </Inset>
+  );
+}
+
+function StockRegime({ brief, group }) {
+  return (
+    <Inset>
+      <SectionLabel className="mb-2">Market &amp; sector regime</SectionLabel>
+      <div className="space-y-1.5">
+        <RegimeLine name="S&P 500 (SPY)" r={brief.regime} />
+        <RegimeLine name={`Sector (${group.benchmark})`} r={brief.sectorRegime} />
+      </div>
+      {brief.rs3m != null && (
+        <p className="text-[11px] text-[#8b949e] mt-2">Sector vs S&amp;P 500 over 3 months: <span className={`font-mono ${pctTone(brief.rs3m)}`}>{brief.rs3m >= 0 ? '+' : ''}{brief.rs3m.toFixed(1)} points</span></p>
+      )}
+      <p className="text-xs mt-2 text-[#8b949e] leading-relaxed">
+        {brief.allowLong ? 'Buying is allowed in this sector.' : `Buying is blocked: ${(brief.gates ?? []).join('; ') || 'conditions not met'}.`}
+      </p>
+    </Inset>
+  );
+}
+
+function BriefView({ group, external }) {
+  const brief = group.brief;
+  const isCrypto = group.kind === 'crypto';
   const r = brief.regime ?? {};
   const phase = PHASES[r.phase] ?? PHASES.unknown;
-  const news = brief.news;
-
+  const sources = isCrypto ? external : { sources: external?.marketSources ?? [], fetchedAt: external?.fetchedAt };
   return (
-    <Card className="p-4 space-y-4">
+    <>
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold text-white">Agent 1 · Briefing</h2>
         <Badge tone={STANCE_TONE[brief.stance] ?? 'grey'}>{brief.stance}</Badge>
-        <Badge tone={phase.tone}>{phase.label}</Badge>
-        <span className="text-[11px] text-[#484f58] ml-auto">Reads the market before anyone looks for a trade</span>
+        <Badge tone={brief.allowLong ? 'green' : 'red'}>{brief.allowLong ? 'Buying allowed' : 'Buying blocked'}</Badge>
+        <span className="text-[11px] text-[#484f58] ml-auto">{isCrypto ? 'Judged by Bitcoin\'s long-term trend' : `Judged by the S&P 500 and ${group.benchmark}`}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -180,25 +233,7 @@ export default function BriefingPanel() {
             </div>
             <p className="text-[10px] text-[#484f58] mt-2">These add up to the mood score of <span className="font-mono">{signed(brief.score ?? 0)}</span>.</p>
           </Inset>
-          <Inset>
-            <SectionLabel className="mb-2">Market regime</SectionLabel>
-            <p className="text-sm text-white">{phase.label}</p>
-            <p className="text-xs text-[#8b949e] mt-0.5 leading-relaxed">{phase.text}</p>
-            {r.close != null && (
-              <dl className="grid grid-cols-3 gap-2 mt-3">
-                <div><dt className="text-[10px] text-[#8b949e]">Bitcoin</dt><dd className="font-mono text-sm text-white">{fmtPrice(r.close)}</dd></div>
-                <div><dt className="text-[10px] text-[#8b949e]">7 days</dt><dd className={`font-mono text-sm ${pctTone(r.ret7)}`}>{fmtPct(r.ret7)}</dd></div>
-                <div><dt className="text-[10px] text-[#8b949e]">30 days</dt><dd className={`font-mono text-sm ${pctTone(r.ret30)}`}>{fmtPct(r.ret30)}</dd></div>
-              </dl>
-            )}
-            {r.distAnchorPct != null && (
-              <p className="text-[11px] text-[#8b949e] mt-2">
-                <span className={`font-mono ${pctTone(r.distAnchorPct)}`}>{Math.abs(r.distAnchorPct).toFixed(1)}%</span>{' '}
-                {r.distAnchorPct >= 0 ? 'above' : 'below'} its {r.anchorLabel ?? '200-day average'}
-                {r.sma200 != null && <> (<span className="font-mono">{fmtPrice(r.sma200)}</span>)</>}
-              </p>
-            )}
-          </Inset>
+          {isCrypto ? <CryptoRegime r={r} phase={phase} /> : <StockRegime brief={brief} group={group} />}
         </div>
 
         <div className="space-y-3 min-w-0">
@@ -219,13 +254,52 @@ export default function BriefingPanel() {
             <p className="text-sm font-semibold text-white">{brief.directive}</p>
           </div>
           <Balance balance={brief.balance} />
-          {brief.fearGreed && <FearGreed fg={brief.fearGreed} />}
+          {isCrypto && brief.fearGreed && <FearGreed fg={brief.fearGreed} />}
         </div>
       </div>
 
       <div className="border-t border-[#30363d] pt-4">
-        <Headlines news={news} external={state.external} />
+        <Headlines news={brief.news} external={sources} />
       </div>
+    </>
+  );
+}
+
+export default function BriefingPanel() {
+  const { state } = useDesk();
+  const groups = state.last?.groups ?? [];
+  const [picked, setPicked] = useState(() => recallTab('briefing'));
+  const firstAllowed = groups.find((g) => g.brief?.allowLong)?.id;
+  const active = groups.some((g) => g.id === picked) ? picked : (firstAllowed ?? groups[0]?.id);
+  const group = groups.find((g) => g.id === active);
+
+  if (!groups.length) {
+    return (
+      <Card className="p-4">
+        <h2 className="text-sm font-semibold text-white">Agent 1 · Briefing</h2>
+        <p className="text-xs text-[#8b949e] mt-2">The first briefing is still being put together. It reads the headlines, the Fear &amp; Greed index and the balance, then judges the trend in crypto and in each stock sector.</p>
+      </Card>
+    );
+  }
+
+  const tone = Object.fromEntries(groups.map((g) => [g.id, groupTone(g)]));
+  return (
+    <Card className="p-4 space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-sm font-semibold text-white">Agent 1 · Briefing</h2>
+        <span className="text-[11px] text-[#484f58] ml-auto">One briefing per sector · green dot = buying allowed</span>
+      </div>
+      <SectorTabs groups={groups} active={active} tone={tone} label="Briefing by sector"
+        onChange={(id) => { setPicked(id); rememberTab('briefing', id); }} />
+      {group?.status === 'ok' && group.brief ? <BriefView group={group} external={state.external} /> : (
+        <div className="rounded-lg border border-[#30363d] bg-[#1c2128] p-3">
+          <p className="text-xs text-[#8b949e] leading-relaxed">{group?.statusText || 'Waiting for data.'}</p>
+          {group?.status === 'no-key' && (
+            <button type="button" className="mt-2 px-3 py-1.5 rounded-md text-xs bg-[#21262d] border border-[#30363d] text-[#8b949e] hover:text-white"
+              onClick={() => { window.location.hash = '#/paper?settings=stocks'; }}>Add Twelve Data key</button>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

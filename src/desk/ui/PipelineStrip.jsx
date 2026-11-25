@@ -48,20 +48,17 @@ export default function PipelineStrip({ targets = {} }) {
   const last = state.last;
 
   const view = useMemo(() => {
-    const brief = last?.brief ?? null;
-    const scouts = last?.scouts ?? [];
-    const analyses = last?.analyses ?? [];
-    const phase = brief?.regime?.phase;
-    let permission = 'standing aside';
-    if (brief?.allowLong) permission = 'longs allowed';
-    else if (brief?.allowShort) permission = 'shorts allowed';
-    else if (phase === 'bear') permission = 'buying blocked';
+    const groups = (last?.groups ?? []).filter((g) => g.status !== 'disabled');
+    const ready = groups.filter((g) => g.status === 'ok' && g.brief);
+    const scouts = groups.flatMap((g) => g.scouts ?? []);
+    const analyses = groups.flatMap((g) => g.analyses ?? []);
     return {
-      brief,
-      permission,
+      ready: ready.length,
+      sectors: groups.length,
+      allowed: ready.filter((g) => g.brief.allowLong).length,
       open: scouts.filter((s) => s.verdict === 'OPEN').length,
-      passed: scouts.filter((s) => s.verdict === 'PASS').length,
-      saved: Object.keys(state.watch ?? {}).length,
+      checked: scouts.length,
+      saved: Object.values(state.watch ?? {}).reduce((n, w) => n + Object.keys(w ?? {}).length, 0),
       approved: analyses.filter((a) => a.decision !== 'REJECT').length,
       rejected: analyses.filter((a) => a.decision === 'REJECT').length,
       positions: Object.keys(state.account?.positions ?? {}).length,
@@ -72,12 +69,12 @@ export default function PipelineStrip({ targets = {} }) {
   const steps = [
     {
       key: 'briefing', num: 1, title: 'Briefing',
-      body: view.brief ? <><span className="text-white">{view.brief.stance}</span> · {view.permission}</> : waiting,
+      body: view.ready ? <><span className="font-mono text-white">{view.allowed}</span> of {view.sectors} sectors allow buying</> : waiting,
     },
     {
       key: 'scout', num: 2, title: 'Scout',
       body: last ? (
-        <><span className="font-mono text-white">{view.open}</span> open · <span className="font-mono text-white">{view.saved}</span> saved for later · <span className="font-mono text-white">{view.passed}</span> passed</>
+        <><span className="font-mono text-white">{view.open}</span> open · <span className="font-mono text-white">{view.saved}</span> saved · <span className="font-mono text-white">{view.checked}</span> checked across {view.sectors} sectors</>
       ) : waiting,
     },
     {
@@ -132,6 +129,15 @@ export default function PipelineStrip({ targets = {} }) {
           <>Last run {timeAgo(lastRun)} · checks again every 5 minutes · news refreshes hourly</>
         )}
       </p>
+
+      {status.stocks && (status.stocks.keySet || status.stocks.error) && (
+        <p className="text-[11px] text-[#484f58] px-1">
+          Stocks: {status.stocks.market?.label}
+          {status.stocks.keySet && status.stocks.refreshing && <> · loading stock history <span className="font-mono">{status.stocks.loaded}/{status.stocks.total}</span></>}
+          {status.stocks.keySet && <> · Twelve Data <span className="font-mono">{status.stocks.credits?.usedToday ?? 0}/{status.stocks.credits?.dayLimit ?? 800}</span> today</>}
+          {status.stocks.keySet && status.stocks.error && <span className="text-yellow-300"> · {status.stocks.error}</span>}
+        </p>
+      )}
 
       {!status.error && status.notice && (
         <div className="rounded-lg border border-yellow-500/25 bg-yellow-500/10 px-3 py-2" role="status">

@@ -480,7 +480,6 @@ export function createCoinbaseClient(apiKey, apiSecret, proxyBase = null) {
     listPortfolios:  () => r('GET', '/portfolios'),
     getPortfolioBreakdown: (uuid) => r('GET', `/portfolios/${id(uuid)}`),
     placeMarketBuy:  (clientOrderId, productId, quoteSize) =>
-    placeMarketBuy:  (clientOrderId, productId, quoteSize) =>
       order({ client_order_id: clientOrderId, product_id: productId, side: 'BUY',
         order_configuration: { market_market_ioc: { quote_size: String(quoteSize) } } }),
     placeMarketSell: (clientOrderId, productId, baseSize) =>

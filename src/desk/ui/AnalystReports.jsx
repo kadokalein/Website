@@ -7,8 +7,8 @@ import DeskChart from './DeskChart';
 import { Badge, Card, SectionLabel, CoinChip, BTN } from './atoms';
 import { fmtUsd, fmtPrice, fmtPct, fmtDate, coinMeta } from './format';
 
-const EXPLAIN = 'The full chart work-up for every coin the Scout passed on. The must-pass checks decide; the rest is the supporting evidence.';
-const EMPTY = 'No coin reached the Analyst today. That is the normal state on most days — the desk only acts when a chart closes through its line in the direction the Briefing allows.';
+const EXPLAIN = 'The full chart work-up for every coin or stock the Scout handed over, from every sector. The must-pass checks decide; the rest is the supporting evidence. Approved trades from all sectors are ranked together.';
+const EMPTY = 'Nothing reached the Analyst today in any sector. That is the normal state on most days — the desk only acts when a chart closes through its line in a sector where the Briefing allows buying.';
 const FOOTNOTE = 'In backtests, no single supporting check reliably separated winners from losers, which is why they inform the report but do not veto a trade.';
 const FEES_TIP = 'Round-trip fees as a fraction of the amount risked. 0.30R means fees eat 30% of what the trade stands to lose at the stop.';
 
@@ -119,6 +119,8 @@ function Report({ analysis, chartOpen, onToggleChart }) {
             <span className="text-sm font-semibold text-white">{sym}</span>
             {meta.name !== sym && <span className="text-xs text-[#8b949e]">{meta.name}</span>}
             <Badge tone={d.tone}>{decision}</Badge>
+            {analysis.sectorLabel && <Badge>{analysis.sectorLabel}</Badge>}
+            {analysis.setupLabel && <Badge tone="blue">{analysis.setupLabel}</Badge>}
             {analysis.fromWatch && <Badge tone="yellow" title="This coin was on the Scout's saved-for-later list before it triggered">from saved list</Badge>}
             <span className="text-[11px] text-[#8b949e]">supporting checks <span className="font-mono text-white">{analysis.checklist}</span></span>
           </div>
@@ -167,6 +169,8 @@ function PositionCard({ pos, price, chartOpen, onToggleChart }) {
             {meta.name !== sym && <span className="text-xs text-[#8b949e]">{meta.name}</span>}
             <Badge tone={long ? 'green' : 'red'}>{long ? 'Long' : 'Short'}</Badge>
             {pos.meta?.setup && <Badge>{pos.meta.setup}</Badge>}
+            <Badge>{pos.meta?.sectorLabel ?? (pos.asset === 'stock' ? 'Stock' : 'Crypto')}</Badge>
+            <Badge tone="grey">{pos.asset === 'stock' ? 'Stock' : 'Crypto'}</Badge>
             <span className="text-[11px] text-[#8b949e]">
               {fmtUsd(pos.notional, 0)} opened {fmtDate(pos.entryTime)}
               {pos.meta?.checklist ? <> · supporting checks <span className="font-mono">{pos.meta.checklist}</span></> : null}
@@ -205,7 +209,9 @@ export default function AnalystReports() {
   const toggle = (key) => setChart((cur) => (cur === key ? null : key));
 
   const last = state.last;
-  const analyses = last?.analyses ?? [];
+  const analyses = (last?.groups ?? [])
+    .flatMap((g) => (g.analyses ?? []).map((a) => ({ ...a, sectorLabel: g.label })))
+    .sort((a, b) => (a.decision === 'REJECT') - (b.decision === 'REJECT') || (b.rank ?? 0) - (a.rank ?? 0));
   const positions = Object.values(state.account?.positions ?? {}).sort((a, b) => (a.entryTime ?? 0) - (b.entryTime ?? 0));
   const approved = analyses.filter((a) => a.decision !== 'REJECT').length;
   const nothing = analyses.length === 0 && positions.length === 0;
@@ -223,7 +229,7 @@ export default function AnalystReports() {
       </div>
 
       {!last && (
-        <p className="text-xs text-[#8b949e]">The first run is still in progress. Reports appear here if the Scout hands a coin over.</p>
+        <p className="text-xs text-[#8b949e]">The first run is still in progress. Reports appear here if the Scout hands something over.</p>
       )}
 
       {last && nothing && (
@@ -234,11 +240,11 @@ export default function AnalystReports() {
         <section>
           <SectionLabel className="mb-2">Reports from this run</SectionLabel>
           {analyses.length === 0 ? (
-            <p className="text-xs text-[#8b949e]">No new coin reached the Analyst on this run. It is only managing the open position{positions.length === 1 ? '' : 's'} below.</p>
+            <p className="text-xs text-[#8b949e]">Nothing new reached the Analyst on this run. It is only managing the open position{positions.length === 1 ? '' : 's'} below.</p>
           ) : (
             <ul className="space-y-3">
               {analyses.map((a) => {
-                const key = `report:${a.sym}`;
+                const key = `report:${a.sector}:${a.sym}`;
                 return <Report key={key} analysis={a} chartOpen={chart === key} onToggleChart={() => toggle(key)} />;
               })}
             </ul>

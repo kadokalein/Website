@@ -1,7 +1,6 @@
 import { useState, useEffect, useEffectEvent, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import AppNav from '../components/AppNav';
-import { Card, BTN } from '../desk/ui/atoms';
+import LiveAutoTradePanel from '../desk/ui/LiveAutoTradePanel';
 import {
   createCoinbaseClient, detectKeyType, keyTypeLabel, normalizeSecret, normalizeKeyName,
   checkProxy, describeCoinbaseError, CoinbaseError,
@@ -489,18 +488,7 @@ export default function LiveTrading() {
               )}
             </div>
 
-            {/* Automated trading removed */}
-            <Card className="p-4">
-              <div className="text-sm font-semibold text-white">Automated live trading is switched off</div>
-              <p className="text-[11px] text-[#8b949e] mt-1 leading-relaxed">
-                The old auto-trader used the scalping strategy that lost money to fees, so it has been removed. Live trading here is manual only.
-                The Trading Desk is proving its approach on the paper account first — check its record on the Portfolio page before risking real money.
-              </p>
-              <div className="flex flex-wrap items-center gap-2 mt-3">
-                <Link to="/desk" className={BTN}>Trading Desk</Link>
-                <Link to="/paper" className={BTN}>Portfolio</Link>
-              </div>
-            </Card>
+            <LiveAutoTradePanel />
 
             {/* Tracked positions */}
             <div className="rounded-xl border border-[#30363d] bg-[#161b22] overflow-hidden">
